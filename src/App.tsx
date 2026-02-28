@@ -18,6 +18,7 @@ import MAP_NAMES from './constants/maps'
 import { Scene } from 'three'
 import Loading from './Loading/Loading'
 import { recoverMemoryFromUrl } from './Field/Scripts/Script/utils'
+import { Streamer } from './Streamer'
 
 const memory = new URLSearchParams(window.location.search).get('memory');
 if (memory) {
@@ -73,7 +74,18 @@ export default function App() {
           alpha: false,
           depth: false,
           stencil: false,
-        }} frameloop={isTabActive ? 'always' : 'never'}>
+          powerPreference: "high-performance",
+          preserveDrawingBuffer: true,
+        }} frameloop={isTabActive ? 'always' : 'never'}
+  dpr={1}
+  style={{ width: 640, height: 480 }} 
+  onCreated={({ gl }) => {
+    gl.setPixelRatio(1);
+    gl.setSize(640, 480, false);
+  }}
+  resize={{ scroll: false, debounce: { scroll: 0, resize: 0 } }}
+      >
+          <Streamer />
           <EffectComposer>
             <PerspectiveCamera
               makeDefault
