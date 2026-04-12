@@ -1,0 +1,43 @@
+.container {
+  position: absolute;
+  inset: 0;
+  transform: translate(50%, 50%);
+}
+
+.minimap {
+  position: fixed;
+  right: 2%;
+  bottom: 2%;
+  width: 20%;
+  height: auto;
+  aspect-ratio: 320 / 240;
+  opacity: 0.7;
+  background-image: url(./map.png);
+  background-size: cover;
+  --color: rgba(255, 255, 0, 1);
+}
+
+.playerIndicator {
+  position: absolute;
+  left: calc(var(--u) * 1%);
+  bottom: calc(var(--v) * 1%);
+  width: 1.5%;
+  aspect-ratio: 1 / 1;
+  background-color: var(--color);
+  border-radius: 50%;
+  box-shadow: 0px 0 5px 1px var(--color);
+}
+
+.directionIndicator {
+  --angle: (var(--r) / 255 * 360);
+  position: absolute;
+  left: calc(var(--u) * 1%);
+  bottom: calc(var(--v) * 1%);
+  width: 10%;
+  height: 20%;
+  background: var(--color);
+  filter: blur(20px);
+  transform: translate(-45%, 0%) rotate(calc((var(--angle)) * -1deg));
+  transform-origin: 50% 100%;
+  clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+}

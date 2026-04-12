@@ -29,9 +29,10 @@ type ScriptProps = {
 const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, sounds }: ScriptProps) => {
   const entityRef = useRef<Group>(null);
   const scene = useThree(state => state.scene);
+  const walkmeshController = useGlobalStore(state => state.walkmeshController);
   const useScriptStateStore = useMemo(() => createScriptState(script), [script]);
   const animationController = useMemo(() => createAnimationController(script.groupId), [script.groupId]);
-  const movementController = useMemo(() => createMovementController(script.groupId), [script.groupId]);
+  const movementController = useMemo(() => createMovementController(script.groupId, walkmeshController!), [script.groupId, walkmeshController]);
   const headController = useMemo(() => createRotationController(script.groupId, movementController, entityRef), [script.groupId, movementController]);
   const rotationController = useMemo(() => createRotationController(script.groupId, movementController, entityRef), [script.groupId, movementController]);
   const sfxController = useMemo(() => createSFXController(script.groupId, sounds ?? []), [script.groupId, sounds]);

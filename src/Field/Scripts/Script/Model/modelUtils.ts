@@ -23,11 +23,13 @@ export const getPartyMemberModelComponent = (scene: Scene, partyMemberIndex: num
 export const getPlayerEntity = (scene: Scene): Group | null => {
   const { party } = useGlobalStore.getState();
   const partyMemberId = party[0];
+
   const groupWrapper = scene.getObjectByName(`party--${partyMemberId}`) as Group;
   if (!groupWrapper) {
     console.warn("Player entity not found in scene");
     return null;
   }
+
   return groupWrapper.parent as Group;
 }
 const CORNER_VECTOR_1 = new Vector3();
@@ -61,6 +63,9 @@ export const getLowestTriangleBelowMesh = (boundingBox: Box3) => {
   for (const position of positions) {
     const triangleId = walkmeshController.getTriangleForPosition(position);
     
+    if (triangleId === -1) {
+      continue;
+    }
     if (triangleId !== null) {
       const triangleCenter = walkmeshController.getTriangleCentre(triangleId);
       

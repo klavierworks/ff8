@@ -64,6 +64,8 @@ declare global {
     left: boolean;
     right: boolean;
     isWalking: boolean;
+    panLeft: boolean;
+    panRight: boolean;
   };
 
 

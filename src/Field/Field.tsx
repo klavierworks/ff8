@@ -13,12 +13,12 @@ import { getInitialEntrance } from '../utils';
 import { MEMORY, OPCODE_HANDLERS } from './Scripts/Script/handlers';
 import MAP_NAMES from '../constants/maps';
 import { getFieldData } from './fieldUtils';
-import Onboarding from '../Onboarding/Onboarding';
 import { AREA_NAMES } from '../constants/areaNames';
 import { preloadMapSoundBank } from './Scripts/Script/SFXController/webAudio';
 import { sendToDebugger } from '../Debugger/debugUtils';
 import LoadingController from './LoadingController';
-import { syncToUrl } from './Scripts/Script/utils';
+import Worldmap from './Worldmap/Worldmap';
+import Onboarding from '../Onboarding/Onboarding';
 
 export type RawFieldData = typeof data;
 
@@ -69,19 +69,24 @@ const Field = ({ data }: FieldProps) => {
     
   }, [currentLocationPlaceName, data.id]);
 
+  const walkmeshController = useGlobalStore(state => state.walkmeshController);
   return (
     <Suspense fallback={<LoadingController />}>
       <group>
         <WalkMesh walkmesh={data.walkmesh} />
-        <Camera backgroundPanRef={backgroundPanRef} data={data} />
-        <Scripts
-          doors={data.doors}
-          models={data.models}
-          scripts={data.scripts}
-          sounds={data.sounds}
-        />
-        <Background backgroundPanRef={backgroundPanRef} data={data} />
-        <Gateways fieldId={data.id}  />
+        {walkmeshController && (
+          <>
+            <Camera backgroundPanRef={backgroundPanRef} data={data} />
+            <Scripts
+              doors={data.doors}
+              models={data.models}
+              scripts={data.scripts}
+              sounds={data.sounds}
+            />
+            <Background backgroundPanRef={backgroundPanRef} data={data} />
+            <Gateways fieldId={data.id}  />
+          </>
+        )}
       </group>
     </Suspense>
   );
@@ -113,7 +118,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
         OPCODE_HANDLERS.FADEOUT();
         // @ts-expect-error We don't need args for this function
         await OPCODE_HANDLERS.FADESYNC();
-
+        console.log('FADED OUT')
         // Fixes a quirk in the engine. See feroad, checking 0/10
         MEMORY[87] = 1;
       }
@@ -125,18 +130,14 @@ const FieldLoader = (props: FieldLoaderProps) => {
       if (lastFieldId) {
         MEMORY[84] = Object.values(MAP_NAMES).indexOf(lastFieldId);
       }
+      console.log('Transitioning to field', pendingFieldId);
 
-      if (pendingFieldId === 'wm00') {
-        useGlobalStore.setState({
-          fieldId: 'wm00',
-          pendingFieldId: undefined,
-        });
-
-        return;
+      let data;
+      if (pendingFieldId !== 'menu' && !pendingFieldId.startsWith('wm')) {
+        data = await getFieldData(pendingFieldId);
+        preloadMapSoundBank(data.sounds);
+        setData(data);
       }
-
-      const data = await getFieldData(pendingFieldId);
-      setData(data);
 
       const pendingCharacterPosition = useGlobalStore.getState().pendingCharacterPosition;
 
@@ -144,16 +145,18 @@ const FieldLoader = (props: FieldLoaderProps) => {
         MEMORY[261] = 0;
       }
 
-      syncToUrl();
       useGlobalStore.setState({
-        fieldData: data,
-        fieldDirection: data.controlDirection,
-        availableMessages: data.text,
+        ...(data ? {
+          fieldData: data,
+          fieldDirection: data.controlDirection,
+          availableMessages: data.text,
+          characterPosition: pendingCharacterPosition ?? getInitialEntrance(data!),
+          cameraFocusHeight: data.cameraFocusHeight,
+        } : {}),
 
         isLoadingSavedGame: false,
         isMapFadeEnabled: true,
 
-        characterPosition: pendingCharacterPosition ?? getInitialEntrance(data),
         pendingCharacterPosition: undefined,
 
         hasMoved: false,
@@ -167,7 +170,6 @@ const FieldLoader = (props: FieldLoaderProps) => {
         backgroundScrollRatios: {},
         layerScrollAdjustments: {},
 
-        cameraFocusHeight: data.cameraFocusHeight,
         cameraFocusObject: undefined,
         cameraFocusSpring: undefined,
         cameraScrollOffset: {} as CameraScrollTransition,
@@ -199,9 +201,6 @@ const FieldLoader = (props: FieldLoaderProps) => {
 
         congaWaypointHistory: [],
       });
-      
-      syncToUrl();
-      preloadMapSoundBank(data.sounds);
     }
 
     if (!pendingFieldId) {
@@ -210,15 +209,18 @@ const FieldLoader = (props: FieldLoaderProps) => {
     handleTransition();
   }, [gl, pendingFieldId]);
 
-  
-  if (fieldId === 'wm00') {
-    return <Onboarding />
+  if (fieldId?.startsWith('wm')) {
+    return <Worldmap />;
+  }
+
+  if (fieldId === 'menu') {
+    return <Onboarding />;
   }
 
   if (!data) {
     return null;
   }
-  
+
   return <Field data={data} key={fieldId} {...props} />
 }
 

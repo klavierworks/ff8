@@ -9,7 +9,7 @@ import createMovementController from "../MovementController/MovementController";
 import createRotationController from "../RotationController/RotationController";
 import { getPlayerEntity } from "./modelUtils";
 
-const SPEED = {
+export const SPEED = {
   WALKING: 0.06,
   RUNNING: 0.175,
 }
@@ -58,7 +58,7 @@ const useControls = ({ characterHeight, isActive, movementController, rotationCo
 
     const initialPosition = new Vector3(initialFieldPosition.x, initialFieldPosition.y, initialFieldPosition.z);
     const newPosition = walkmeshController.getPositionOnWalkmesh(initialPosition);
-
+    console.log('Placing character at', newPosition, 'from initial position', initialPosition);
     if (newPosition) {
       movementController.setPosition(newPosition);
     } else {
@@ -126,7 +126,6 @@ const useControls = ({ characterHeight, isActive, movementController, rotationCo
     if (!walkmeshController || !isUserControllable || isTurning) {
       return;
     };
-
     const movementAngle = handleMovement();
     if (movementAngle === null) {
       return;
@@ -212,12 +211,12 @@ const useControls = ({ characterHeight, isActive, movementController, rotationCo
     if (!movementController.getState().hasBeenPlaced) {
       return;
     }
+    
     const isClimbingLadder = movementController.getState().isClimbingLadder;
-
+    
     if (isClimbingLadder) {
       return;
     }
-
     const camera = scene.getObjectByName("sceneCamera") as PerspectiveCamera;
     handleFrame(camera as PerspectiveCamera, scene, delta).then((returnedValue) => {
       const [newPosition, movementSpeed] = (returnedValue ?? [null, 0]) as [Vector3 | null, number];

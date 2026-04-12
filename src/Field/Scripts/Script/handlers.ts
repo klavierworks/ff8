@@ -2,7 +2,7 @@ import { Scene, Vector3 } from "three";
 import useGlobalStore from "../../../store";
 import { floatingPointToNumber, numberToFloatingPoint, vectorToFloatingPoint } from "../../../utils";
 import { Opcode, OpcodeObj, Script } from "../types";
-import { closeMessage, dummiedCommand, openMessage, enableMessageToClose, remoteExecute, remoteExecutePartyMember, unusedCommand, wait, syncToUrl } from "./utils";
+import { closeMessage, openMessage, enableMessageToClose, remoteExecute, remoteExecutePartyMember, unusedCommand, wait } from "./utils";
 import MAP_NAMES from "../../../constants/maps";
 import { getPartyMemberModelComponent, getScriptEntity } from "./Model/modelUtils";
 import { displayMessage, isKeyDown, KEY_FLAGS, isTouching, setCameraAndLayerFocus, wasKeyPressed, setCameraScroll, setLayerScroll } from "./common";
@@ -19,7 +19,11 @@ import { handleLadder } from "./MovementController/utils";
 import LerpValue from "../../../LerpValue";
 import { SPEEDS } from "../../../constants/speeds";
 
-const musicController = MusicController();
+
+const dummiedCommand = () => { }
+const unusedCommand = () => { }
+
+export const musicController = MusicController();
 
 type HandlerArgs = {
   animationController: ReturnType<typeof createAnimationController>,
@@ -107,20 +111,16 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   },
   POPM_L: ({ currentOpcode, STACK }) => {
     MEMORY[currentOpcode.param] = STACK.pop() as number;
-    syncToUrl();
   },
   POPM_B: ({ currentOpcode, STACK }) => {
     const value = STACK.pop() as number;
     MEMORY[currentOpcode.param] = value;
-    syncToUrl();
   },
   POPM_W: ({ currentOpcode, STACK }) => {
     MEMORY[currentOpcode.param] = STACK.pop() as number;
-    syncToUrl();
   },
   CLEAR: () => {
     MEMORY = {};
-    syncToUrl();
   },
   PSHAC: ({ currentOpcode, STACK }) => {
     STACK.push(currentOpcode.param);
@@ -231,11 +231,13 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     OPCODE_HANDLERS?.['MAPJUMP3']?.(args);
   },
   WORLDMAPJUMP: ({ STACK }) => {
-    STACK.pop() as number;
-    STACK.pop() as number;
-    STACK.pop() as number;
+    const val1 = STACK.pop() as number;
+    const val2 = STACK.pop() as number;
+    const id = STACK.pop() as number;
+    const paddedId = id.toString().padStart(2, '0');
+    console.log('WORLDMAPJUMP', { val1, val2, id }, paddedId);
     useGlobalStore.setState({
-      pendingFieldId: 'wm00',
+      pendingFieldId: `wm${paddedId}` as typeof MAP_NAMES[number],
     });
   },
   SETPLACE: ({ STACK }) => {

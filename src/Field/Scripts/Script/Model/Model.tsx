@@ -167,16 +167,20 @@ const Model = ({animationController, models, scriptController, movementControlle
     characterDimensions.copy(boundingbox.getSize(new Vector3()));
 
     const searchResult = getLowestTriangleBelowMesh(boundingbox);
-
+    if (searchResult?.triangleId === -1) {
+      return;
+    }
     let trianglePosition: Vector3 | null = null;
     let modelBoundaryPosition: Vector3 | null = null;
     if (searchResult) {
       const {triangleId, cornerPosition} = searchResult;
       trianglePosition = walkmeshController.getPositionOnTriangle(cornerPosition, triangleId)!;
       modelBoundaryPosition = cornerPosition;
-    } else {
+    } else if (movementController.getState().position.walkmeshTriangle !== -1) {
       trianglePosition = walkmeshController.getTriangleCentre(movementController.getState().position.walkmeshTriangle!)
       modelBoundaryPosition = boundingbox.min
+    } else {
+      return
     }
 
     const standingTrianglePosition = walkmeshController.getPositionOnTriangle(

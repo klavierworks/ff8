@@ -1,4 +1,4 @@
-import { Group, Scene, Vector3 } from "three";
+import { Group, Object3D, Scene, Vector3 } from "three";
 import { create } from "zustand";
 import createMovementController from "../MovementController/MovementController";
 import { getDirectionToVector, getShortestRouteToAngle, radiansToUnit, signedAngleBetweenVectors } from "./rotationUtils";
@@ -8,7 +8,7 @@ import LerpValue from "../../../../LerpValue";
 const createRotationController = (
   id: string | number,
   movementController: ReturnType<typeof createMovementController>,
-  entityRef: RefObject<Group | null>
+  entityRef: RefObject<Object3D | null>
 ) => {
   const { getState, setState } = create(() => ({
     angle: new LerpValue(0),

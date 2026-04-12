@@ -17,13 +17,6 @@ import { MEMORY } from './Field/Scripts/Script/handlers'
 import MAP_NAMES from './constants/maps'
 import { Scene } from 'three'
 import Loading from './Loading/Loading'
-import { recoverMemoryFromUrl } from './Field/Scripts/Script/utils'
-
-const memory = new URLSearchParams(window.location.search).get('memory');
-if (memory) {
-  recoverMemoryFromUrl();
-  console.log('Recovered memory from URL', MEMORY);
-}
 
 const requestedProgress = new URLSearchParams(window.location.search).get('progress');
 if (requestedProgress) {
@@ -44,7 +37,7 @@ export default function App() {
   const progress = MEMORY[256];
   const isDebugMode = useGlobalStore(state => state.isDebugMode);
 
-  const [isDisclaimerHidden, setIsDisclaimerHidden] = useState((namedField && !namedField.includes('wm')) || import.meta.env.DEV);
+  const [isDisclaimerHidden, setIsDisclaimerHidden] = useState(true);
 
   useEffect(() => {
     if (!fieldId) {
@@ -56,10 +49,6 @@ export default function App() {
 
     url.searchParams.set('progress', progress.toString());
     window.history.pushState({}, '', url.toString());
-
-    if (fieldId && !fieldId.includes('wm')) {
-      setIsDisclaimerHidden(true);
-    }
   }, [fieldId, progress])
 
   const [worldScene, setWorldScene] = useState<Scene>();
@@ -73,24 +62,24 @@ export default function App() {
           alpha: false,
           depth: false,
           stencil: false,
-        }} frameloop={isTabActive ? 'always' : 'never'}>
+        }} frameloop="always">
           <EffectComposer>
-            <PerspectiveCamera
+              <PerspectiveCamera
               makeDefault
               name="moveableCamera"
               position={[0, 0, 0]}
               aspect={ASPECT_RATIO}
               near={0.001}
               far={1000}
-            />
-            <PerspectiveCamera
+              />
+              <PerspectiveCamera
               name="sceneCamera"
               position={[0, 0, 0]}
               aspect={ASPECT_RATIO}
               near={0.001}
               far={1000}
-            />
-            <Entrypoint setWorldScene={setWorldScene} />
+              />
+              <Entrypoint setWorldScene={setWorldScene} />
             <ColorOverlay />
           </EffectComposer>
         </Canvas>

@@ -2,9 +2,10 @@ import { Line3, Object3D, Scene, Vector3 } from "three";
 import { create } from "zustand";
 import { numberToFloatingPoint } from "../../../../utils";
 import PromiseSignal from "../../../../PromiseSignal";
-import useGlobalStore from "../../../../store";
 import JumpCurve from "./JumpCurve";
 import { isTouching } from "../common";
+import type WalkmeshMovementController from "../../../WalkMesh/WalkmeshMovement";
+import WorldmapMeshController from "../../../Worldmap/WorldmapMovementController";
 
 type MoveOptions = {
   customMovementTarget: Vector3 | undefined;
@@ -18,7 +19,7 @@ type MoveOptions = {
   distanceToStopAnimationFromTarget: number;
 }
 
-const createMovementController = (id: number) => {
+const createMovementController = (id: number, walkmeshController: WalkmeshMovementController | WorldmapMeshController) => {
   const {getState, setState, subscribe} = create(() => ({
     hasBeenPlaced: false,
     hasMoved: false,
@@ -112,8 +113,7 @@ const createMovementController = (id: number) => {
   const setPosition = async (position: Vector3, walkmeshTriangle?: number) => {
     let triangle = walkmeshTriangle;
     if (!triangle) {
-      const { walkmeshController } = useGlobalStore.getState();
-      triangle = walkmeshController!.getTriangleForPosition(position)!;
+      triangle = walkmeshController.getTriangleForPosition(position)!;
     }
 
     resolvePendingPositionSignal();
@@ -179,12 +179,6 @@ const createMovementController = (id: number) => {
 
     resolvePendingPositionSignal();
     const signal = new PromiseSignal();
-
-    const { walkmeshController } = useGlobalStore.getState();
-
-    if (!walkmeshController) {
-      return;
-    }
 
     const waypoints = isAllowedToLeaveWalkmesh ? undefined : walkmeshController.findPath(
       getState().position.current,
@@ -382,16 +376,9 @@ const createMovementController = (id: number) => {
   const tick = (entity: Object3D, delta: number, scene: Scene) => {
     const { position, offset, jump } = getState();
 
-    const { walkmeshController } = useGlobalStore.getState();
-
-    if (!walkmeshController) {
-      return;
-    }
-
     if (position.isPaused && offset.isPaused) {
       return;
     }
-
     if (!position.waypoints && !offset.goal && !jump.directLine) {
       return;
     }
@@ -519,7 +506,6 @@ const createMovementController = (id: number) => {
         }
       })
     }
-
     if (getState().position.current.x !== -999) {
       setState({
         hasBeenPlaced: true,

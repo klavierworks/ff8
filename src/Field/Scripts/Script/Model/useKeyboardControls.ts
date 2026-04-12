@@ -6,6 +6,8 @@ const KEY_MAP: Record<string, keyof MovementFlags> = {
   ArrowDown: "backward",
   ArrowLeft: "left",
   ArrowRight: "right",
+  KeyQ: 'panLeft',
+  KeyE: 'panRight',
 };
 
 const onMovementKeyPress = (
@@ -18,6 +20,7 @@ const onMovementKeyPress = (
 
   setMovementFlags((movementFlags: MovementFlags) => {
     const currentFlags: MovementFlags = { ...movementFlags };
+    console.log(movementKey, value, event.code)
     if (Object.keys(movementFlags).includes(movementKey)) {
       currentFlags[movementKey] = value;
     }
@@ -34,6 +37,8 @@ const useKeyboardControls = () => {
     left: false,
     right: false,
     isWalking: false,
+    panLeft: false,
+    panRight: false,
   });
 
   useEffect(() => {
@@ -46,6 +51,8 @@ const useKeyboardControls = () => {
         left: false,
         right: false,
         isWalking: false,
+        panLeft: false,
+        panRight: false,
       });
     };
     window.addEventListener("blur", clearMovementFlags);

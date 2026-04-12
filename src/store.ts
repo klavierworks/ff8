@@ -7,6 +7,7 @@ import createSFXController from './Field/Scripts/Script/SFXController/SFXControl
 import { sendToDebugger } from './Debugger/debugUtils';
 import WalkmeshMovementController from './Field/WalkMesh/WalkmeshMovement';
 import LerpValue from './LerpValue';
+import WorldmapMovementController from './Field/Worldmap/WorldmapMovementController';
 
 interface GlobalState {
   isDebugMode: boolean,
@@ -21,7 +22,7 @@ interface GlobalState {
   characterPosition: Vector3 | undefined,
   pendingCharacterPosition: Vector3 | undefined,
 
-  walkmeshController: WalkmeshMovementController | undefined,
+  walkmeshController: WalkmeshMovementController | WorldmapMovementController | undefined,
   currentLocationPlaceName: number,
   fieldId: typeof MAP_NAMES[number] | undefined,
   pendingFieldId: typeof MAP_NAMES[number] | undefined,

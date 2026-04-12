@@ -9,7 +9,7 @@ import { Scene } from "three";
 
 
 useGlobalStore.setState({
-  pendingFieldId: (getInitialField() ?? 'wm00') as typeof MAP_NAMES[number], 
+  pendingFieldId: (getInitialField() ?? 'menu') as typeof MAP_NAMES[number], 
 });
 
 type EntrypointProps = {

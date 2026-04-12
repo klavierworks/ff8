@@ -32,7 +32,7 @@ type GLTFResult = GLTF & {
   animations: GLTFAction[]
 }
 
-export default React.forwardRef(function d001(props: JSX.IntrinsicElements['group'], ref: React.Ref<{ actions: Record<ActionName, AnimationAction>, mesh: Group }>) {
+export default React.forwardRef(function d001(props: JSX.IntrinsicElements['group'], ref: GltfHandle) {
   const group = React.useRef<THREE.Group>()
   const { scene, animations } = useFragmentedGLTFLoader('d001', props.mapName)
   const clone = React.useMemo(() => SkeletonUtils.clone(scene), [scene])

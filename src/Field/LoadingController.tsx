@@ -1,13 +1,16 @@
 import { useEffect } from "react";
 import useGlobalStore from "../store";
 
-const LoadingController = () => {
+type LoadingControllerProps = {
+  isControllingFadeIn?: boolean;
+}
+const LoadingController = ({ isControllingFadeIn = false }: LoadingControllerProps) => {
   useEffect(() => {
     useGlobalStore.setState({ isLoading: true });
     return () => {
       useGlobalStore.setState({ isLoading: false });
     };
-  }, []);
+  }, [isControllingFadeIn]);
 
   return null;
 }
