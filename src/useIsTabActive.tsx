@@ -1,20 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react'
 
 const useIsTabActive = () => {
-  const [isTabVisible, setIsTabVisible] = useState(true);
+  const [isTabVisible, setIsTabVisible] = useState(true)
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      setIsTabVisible(document.visibilityState === 'visible');
-    };
+      setIsTabVisible(document.visibilityState === 'visible')
+    }
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
-  return isTabVisible;
-};
+  return isTabVisible
+}
 
-export default useIsTabActive;
+export default useIsTabActive

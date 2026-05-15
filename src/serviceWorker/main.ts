@@ -1,127 +1,127 @@
-import { BATCH_SIZE, CACHE_NAME } from "./CONSTANTS";
-import { fetchFile } from "./fetch";
-import { getState, updateState } from "./state";
+import { BATCH_SIZE, CACHE_NAME } from './CONSTANTS'
+import { fetchFile } from './fetch'
+import { getState, updateState } from './state'
 
-const CUSTOM_MANIFEST_URL = '/custom-manifest.json';
+const CUSTOM_MANIFEST_URL = '/custom-manifest.json'
 
 export const loadManifest = async () => {
-  const response = await fetch(CUSTOM_MANIFEST_URL);
+  const response = await fetch(CUSTOM_MANIFEST_URL)
   if (!response.ok) {
-    throw new Error(`Failed to load manifest: ${response.status}`);
+    throw new Error(`Failed to load manifest: ${response.status}`)
   }
-  
-  const manifest = await response.json();
-  
+
+  const manifest = await response.json()
+
   if (!Array.isArray(manifest)) {
-    throw new Error('Manifest must be a JSON array');
+    throw new Error('Manifest must be a JSON array')
   }
-  
-  console.log(`Loaded ${manifest.length} files from custom manifest`);
-  return manifest;
-};
+
+  console.log(`Loaded ${manifest.length} files from custom manifest`)
+  return manifest
+}
 
 const processBatches = async <T>(
   batchSize: number,
   items: T[],
   callback: (item: T, index: number, batch: T[]) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ) => {
-  const batches = Array.from(
-    { length: Math.ceil(items.length / batchSize) },
-    (_, i) => items.slice(i * batchSize, (i + 1) * batchSize)
-  );
+  const batches = Array.from({ length: Math.ceil(items.length / batchSize) }, (_, i) =>
+    items.slice(i * batchSize, (i + 1) * batchSize),
+  )
 
   for (const [batchIndex, batch] of batches.entries()) {
     if (signal?.aborted) {
-      console.warn('Batch processing aborted');
-      break;
+      console.warn('Batch processing aborted')
+      break
     }
-    await Promise.all(
-      batch.map((item, itemIndex) => 
-        callback(item, batchIndex * batchSize + itemIndex, batch)
-      )
-    );
+    await Promise.all(batch.map((item, itemIndex) => callback(item, batchIndex * batchSize + itemIndex, batch)))
   }
-};
+}
 
 const cacheFile = async (key: string, file: string) => {
-  const cache = await caches.open(CACHE_NAME);
+  const cache = await caches.open(CACHE_NAME)
   if (await cache.match(key)) {
-    return;
+    return
   }
-  const response = await fetchFile(file);
+  const response = await fetchFile(file)
   if (!response.ok) {
-    throw new Error(`Failed to fetch file: ${file}`);
+    throw new Error(`Failed to fetch file: ${file}`)
   }
-  console.log(`Caching file: ${key} -> ${file}`);
-  await cache.put(key, response);
+  console.log(`Caching file: ${key} -> ${file}`)
+  await cache.put(key, response)
 
-  const { progress } = getState();
+  const { progress } = getState()
 
   await updateState({
     progress: {
       ...progress,
       current: progress.current + 1,
-    }
-  });
-};
+    },
+  })
+}
 
-const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-let isInProgress = false;
-let abortController: AbortController | null = null;
+let isInProgress = false
+let abortController: AbortController | null = null
 export const enableOfflineMode = async () => {
-  if (isInProgress) return;
+  if (isInProgress) {
+    return
+  }
 
-  isInProgress = true;
+  isInProgress = true
   await updateState({
     isEnablingOffline: true,
     isOfflineEnabled: false,
-  });
+  })
 
-  // DO THE WORK HERE
-  const manifest = await loadManifest();
+  const manifest = await loadManifest()
 
-  const currentState = getState();
+  const currentState = getState()
 
-  // Build has changed, reset offline mode
   if (currentState.progress.total && currentState.progress.total !== manifest.length) {
-    await disableOfflineMode();
+    await disableOfflineMode()
   }
 
-  const latestState = getState();
+  const latestState = getState()
   await updateState({
     isEnablingOffline: true,
     isOfflineEnabled: false,
     progress: {
       ...latestState.progress,
       total: manifest.length,
-    }
-  });
+    },
+  })
 
-  await pause(1000); // Simulate some delay for UI feedback
+  await pause(1000)
 
-  abortController = new AbortController();
-  await processBatches(BATCH_SIZE, manifest, async (file) => {
-    await cacheFile(file, file);
-  }, abortController.signal);
+  abortController = new AbortController()
+  await processBatches(
+    BATCH_SIZE,
+    manifest,
+    async (file) => {
+      await cacheFile(file, file)
+    },
+    abortController.signal,
+  )
 
   if (!abortController || abortController.signal.aborted) {
-    console.warn('Offline mode enabling was aborted');
-    return;
+    console.warn('Offline mode enabling was aborted')
+    return
   }
 
   await updateState({
     isEnablingOffline: false,
     isOfflineEnabled: true,
-  });
+  })
 }
 
 export const disableOfflineMode = async () => {
-  isInProgress = false;
+  isInProgress = false
   if (abortController) {
-    abortController.abort();
-    abortController = null;
+    abortController.abort()
+    abortController = null
   }
 
   await updateState({
@@ -130,9 +130,9 @@ export const disableOfflineMode = async () => {
     progress: {
       current: 0,
       total: 0,
-    }
-  });
+    },
+  })
 
-  const cacheNames = await caches.keys();
-  await Promise.all(cacheNames.map(name => caches.delete(name)));
+  const cacheNames = await caches.keys()
+  await Promise.all(cacheNames.map((name) => caches.delete(name)))
 }

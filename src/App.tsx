@@ -1,103 +1,102 @@
 import './index.css'
+import { PerspectiveCamera } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
+import { EffectComposer } from '@react-three/postprocessing'
+import { useEffect, useState } from 'react'
+import { Scene } from 'three'
 
+import ColorOverlay from './ColorOverlay/ColorOverlay'
 import { ASPECT_RATIO } from './constants/constants'
+import MAP_NAMES from './constants/maps'
 import Controller from './Controller/Controller'
+import Entrypoint from './Entrypoint'
+import { MEMORY } from './Field/Scripts/Script/handlers'
+import Loading from './Loading/Loading'
+import Memory from './Memory/Memory'
+import Queues from './Queues/Queues'
 import useGlobalStore from './store'
 import Ui from './UI/UI'
-import Entrypoint from './Entrypoint'
-import { useEffect, useState } from 'react'
-import Memory from './Memory/Memory'
-import { PerspectiveCamera } from '@react-three/drei'
-import Queues from './Queues/Queues'
-import ColorOverlay from './ColorOverlay/ColorOverlay'
-import { EffectComposer } from '@react-three/postprocessing'
 import useIsTabActive from './useIsTabActive'
-import { MEMORY } from './Field/Scripts/Script/handlers'
-import MAP_NAMES from './constants/maps'
-import { Scene } from 'three'
-import Loading from './Loading/Loading'
 
-const requestedProgress = new URLSearchParams(window.location.search).get('progress');
+const requestedProgress = new URLSearchParams(window.location.search).get('progress')
 if (requestedProgress) {
-  MEMORY[256] = parseInt(requestedProgress, 10);
+  MEMORY[256] = parseInt(requestedProgress)
 }
 
-const namedField = new URLSearchParams(window.location.search).get('field');
+const namedField = new URLSearchParams(window.location.search).get('field')
 if (namedField) {
   useGlobalStore.setState({
-    pendingFieldId: namedField as typeof MAP_NAMES[number]
+    pendingFieldId: namedField as (typeof MAP_NAMES)[number],
   })
 }
 
-export default function App() {
-  const isTabActive = useIsTabActive();
+const App = () => {
+  const isTabActive = useIsTabActive()
 
-  const fieldId = useGlobalStore(state => state.fieldId);
-  const progress = MEMORY[256];
-  const isDebugMode = useGlobalStore(state => state.isDebugMode);
+  const fieldId = useGlobalStore((state) => state.fieldId)
+  const progress = MEMORY[256]
+  const isDebugMode = useGlobalStore((state) => state.isDebugMode)
 
-  const [isDisclaimerHidden, setIsDisclaimerHidden] = useState(true);
+  const [isDisclaimerHidden, setIsDisclaimerHidden] = useState(true)
 
   useEffect(() => {
     if (!fieldId) {
-      return;
+      return
     }
-    const url = new URL(window.location.href);
-    url.searchParams.set('field', fieldId);
+    const url = new URL(window.location.href)
+    url.searchParams.set('field', fieldId)
     const progress = MEMORY[256] ?? 0
 
-    url.searchParams.set('progress', progress.toString());
-    window.history.pushState({}, '', url.toString());
+    url.searchParams.set('progress', progress.toString())
+    window.history.pushState({}, '', url.toString())
   }, [fieldId, progress])
 
-  const [worldScene, setWorldScene] = useState<Scene>();
+  const [worldScene, setWorldScene] = useState<Scene>()
 
   return (
     <>
       <div className="container">
-        <Canvas camera={undefined} className="canvas" gl={{
-          logarithmicDepthBuffer: true,
-          antialias: false,
-          alpha: false,
-          depth: false,
-          stencil: false,
-        }} frameloop="always">
+        <Canvas
+          camera={undefined}
+          className="canvas"
+          frameloop="always"
+          gl={{
+            alpha: false,
+            antialias: false,
+            depth: false,
+            logarithmicDepthBuffer: true,
+            stencil: false,
+          }}
+        >
           <EffectComposer>
-              <PerspectiveCamera
+            <PerspectiveCamera
+              aspect={ASPECT_RATIO}
+              far={1000}
               makeDefault
               name="moveableCamera"
-              position={[0, 0, 0]}
-              aspect={ASPECT_RATIO}
               near={0.001}
-              far={1000}
-              />
-              <PerspectiveCamera
-              name="sceneCamera"
               position={[0, 0, 0]}
-              aspect={ASPECT_RATIO}
-              near={0.001}
-              far={1000}
-              />
-              <Entrypoint setWorldScene={setWorldScene} />
+            />
+            <PerspectiveCamera aspect={ASPECT_RATIO} far={1000} name="sceneCamera" near={0.001} position={[0, 0, 0]} />
+            <Entrypoint setWorldScene={setWorldScene} />
             <ColorOverlay />
           </EffectComposer>
         </Canvas>
         <Canvas
           camera={undefined}
-          className="canvas" 
-          shadows={false}
+          className="canvas"
           dpr={window.devicePixelRatio}
-          gl={{
-            antialias: false,
-            alpha: true,
-            depth: false,
-            stencil: false,
-            powerPreference: "high-performance"
-          }}
-          linear={true}
           flat={true}
           frameloop={isTabActive ? 'demand' : 'never'}
+          gl={{
+            alpha: true,
+            antialias: false,
+            depth: false,
+            powerPreference: 'high-performance',
+            stencil: false,
+          }}
+          linear={true}
+          shadows={false}
         >
           <Ui worldScene={worldScene} />
         </Canvas>
@@ -105,10 +104,12 @@ export default function App() {
         {isDebugMode && <Memory />}
         <div className={`disclaimer ${isDisclaimerHidden ? 'isHidden' : ''}`}>
           <p>
-            Final Fantasy VIII, all characters, stories, locations, graphics and music are © SQUARE ENIX CO., LTD. All Rights Reserved.
+            Final Fantasy VIII, all characters, stories, locations, graphics and music are © SQUARE ENIX CO., LTD. All
+            Rights Reserved.
           </p>
           <p>
-            This is a fan-made project not affiliated with or endorsed by Square Enix. It is an experiment, a toy, and completely uncommercial.
+            This is a fan-made project not affiliated with or endorsed by Square Enix. It is an experiment, a toy, and
+            completely uncommercial.
           </p>
         </div>
       </div>
@@ -117,3 +118,5 @@ export default function App() {
     </>
   )
 }
+
+export default App

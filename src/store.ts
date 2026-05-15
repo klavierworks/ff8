@@ -1,211 +1,224 @@
+import type { Howl } from 'howler'
+import type { Object3D, Vector3 } from 'three'
+
 import { create } from 'zustand'
-import type { Object3D, Vector3 } from 'three';
-import MAP_NAMES from './constants/maps';
-import type { Howl} from 'howler';
-import { FieldData } from './Field/Field';
-import createSFXController from './Field/Scripts/Script/SFXController/SFXController';
-import { sendToDebugger } from './Debugger/debugUtils';
-import WalkmeshMovementController from './Field/WalkMesh/WalkmeshMovement';
-import LerpValue from './LerpValue';
-import WorldmapMovementController from './Field/Worldmap/WorldmapMovementController';
+
+import MAP_NAMES from './constants/maps'
+import { sendToDebugger } from './Debugger/debugUtils'
+import { FieldData } from './Field/Field'
+import createSFXController from './Field/Scripts/Script/SFXController/SFXController'
+import WalkmeshMovementController from './Field/WalkMesh/WalkmeshMovement'
+import WorldmapMovementController from './Field/Worldmap/WorldmapMovementController'
+import LerpValue from './LerpValue'
 
 interface GlobalState {
-  isDebugMode: boolean,
-  isOfflineSupported: boolean,
+  activeCameraId: number
+  availableCharacters: number[]
 
-  isLoading: boolean,
-  isMapSuspended: boolean,
+  availableMessages: string[][]
+  backgroundAnimations: Record<number, LerpValue>
 
-  fieldDirection: number,
-  isLoadingSavedGame: boolean,
+  backgroundLayerSpeeds: Record<number, number>
+  backgroundLayerVisibility: Record<number, boolean>
 
-  characterPosition: Vector3 | undefined,
-  pendingCharacterPosition: Vector3 | undefined,
+  backgroundMusic: Howl | undefined
+  backgroundMusicSrc: string | undefined
 
-  walkmeshController: WalkmeshMovementController | WorldmapMovementController | undefined,
-  currentLocationPlaceName: number,
-  fieldId: typeof MAP_NAMES[number] | undefined,
-  pendingFieldId: typeof MAP_NAMES[number] | undefined,
-
-  initialAngle: number | undefined,
-  hasMoved: boolean,
-  isUserControllable: boolean,
-  isPlayerClimbingLadder: boolean,
-  isRunEnabled: boolean,
-
-  isMapJumpEnabled: boolean,
-
-  availableMessages: string[][],
-
-  currentMessages: Message[],
-  messageStyles: Record<number,{
-    color: number,
-    mode: number,
-  }>
-
-  layerScrollAdjustments: Record<number, {
-    xOffset: number,
-    yOffset: number,
-    xScrollSpeed: number,
-    yScrollSpeed: number,
-  }>,
-  layerTints: Record<number, {
-    durationIn: number,
-    durationOut: number,
-    startRed: number,
-    startGreen: number,
-    startBlue: number,
-    endRed: number,
-    endGreen: number,
-    endBlue: number,
-    holdIn: number,
-    holdOut: number,
-    isLooping: boolean,
-  }>,
-
-  colorOverlay: {
-    startRed: number,
-    startGreen: number,
-    startBlue: number,
-    endRed: number,
-    endGreen: number,
-    endBlue: number,
-    type: 'additive' | 'subtractive',
-    duration: number,
-  },
-  isTransitioningColorOverlay: boolean,
-  fadeSpring: LerpValue,
-  isMapFadeEnabled: boolean,
-
-  availableCharacters: number[],
-  party: number[],
-  sleepingParty: number[];
-  congaWaypointHistory: CongaHistory[],
-  playerMovementSpeed: number,
-  isPartyFollowing: boolean,
-
-  cameraFocusHeight: number,
-  cameraFocusObject: Object3D | undefined,
-  cameraFocusSpring: LerpValue | undefined,
-
-  globalMeshTint: [number, number, number],
-
-  hasActiveTalkMethod: boolean,
-  hasActivePushMethod: boolean,
-  lockedTriangles: number[],
-
-  activeCameraId: number,
-
-  backgroundMusicSrc: string | undefined,
-  backgroundMusic: Howl | undefined,
-  dualMusic: Howl | undefined,
-
-  fieldData: FieldData | undefined,
-
-  systemSfxController: ReturnType<typeof createSFXController>,
-  spuValue: number
-
-  backgroundAnimations: Record<number, LerpValue>,
-  backgroundLayerVisibility: Record<number, boolean>,
-  backgroundLayerSpeeds: Record<number, number>,
-  backgroundScrollRatios: Record<number, {
-    x: number,
-    y: number,
-  }>,
+  backgroundScrollRatios: Record<
+    number,
+    {
+      x: number
+      y: number
+    }
+  >
+  cameraFocusHeight: number
+  cameraFocusObject: Object3D | undefined
+  cameraFocusSpring: LerpValue | undefined
 
   cameraScrollOffset: CameraScrollTransition
-  layerScrollOffsets: Record<number, CameraScrollTransition>,
+  characterPosition: undefined | Vector3
+  colorOverlay: {
+    duration: number
+    endBlue: number
+    endGreen: number
+    endRed: number
+    startBlue: number
+    startGreen: number
+    startRed: number
+    type: 'additive' | 'subtractive'
+  }
+  congaWaypointHistory: CongaHistory[]
+  currentLocationPlaceName: number
+
+  currentMessages: Message[]
+
+  dualMusic: Howl | undefined
+
+  fadeSpring: LerpValue
+  fieldData: FieldData | undefined
+
+  fieldDirection: number
+  fieldId: (typeof MAP_NAMES)[number] | undefined
+
+  globalMeshTint: [number, number, number]
+  hasActivePushMethod: boolean
+  hasActiveTalkMethod: boolean
+  hasMoved: boolean
+
+  initialAngle: number | undefined
+  isDebugMode: boolean
+  isLoading: boolean
+  isLoadingSavedGame: boolean
+  isMapFadeEnabled: boolean
+  isMapJumpEnabled: boolean
+
+  isMapSuspended: boolean
+  isOfflineSupported: boolean
+  isPartyFollowing: boolean
+
+  isPlayerClimbingLadder: boolean
+
+  isRunEnabled: boolean
+  isTransitioningColorOverlay: boolean
+  isUserControllable: boolean
+
+  layerScrollAdjustments: Record<
+    number,
+    {
+      xOffset: number
+      xScrollSpeed: number
+      yOffset: number
+      yScrollSpeed: number
+    }
+  >
+
+  layerScrollOffsets: Record<number, CameraScrollTransition>
+  layerTints: Record<
+    number,
+    {
+      durationIn: number
+      durationOut: number
+      endBlue: number
+      endGreen: number
+      endRed: number
+      holdIn: number
+      holdOut: number
+      isLooping: boolean
+      startBlue: number
+      startGreen: number
+      startRed: number
+    }
+  >
+  lockedTriangles: number[]
+
+  messageStyles: Record<
+    number,
+    {
+      color: number
+      mode: number
+    }
+  >
+
+  party: number[]
+  pendingCharacterPosition: undefined | Vector3
+
+  pendingFieldId: (typeof MAP_NAMES)[number] | undefined
+  playerMovementSpeed: number
+  sleepingParty: number[]
+  spuValue: number
+
+  systemSfxController: ReturnType<typeof createSFXController>
+  walkmeshController: undefined | WalkmeshMovementController | WorldmapMovementController
 }
 
 const INITIAL_STATE: GlobalState = {
-    isDebugMode: false,
-    isOfflineSupported: false,
+  activeCameraId: 0,
+  availableCharacters: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
 
-    isLoading: false,
-    isMapSuspended: false,
-  
-    fieldDirection: 0,
-    isLoadingSavedGame: false,
+  availableMessages: [],
+  backgroundAnimations: {
+    [-1]: new LerpValue(0),
+  },
 
-  
-    availableMessages: [],
-    characterPosition: undefined,
-    pendingCharacterPosition: undefined,
-    fieldId: '' as typeof MAP_NAMES[number],
-    pendingFieldId: undefined as unknown as typeof MAP_NAMES[number],
+  backgroundLayerSpeeds: {},
+  backgroundLayerVisibility: {},
 
-    walkmeshController: undefined,
-    currentLocationPlaceName: 0,
-    hasMoved: false,
-    isPlayerClimbingLadder: false,
-    isUserControllable: false,
-    isRunEnabled: true,
-    initialAngle: undefined,
-  
-    layerTints: {},
-  
-    isMapJumpEnabled: true,
-  
-    currentMessages: [],
-    messageStyles: {},
-  
-    layerScrollAdjustments: {},
-    colorOverlay: {
-      startRed: 0,
-      startGreen: 0,
-      startBlue: 0,
-      endRed: 0,
-      endGreen: 0,
-      endBlue: 0,
-      type: 'additive',
-      duration: 0,
-    },
-    isTransitioningColorOverlay: false,
-    fadeSpring: new LerpValue(1),
-    isMapFadeEnabled: true,
-  
-    availableCharacters: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    party: [0],
-    sleepingParty: [],
+  backgroundMusic: undefined,
+  backgroundMusicSrc: undefined,
+  backgroundScrollRatios: {},
+  cameraFocusHeight: 0,
+  cameraFocusObject: undefined,
 
-    congaWaypointHistory: [],
-    playerMovementSpeed: 0,
-    isPartyFollowing: true,
-  
-    cameraFocusHeight: 0,
-    cameraFocusObject: undefined,
-    cameraFocusSpring: undefined,
+  cameraFocusSpring: undefined,
+  cameraScrollOffset: {} as CameraScrollTransition,
+  characterPosition: undefined,
+  colorOverlay: {
+    duration: 0,
+    endBlue: 0,
+    endGreen: 0,
+    endRed: 0,
+    startBlue: 0,
+    startGreen: 0,
+    startRed: 0,
+    type: 'additive',
+  },
+  congaWaypointHistory: [],
+  currentLocationPlaceName: 0,
+  currentMessages: [],
 
-    globalMeshTint: [128, 128, 128],
-  
-    hasActiveTalkMethod: false,
-    hasActivePushMethod: false,
+  dualMusic: undefined,
 
-    lockedTriangles: [],
-  
-    activeCameraId: 0,
-  
-    backgroundMusicSrc: undefined,
-    backgroundMusic: undefined,
-    dualMusic: undefined,
-  
-    fieldData: undefined,
+  fadeSpring: new LerpValue(1),
 
-    systemSfxController: createSFXController('world', []),
-    spuValue: 0,
+  fieldData: undefined,
+  fieldDirection: 0,
 
-    backgroundAnimations: {
-      [-1]: new LerpValue(0)
-    },
-    backgroundLayerVisibility: {},
-    backgroundLayerSpeeds: {},
-    backgroundScrollRatios: {},
+  fieldId: '' as (typeof MAP_NAMES)[number],
+  globalMeshTint: [128, 128, 128],
+  hasActivePushMethod: false,
+  hasActiveTalkMethod: false,
+  hasMoved: false,
 
-    cameraScrollOffset: {} as CameraScrollTransition,
-    layerScrollOffsets: {},
+  initialAngle: undefined,
+  isDebugMode: false,
+  isLoading: false,
+
+  isLoadingSavedGame: false,
+  isMapFadeEnabled: true,
+  isMapJumpEnabled: true,
+
+  isMapSuspended: false,
+  isOfflineSupported: false,
+  isPartyFollowing: true,
+
+  isPlayerClimbingLadder: false,
+
+  isRunEnabled: true,
+  isTransitioningColorOverlay: false,
+
+  isUserControllable: false,
+
+  layerScrollAdjustments: {},
+
+  layerScrollOffsets: {},
+  layerTints: {},
+  lockedTriangles: [],
+
+  messageStyles: {},
+
+  party: [0],
+  pendingCharacterPosition: undefined,
+
+  pendingFieldId: undefined as unknown as (typeof MAP_NAMES)[number],
+  playerMovementSpeed: 0,
+  sleepingParty: [],
+  spuValue: 0,
+
+  systemSfxController: createSFXController('world', []),
+  walkmeshController: undefined,
 }
 
-const useGlobalStore = create<GlobalState>()(() => ({...INITIAL_STATE}))
+const useGlobalStore = create<GlobalState>()(() => ({ ...INITIAL_STATE }))
 
 useGlobalStore.subscribe((state) => {
   const {
@@ -214,9 +227,9 @@ useGlobalStore.subscribe((state) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     systemSfxController,
     ...safeState
-  } = state;
+  } = state
 
-  sendToDebugger('state', JSON.stringify(safeState));
-});
+  sendToDebugger('state', JSON.stringify(safeState))
+})
 
 export default useGlobalStore

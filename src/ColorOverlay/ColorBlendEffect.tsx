@@ -1,5 +1,5 @@
-import { Uniform, Vector3 } from 'three'
 import { Effect } from 'postprocessing'
+import { Uniform, Vector3 } from 'three'
 
 const fragmentShader = `
 uniform vec3 uColor;
@@ -31,74 +31,69 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 }
 `
 
-type BlendMode = 'ps1_additive' | 'ps1_subtractive' | 'ps1_50_50' | 'ps1_25_additive'
+type BlendMode = 'ps1_25_additive' | 'ps1_50_50' | 'ps1_additive' | 'ps1_subtractive'
 type ColorArray = [number, number, number]
 
 interface ColorBlendEffectOptions {
-    color?: ColorArray
-    blendMode?: BlendMode
-    intensity?: number
+  blendMode?: BlendMode
+  color?: ColorArray
+  intensity?: number
 }
 
-// Effect implementation
 export class ColorBlendEffectImpl extends Effect {
-    private _uColor: ColorArray = [0.0, 0.0, 0.0]
-    private _uBlendMode: number = 1.0 // Default to ps1_additive
-    private _uIntensity: number = 0
+  private _uBlendMode: number = 1.0
+  private _uColor: ColorArray = [0.0, 0.0, 0.0]
+  private _uIntensity: number = 0
 
-    constructor({
-        color = [0.0, 0.0, 0.0],
-        blendMode = 'ps1_additive',
-        intensity = 0
-    }: ColorBlendEffectOptions = {}) {
-        // Calculate blend mode value before calling super
-        const blendModeValue = ColorBlendEffectImpl.getBlendModeValue(blendMode);
-        
-        super('ColorBlendEffect', fragmentShader, {
-            uniforms: new Map<string, Uniform<unknown>>([
-                ['uColor', new Uniform(new Vector3(...color))],
-                ['uBlendMode', new Uniform(blendModeValue)],
-                ['uIntensity', new Uniform(intensity)]
-            ]),
-        })
-        this._uColor = color
-        this._uBlendMode = blendModeValue
-        this._uIntensity = intensity
+  constructor({ blendMode = 'ps1_additive', color = [0.0, 0.0, 0.0], intensity = 0 }: ColorBlendEffectOptions = {}) {
+    const blendModeValue = ColorBlendEffectImpl.getBlendModeValue(blendMode)
+
+    super('ColorBlendEffect', fragmentShader, {
+      uniforms: new Map<string, Uniform<unknown>>([
+        ['uBlendMode', new Uniform(blendModeValue)],
+        ['uColor', new Uniform(new Vector3(...color))],
+        ['uIntensity', new Uniform(intensity)],
+      ]),
+    })
+    this._uColor = color
+    this._uBlendMode = blendModeValue
+    this._uIntensity = intensity
+  }
+
+  private static getBlendModeValue(blendMode: BlendMode): number {
+    switch (blendMode) {
+      case 'ps1_25_additive':
+        return 3.0
+      case 'ps1_50_50':
+        return 2.0
+      case 'ps1_additive':
+        return 1.0
+      case 'ps1_subtractive':
+        return 0.0
+      default:
+        return 1.0
     }
+  }
 
-    private static getBlendModeValue(blendMode: BlendMode): number {
-        switch (blendMode) {
-            case 'ps1_subtractive': return 0.0  // Mode 2
-            case 'ps1_additive': return 1.0     // Mode 1  
-            case 'ps1_50_50': return 2.0        // Mode 0
-            case 'ps1_25_additive': return 3.0  // Mode 3
-            default: return 1.0
-        }
+  update(): void {
+    const colorUniform = this.uniforms.get('uColor') as Uniform<Vector3>
+    const blendModeUniform = this.uniforms.get('uBlendMode') as Uniform<number>
+    const intensityUniform = this.uniforms.get('uIntensity') as Uniform<number>
+
+    colorUniform.value.set(this._uColor[0], this._uColor[1], this._uColor[2])
+    blendModeUniform.value = this._uBlendMode
+    intensityUniform.value = this._uIntensity
+  }
+
+  updateValues({ blendMode, color, intensity }: ColorBlendEffectOptions): void {
+    if (color) {
+      this._uColor = color
     }
-
-    update(): void {
-        const colorUniform = this.uniforms.get('uColor') as Uniform<Vector3>
-        const blendModeUniform = this.uniforms.get('uBlendMode') as Uniform<number>
-        const intensityUniform = this.uniforms.get('uIntensity') as Uniform<number>
-
-        colorUniform.value.set(this._uColor[0], this._uColor[1], this._uColor[2])
-        blendModeUniform.value = this._uBlendMode
-        intensityUniform.value = this._uIntensity
+    if (blendMode) {
+      this._uBlendMode = ColorBlendEffectImpl.getBlendModeValue(blendMode)
     }
-
-    updateValues({
-        color,
-        blendMode,
-        intensity
-    }: ColorBlendEffectOptions): void {
-        if (color) {
-            this._uColor = color
-        }
-        if (blendMode) {
-            this._uBlendMode = ColorBlendEffectImpl.getBlendModeValue(blendMode)
-        }
-        if (intensity !== undefined) {
-            this._uIntensity = intensity
-        }
+    if (intensity !== undefined) {
+      this._uIntensity = intensity
     }
+  }
 }

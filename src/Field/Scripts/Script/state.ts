@@ -1,125 +1,129 @@
-import { Vector3 } from 'three';
+import type { Howl } from 'howler'
+
+import { Vector3 } from 'three'
 import { create, StoreApi, UseBoundStore } from 'zustand'
-import type { Howl} from 'howler';
-import { Script } from '../types';
-import { sendToDebugger } from '../../../Debugger/debugUtils';
+
+import { sendToDebugger } from '../../../Debugger/debugUtils'
+import { Script } from '../types'
 
 export type ScriptState = {
-  characterHeight: number;
-  isHalted: boolean;
+  actorMode: number
+  characterHeight: number
 
-  ladderAnimationId: number | undefined;
+  countdownTime: number
 
-  isDrawPoint: boolean,
+  countdownTimer: number | undefined
 
-  isLineOn: boolean;
-  linePoints: Vector3[] | null;
+  isDoorOn: boolean
+  isDrawPoint: boolean
 
-  isVisible: boolean;
-  isSolid: boolean;
-  isUnused: boolean;
+  isHalted: boolean
+  isHeadTrackingPlayer: boolean
+  isLineOn: boolean
 
-  modelId: number;
-  partyMemberId?: number;
+  isPushable: boolean
+  isSolid: boolean
+  isTalkable: boolean
+
+  isUnused: boolean
+  isVisible: boolean
+  ladderAnimationId: number | undefined
+  linePoints: null | Vector3[]
+
   meshTintColor?: number[]
 
-  pushRadius: number;
-  talkRadius: number;
-  isPushable: boolean;
-  isTalkable: boolean;
+  modelId: number
 
-  isHeadTrackingPlayer: boolean;
+  partyMemberId?: number
+  pendingBackgroundMusic?: Howl
 
-  isDoorOn: boolean;
+  pendingBackgroundMusicSrc?: string
 
-  pendingBackgroundMusic?: Howl;
-  pendingBackgroundMusicSrc?: string;
+  pushRadius: number
+  spuValue: number
 
-  spuValue: number;
-
-  countdownTime: number;
-  countdownTimer: number | undefined;
+  talkRadius: number
 
   winSize: {
     [key: number]: {
-      x: number,
-      y: number,
-      width: number,
-      height: number,
+      height: number
+      width: number
+      x: number
+      y: number
     }
   }
-
-  actorMode: number;
 }
 
 const createScriptState = (script: Script) => {
-  const creator = create<ScriptState>()(() => ({ 
-    characterHeight: 0.6, // default to a reasonable height
-
-    isHalted: false,
+  const creator = create<ScriptState>()(() => ({
+    actorMode: 0,
 
     animationSpeed: 1,
-    currentAnimationId: undefined,
-    ladderAnimationId: undefined,
 
-    isDrawPoint: false,
-
-    isLineOn: true,
-    linePoints: null,
-
-    isVisible: true,
-    isSolid: script.type === 'model',
-    isUnused: false,
-
-    modelId: 0,
-    partyMemberId: undefined,
-    meshTintColor: undefined,
-
-    pushRadius: 0,
-    talkRadius: 100,
-    isPushable: true,
-    isTalkable: true,
-
-    isHeadTrackingPlayer: false,
-
-    isDoorOn: true,
-
-    backroundMusicId: 0,
     backgroundMusicVolume: 127,
-    isPlayingBackgroundMusic: false,
-
-    spuValue: 0,
+    backroundMusicId: 0,
+    characterHeight: 0.6, // default to a reasonable height
 
     countdownTime: 0,
+
     countdownTimer: undefined,
-    winSize: {},
+    currentAnimationId: undefined,
+
+    isDoorOn: true,
+    isDrawPoint: false,
+    isHalted: false,
+
+    isHeadTrackingPlayer: false,
+    isLineOn: true,
+    isPlayingBackgroundMusic: false,
+
+    isPushable: true,
+    isSolid: script.type === 'model',
+    isTalkable: true,
+    isUnused: false,
+
+    isVisible: true,
+
+    ladderAnimationId: undefined,
+
+    linePoints: null,
+    meshTintColor: undefined,
+    modelId: 0,
+
+    partyMemberId: undefined,
 
     pendingBackgroundMusic: undefined,
     pendingBackgroundMusicSrc: undefined,
+    pushRadius: 0,
 
-    actorMode: 0
+    spuValue: 0,
+    talkRadius: 100,
+
+    winSize: {},
   }))
 
-  
   creator.subscribe((state, prevState) => {
     if (!prevState) {
-      return;
+      return
     }
     const changedState = Object.keys(state).reduce((acc, key) => {
       // @ts-expect-error Error
       if (state[key] !== prevState[key]) {
         // @ts-expect-error Error
-        acc[key] = state[key];
+        acc[key] = state[key]
       }
-      return acc;
-    }, {} as Partial<ScriptState>);
-    sendToDebugger('script-state', JSON.stringify({
-      id: script.groupId,
-      state: changedState
-    }));
-  });
+      return acc
+    }, {} as Partial<ScriptState>)
+    sendToDebugger(
+      'script-state',
+      JSON.stringify({
+        id: script.groupId,
+        state: changedState,
+      }),
+    )
+  })
 
-  return creator;
+  return creator
 }
 
 export type ScriptStateStore = UseBoundStore<StoreApi<ScriptState>>

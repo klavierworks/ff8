@@ -1,426 +1,420 @@
-import { AnimationAction, AnimationClip, AnimationMixer, Bone, Object3D } from "three";
-import { create } from "zustand"
-import { applyAnimationAtTime } from "./animationUtils";
-import createMovementController from "../MovementController/MovementController";
+import { AnimationAction, AnimationClip, AnimationMixer, Bone, Object3D } from 'three'
+import { create } from 'zustand'
+
+import createMovementController from '../MovementController/MovementController'
+import { applyAnimationAtTime } from './animationUtils'
 
 type AnimationItem = {
-  id: string;
-  priority: number;
-
   action: AnimationAction
-  clipId: number;
+  clipId: number
 
-  startTime: number;
-  endTime: number;
+  direction: number
+  endTime: number
 
-  direction: number;
-  speed: number;
+  hasBeenZAdjusted: boolean
+  id: string
 
-  isLooping: boolean;
-  shouldHoldLastFrame: boolean;
+  isFromLadder: boolean
+  isFromMovement: boolean
 
-  hasBeenZAdjusted: boolean;
-  needsRealtimeZAdjustment: boolean;
+  isLooping: boolean
+  needsRealtimeZAdjustment: boolean
 
-  isFromMovement: boolean;
-  isFromLadder: boolean;
+  priority: number
+  shouldHoldLastFrame: boolean
+
+  speed: number
+  startTime: number
 }
 
 type RunState = {
-  direction: number;
-  hasCompletedALoop: boolean;
-  isComplete: boolean;
-  time: number;
+  direction: number
+  hasCompletedALoop: boolean
+  isComplete: boolean
+  time: number
 }
 
-export const createAnimationController = (id: string | number) => {
-  const {getState: getSavedAnimation, setState: setSavedAnimation } = create(() => ({
-    standingId: 0,
-    walkingId: 1,
-    runningId: 2,
-
+export const createAnimationController = (id: number | string) => {
+  const { getState: getSavedAnimation, setState: setSavedAnimation } = create(() => ({
+    ladderBottomId: 5,
     ladderClimbId: 3,
     ladderTopId: 4,
-    ladderBottomId: 5,
-  }));
+
+    runningId: 2,
+    standingId: 0,
+    walkingId: 1,
+  }))
 
   const { getState, setState } = create(() => ({
-    // We assume these three are always available due to initialize
-    mixer: undefined as unknown as AnimationMixer,
-    clips: [] as AnimationClip[],
-    mesh: undefined as unknown as Object3D,
-
     activeAnimation: undefined as AnimationItem | undefined,
     animationSpeed: 16, // Default speed, can be adjusted later
+    clips: [] as AnimationClip[],
 
-    isPaused: false,
     isMovementTickEnabled: true,
-  }));
+    isPaused: false,
 
-  let currentRunState: RunState | undefined = undefined;
+    mesh: undefined as unknown as Object3D,
+    mixer: undefined as unknown as AnimationMixer,
+  }))
+
+  let currentRunState: RunState | undefined = undefined
 
   const clearAnimation = () => {
-    const mixer = getState().mixer;
-    mixer.stopAllAction();
-    mixer.update(0);
-    setState({ activeAnimation: undefined });
+    const mixer = getState().mixer
+    mixer.stopAllAction()
+    mixer.update(0)
+    setState({ activeAnimation: undefined })
   }
 
   const handleAnimationEnded = (uniqueId: string, shouldHoldLastFrame: boolean) => {
     if (!currentRunState) {
-      return;
+      return
     }
 
-    currentRunState.isComplete = true;
+    currentRunState.isComplete = true
 
     const event = new CustomEvent('animationEnd', {
-      detail: uniqueId
-    });
-    document.dispatchEvent(event);
+      detail: uniqueId,
+    })
+    document.dispatchEvent(event)
 
     if (shouldHoldLastFrame) {
       return
     }
-   
-    clearAnimation();
+
+    clearAnimation()
   }
 
   const tick = (delta: number) => {
-    const isPaused = getState().isPaused;
+    const isPaused = getState().isPaused
     if (isPaused) {
-      return;
+      return
     }
 
-    const activeAnimation = getState().activeAnimation;
+    const activeAnimation = getState().activeAnimation
     if (!activeAnimation) {
-      return;
+      return
     }
 
-    const { mixer, mesh } = getState();
-    const { action, direction, startTime, endTime } = activeAnimation;
+    const { mesh, mixer } = getState()
+    const { action, direction, endTime, startTime } = activeAnimation
 
-    action.enabled = true;
-  
-    // New run
+    action.enabled = true
+
     if (!currentRunState) {
       currentRunState = {
+        direction: direction,
         hasCompletedALoop: false,
         isComplete: false,
         time: startTime,
-        direction: direction,
-      };
-      applyAnimationAtTime(mesh, action.getClip(), startTime);
+      }
+      applyAnimationAtTime(mesh, action.getClip(), startTime)
     }
 
-    // Zero frames of animation, just set it to time
     if (startTime === endTime || action.getClip().duration === 0) {
-      applyAnimationAtTime(mesh, action.getClip(), startTime);
+      applyAnimationAtTime(mesh, action.getClip(), startTime)
 
       if (!currentRunState.isComplete) {
-        handleAnimationEnded(activeAnimation.id, activeAnimation.shouldHoldLastFrame);
+        handleAnimationEnded(activeAnimation.id, activeAnimation.shouldHoldLastFrame)
       }
-      return;
+      return
     }
 
-    // Animation has completed and holding last frame
     if (currentRunState.isComplete && activeAnimation.shouldHoldLastFrame) {
-      applyAnimationAtTime(mesh, action.getClip(), endTime);
-      return;
+      applyAnimationAtTime(mesh, action.getClip(), endTime)
+      return
     }
 
-    currentRunState.time += currentRunState.direction * delta;
+    currentRunState.time += currentRunState.direction * delta
 
     if (currentRunState.time >= endTime && activeAnimation.isLooping && direction === 1) {
-      currentRunState.time = startTime;
-      currentRunState.hasCompletedALoop = true;
-    }
-    
-    if (currentRunState.time <= startTime && activeAnimation.isLooping && direction === -1) {
-      currentRunState.time = endTime;
-      currentRunState.hasCompletedALoop = true;
+      currentRunState.time = startTime
+      currentRunState.hasCompletedALoop = true
     }
 
-    // Completed, clean it up
+    if (currentRunState.time <= startTime && activeAnimation.isLooping && direction === -1) {
+      currentRunState.time = endTime
+      currentRunState.hasCompletedALoop = true
+    }
+
     if (currentRunState.time >= endTime && !activeAnimation.isLooping && direction === 1) {
-      handleAnimationEnded(activeAnimation.id, activeAnimation.shouldHoldLastFrame);
-      return;
+      handleAnimationEnded(activeAnimation.id, activeAnimation.shouldHoldLastFrame)
+      return
     }
     if (currentRunState.time <= startTime && !activeAnimation.isLooping && direction === -1) {
-      handleAnimationEnded(activeAnimation.id, activeAnimation.shouldHoldLastFrame);
-      return;
+      handleAnimationEnded(activeAnimation.id, activeAnimation.shouldHoldLastFrame)
+      return
     }
 
-    action.time = currentRunState.time;
-    action.paused = true;
+    action.time = currentRunState.time
+    action.paused = true
     action.play()
-    mixer.update(delta);
+    mixer.update(delta)
   }
 
-  const playAnimation = (clipId: number, options?: {
-      isLooping?: boolean;
-      shouldHoldLastFrame?: boolean;
-      startFrame?: number;
-      endFrame?: number;
-      priority?: number;
-      speed?: number;
-      direction?: number;
-      needsRealtimeZAdjustment?: boolean;
-      isFromMovement?: boolean;
-      isFromLadder?: boolean;
-    }) => {
+  const playAnimation = (
+    clipId: number,
+    options?: {
+      direction?: number
+      endFrame?: number
+      isFromLadder?: boolean
+      isFromMovement?: boolean
+      isLooping?: boolean
+      needsRealtimeZAdjustment?: boolean
+      priority?: number
+      shouldHoldLastFrame?: boolean
+      speed?: number
+      startFrame?: number
+    },
+  ) => {
     const clip = getState().clips[clipId]
     if (!clip) {
       if (!options || !options.isFromMovement) {
-        console.warn(`Animation with ID ${clipId} not found for model ${id}`);
+        console.warn(`Animation with ID ${clipId} not found for model ${id}`)
       }
-      return;
+      return
     }
 
-    const { mixer } = getState();
-  
-    const action = mixer.clipAction(clip);
+    const { mixer } = getState()
 
-    const frameRate = 30;
+    const action = mixer.clipAction(clip)
 
-    const startTime =
-      options?.startFrame !== undefined ? options.startFrame / frameRate : 0;
-    const endTime =
-      options?.endFrame !== undefined ? options.endFrame / frameRate : action.getClip().duration;
+    const frameRate = 30
 
-    const uniqueId =  `${id}-${clipId}--${Date.now()}`
+    const startTime = options?.startFrame !== undefined ? options.startFrame / frameRate : 0
+    const endTime = options?.endFrame !== undefined ? options.endFrame / frameRate : action.getClip().duration
+
+    const uniqueId = `${id}-${clipId}--${Date.now()}`
     const animation: AnimationItem = {
       action,
-      id: uniqueId,
       clipId,
       direction: 1,
-      startTime,
       endTime,
-      isLooping: options?.isLooping ?? false,
-      shouldHoldLastFrame: options?.shouldHoldLastFrame ?? false,
-      priority: options?.priority ?? 5,
-      speed: options?.speed ?? 1,
       hasBeenZAdjusted: false,
-      needsRealtimeZAdjustment: options?.needsRealtimeZAdjustment ?? true,
-      isFromMovement: options?.isFromMovement ?? false,
+      id: uniqueId,
       isFromLadder: options?.isFromLadder ?? false,
+      isFromMovement: options?.isFromMovement ?? false,
+      isLooping: options?.isLooping ?? false,
+      needsRealtimeZAdjustment: options?.needsRealtimeZAdjustment ?? true,
+      priority: options?.priority ?? 5,
+      shouldHoldLastFrame: options?.shouldHoldLastFrame ?? false,
+      speed: options?.speed ?? 1,
+      startTime,
     }
 
-    currentRunState = undefined;
-    const currentlyActiveAnimation = getState().activeAnimation;
+    currentRunState = undefined
+    const currentlyActiveAnimation = getState().activeAnimation
     if (currentlyActiveAnimation) {
-      handleAnimationEnded(currentlyActiveAnimation.id, currentlyActiveAnimation.shouldHoldLastFrame);
-      currentlyActiveAnimation.action.stop();
+      handleAnimationEnded(currentlyActiveAnimation.id, currentlyActiveAnimation.shouldHoldLastFrame)
+      currentlyActiveAnimation.action.stop()
     }
 
     setState({
       activeAnimation: animation,
       isPaused: false,
-    });
+    })
 
     return new Promise<void>((resolve) => {
-      const handler = ({ detail }: { detail: string}) => {
+      const handler = ({ detail }: { detail: string }) => {
         if (detail === uniqueId) {
-          document.removeEventListener('animationEnd', handler);
-          resolve();
+          document.removeEventListener('animationEnd', handler)
+          resolve()
         }
-      };
-      document.addEventListener('animationEnd', handler);
+      }
+      document.addEventListener('animationEnd', handler)
     })
   }
 
   const initialize = (mixer: AnimationMixer, clips: AnimationClip[], mesh: Object3D) => {
     setState({
-      mixer,
       clips,
       mesh,
+      mixer,
     })
-    mixer.update(0);
+    mixer.update(0)
   }
 
   const pauseAnimation = (shouldPause: boolean) => {
-    setState({ isPaused: shouldPause });
+    setState({ isPaused: shouldPause })
   }
 
-  const setAnimationSpeed = (speed: number) => setState({ animationSpeed: speed });
+  const setAnimationSpeed = (speed: number) => setState({ animationSpeed: speed })
 
   const getIsSafeToMoveOn = () => {
-    const activeAnimation = getState().activeAnimation;
+    const activeAnimation = getState().activeAnimation
     if (!activeAnimation) {
-      return true;
+      return true
     }
     if (activeAnimation && currentRunState?.isComplete) {
-      return true;
+      return true
     }
     if (activeAnimation.isLooping && currentRunState?.hasCompletedALoop) {
-      return true;
+      return true
     }
-    return false;
+    return false
   }
 
   const setIdleAnimations = (standingId: number, walkingId: number, runningId: number) => {
     setSavedAnimation({
+      runningId,
       standingId,
       walkingId,
-      runningId
     })
 
     if (getState().activeAnimation === undefined) {
-      playMovementAnimation('standing');
+      playMovementAnimation('standing')
     }
   }
 
-  const getSavedAnimationId =  (type: 'standing' | 'walking' | 'running') => {
-    const savedAnimations = getSavedAnimation();
+  const getSavedAnimationId = (type: 'running' | 'standing' | 'walking') => {
+    const savedAnimations = getSavedAnimation()
     if (type === 'standing') {
-      return savedAnimations.standingId;
+      return savedAnimations.standingId
     } else if (type === 'walking') {
-      return savedAnimations.walkingId;
+      return savedAnimations.walkingId
     } else if (type === 'running') {
-      return savedAnimations.runningId;
+      return savedAnimations.runningId
     }
   }
 
-  const playMovementAnimation = (animationName: 'standing' | 'walking' | 'running') => {
-    const animationId = getSavedAnimationId(animationName);
+  const playMovementAnimation = (animationName: 'running' | 'standing' | 'walking') => {
+    const animationId = getSavedAnimationId(animationName)
     if (animationId === undefined) {
-      return;
+      return
     }
 
-    const { activeAnimation } = getState();
+    const { activeAnimation } = getState()
 
     if (animationId === activeAnimation?.clipId && activeAnimation?.isLooping) {
-      return;
+      return
     }
 
     playAnimation(animationId, {
+      isFromMovement: true,
       isLooping: true,
-      shouldHoldLastFrame: true,
       needsRealtimeZAdjustment: false,
-      isFromMovement: true
-    });
+      shouldHoldLastFrame: true,
+    })
   }
 
   const isPlayingMovementAnimation = () => {
-    const { activeAnimation } = getState();
+    const { activeAnimation } = getState()
 
     if (!activeAnimation) {
-      return false;
+      return false
     }
 
     if (!activeAnimation.isFromMovement) {
-      return false;
+      return false
     }
 
-    return true;
+    return true
   }
 
   const isSafeToApplyMovementAnimation = () => {
-    const { activeAnimation } = getState();
+    const { activeAnimation } = getState()
 
     if (!activeAnimation) {
-      return true;
+      return true
     }
 
     if (activeAnimation.isFromMovement) {
-      return true;
+      return true
     }
 
     if (!activeAnimation.shouldHoldLastFrame && currentRunState?.isComplete) {
-      return true;
+      return true
     }
 
-    return false;
+    return false
   }
 
   const setHasAdjustedZ = (hasAdjustedZ: boolean) => {
-    const activeAnimation = getState().activeAnimation;
+    const activeAnimation = getState().activeAnimation
     if (!activeAnimation) {
-      return;
+      return
     }
     setState({
       activeAnimation: {
         ...activeAnimation,
         hasBeenZAdjusted: hasAdjustedZ,
-      }
+      },
     })
   }
 
   const setLadderAnimation = (ladderAnimationId1: number, ladderAnimationId2: number, ladderAnimationId3: number) => {
-    // Top and Bottom are not implemented
     setSavedAnimation({
-      ladderTopId: ladderAnimationId3,
-      ladderClimbId: ladderAnimationId2,
       ladderBottomId: ladderAnimationId1,
+      ladderClimbId: ladderAnimationId2,
+      ladderTopId: ladderAnimationId3,
     })
   }
 
   const playLadderAnimation = async () => {
     return playAnimation(getSavedAnimation().ladderClimbId, {
+      isFromLadder: true,
       isLooping: true,
-      shouldHoldLastFrame: false,
       needsRealtimeZAdjustment: false,
-      isFromLadder: true
-    });
+      shouldHoldLastFrame: false,
+    })
   }
 
   const stopLadderAnimation = () => {
-    const { activeAnimation } = getState();
+    const { activeAnimation } = getState()
     if (activeAnimation?.isFromLadder) {
-      handleAnimationEnded(activeAnimation.id, activeAnimation.shouldHoldLastFrame);
+      handleAnimationEnded(activeAnimation.id, activeAnimation.shouldHoldLastFrame)
     }
   }
 
-
   const movementAnimationTick = (movementController: ReturnType<typeof createMovementController>) => {
-    const isMoving = movementController.isMoving();
+    const isMoving = movementController.isMoving()
 
     if (isMoving && currentRunState?.isComplete && getState().activeAnimation?.shouldHoldLastFrame) {
-      clearAnimation();
+      clearAnimation()
     }
     if (!isSafeToApplyMovementAnimation()) {
-      return;
+      return
     }
-    
+
     if (!isMoving) {
-      playMovementAnimation('standing');
-      return;
+      playMovementAnimation('standing')
+      return
     }
-    
-    const movementSpeed = movementController.getMovementSpeed();
-    
+
+    const movementSpeed = movementController.getMovementSpeed()
+
     if (!movementSpeed) {
-      playMovementAnimation('standing');
+      playMovementAnimation('standing')
     } else if (movementSpeed > 3600) {
-      playMovementAnimation('running');
+      playMovementAnimation('running')
     } else {
-      playMovementAnimation('walking');
+      playMovementAnimation('walking')
     }
   }
 
   return {
-    tick,
-    movementAnimationTick,
-    playAnimation,
-    initialize,
-    setAnimationSpeed,
     getIsSafeToMoveOn,
     getSavedAnimation,
-    setIdleAnimations,
-    playMovementAnimation,
     getSavedAnimationId,
-    setHasAdjustedZ,
-    
     getState,
+    initialize,
     isPlayingMovementAnimation,
     isSafeToApplyMovementAnimation,
-
-    subscribe: () => {},
+    movementAnimationTick,
     pauseAnimation,
-    // @eslint-disable-next-line @typescript-eslint/no-empty-function
+    playAnimation,
+    playLadderAnimation,
+
+    playMovementAnimation,
+    setAnimationSpeed,
+    setHasAdjustedZ,
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setHeadBone: (_head: Bone) => {},
+    setIdleAnimations,
     setLadderAnimation,
-    playLadderAnimation,
     stopLadderAnimation,
+    subscribe: () => {},
+    tick,
   }
 }

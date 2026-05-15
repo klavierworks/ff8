@@ -1,102 +1,106 @@
-import { useFrame } from "@react-three/fiber";
-import { RefObject, useRef, useState } from "react";
-import { checkForIntersectingMeshes } from "../../Gateways/gatewayUtils";
-import { Object3D, Vector3 } from "three";
-import useGlobalStore from "../../../store";
-import { getPlayerEntity } from "./Model/modelUtils";
-import createMovementController from "./MovementController/MovementController";
+import { useFrame } from '@react-three/fiber'
+import { RefObject, useRef, useState } from 'react'
+import { Object3D, Vector3 } from 'three'
 
-export type STATES = 'LEFT' | 'INTERSECTING' | 'RIGHT' | undefined;
+import useGlobalStore from '../../../store'
+import { checkForIntersectingMeshes } from '../../Gateways/gatewayUtils'
+import { getPlayerEntity } from './Model/modelUtils'
+import createMovementController from './MovementController/MovementController'
+
+export type STATES = 'INTERSECTING' | 'LEFT' | 'RIGHT' | undefined
 
 const getPointSideOfLine = (lineStart: VectorLike, lineEnd: VectorLike, point: Vector3): STATES => {
-  const lineDirection = new Vector3().subVectors(lineEnd, lineStart);
-  const pointVector = new Vector3().subVectors(point, lineStart);
-  const cross = new Vector3().crossVectors(lineDirection, pointVector);
+  const lineDirection = new Vector3().subVectors(lineEnd, lineStart)
+  const pointVector = new Vector3().subVectors(point, lineStart)
+  const cross = new Vector3().crossVectors(lineDirection, pointVector)
 
-  // Check the sign of z component
   if (cross.z > 0) {
-    return "LEFT";
+    return 'LEFT'
   } else if (cross.z < 0) {
-    return "RIGHT";
+    return 'RIGHT'
   } else {
-    return "INTERSECTING";
+    return 'INTERSECTING'
   }
 }
 
-const useIntersection = (targetMeshRef: RefObject<Object3D | null>, isActive = true, {
-  onTouchOn,  
-  onTouchOff,
-  onAcross,
-  onTouch,
-}: {
-  onTouchOn?: (entrySide: STATES) => void;
-  onTouchOff?: (entrySide: STATES) => void;
-  onAcross?: () => void;
-  onTouch?: () => void;
-}, line: VectorLike[]) => {
-  const currentStateRef = useRef<STATES>(undefined);
-  const hasEverExitedRef = useRef(false);
+const useIntersection = (
+  targetMeshRef: RefObject<null | Object3D>,
+  isActive = true,
+  {
+    onAcross,
+    onTouch,
+    onTouchOff,
+    onTouchOn,
+  }: {
+    onAcross?: () => void
+    onTouch?: () => void
+    onTouchOff?: (entrySide: STATES) => void
+    onTouchOn?: (entrySide: STATES) => void
+  },
+  line: VectorLike[],
+) => {
+  const currentStateRef = useRef<STATES>(undefined)
+  const hasEverExitedRef = useRef(false)
 
-  const [playerPosition] = useState(new Vector3());
+  const [playerPosition] = useState(new Vector3())
 
-  const isUserControllable = useGlobalStore(state => state.isUserControllable)
+  const isUserControllable = useGlobalStore((state) => state.isUserControllable)
 
   useFrame(({ scene }) => {
     if (!targetMeshRef.current || !isActive || !isUserControllable) {
-      return;
+      return
     }
 
-    const targetMesh = targetMeshRef.current;
+    const targetMesh = targetMeshRef.current
 
-    const player = getPlayerEntity(scene);
+    const player = getPlayerEntity(scene)
     if (!player) {
-      return;
+      return
     }
 
-
-    const movementController = (player.userData.movementController as ReturnType<typeof createMovementController>);
-    const hasBeenPlaced = movementController.getState().hasBeenPlaced;
-    const hasMoved = movementController.getState().hasMoved;
+    const movementController = player.userData.movementController as ReturnType<typeof createMovementController>
+    const hasBeenPlaced = movementController.getState().hasBeenPlaced
+    const hasMoved = movementController.getState().hasMoved
 
     if (!hasBeenPlaced || !hasMoved) {
-      return;
+      return
     }
 
-    const hitbox = player.getObjectByName("hitbox") as Object3D | null;
+    const hitbox = player.getObjectByName('hitbox') as null | Object3D
     if (!hitbox) {
-      console.warn("Hitbox not found on player entity.");
-      return;
+      console.warn('Hitbox not found on player entity.')
+      return
     }
 
-    const isIntersecting = checkForIntersectingMeshes(hitbox, targetMesh);
+    const isIntersecting = checkForIntersectingMeshes(hitbox, targetMesh)
 
     if (isIntersecting && !hasEverExitedRef.current) {
-      return;
+      return
     }
 
     if (!isIntersecting) {
-      hasEverExitedRef.current = true;
+      hasEverExitedRef.current = true
     }
 
-    if (isIntersecting && currentStateRef.current !== "INTERSECTING") {
-      onTouchOn?.(currentStateRef.current);
+    if (isIntersecting && currentStateRef.current !== 'INTERSECTING') {
+      onTouchOn?.(currentStateRef.current)
     }
 
     if (isIntersecting) {
-      currentStateRef.current = "INTERSECTING";
-      onTouch?.();
-      return;
+      currentStateRef.current = 'INTERSECTING'
+      onTouch?.()
+      return
     }
-    player.getWorldPosition(playerPosition);
-    const side = getPointSideOfLine(line[0], line[1], playerPosition);
+    player.getWorldPosition(playerPosition)
+    const side = getPointSideOfLine(line[0], line[1], playerPosition)
 
     if (currentStateRef.current === 'INTERSECTING') {
-      onTouchOff?.(side);
-      onAcross?.();
+      onTouchOff?.(side)
+      onAcross?.()
     }
 
-    currentStateRef.current = side;
-  });
+    currentStateRef.current = side
+  })
 }
 
-export default useIntersection;
+export default useIntersection

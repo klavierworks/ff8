@@ -1,17 +1,18 @@
-import { useEffect, useState } from "react";
-import { MEMORY } from "../Field/Scripts/Script/handlers";
+import { useEffect, useState } from 'react'
+
+import { MEMORY } from '../Field/Scripts/Script/handlers'
 
 const Memory = () => {
-  const [memory, setMemory] = useState<Record<number, number>>({});
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [memory, setMemory] = useState<Record<number, number>>({})
+  const [isExpanded, setIsExpanded] = useState(false)
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setMemory({...MEMORY});
-    }, 200);
+      setMemory({ ...MEMORY })
+    }, 200)
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div className="memory" onClick={() => setIsExpanded(!isExpanded)}>
@@ -24,18 +25,18 @@ const Memory = () => {
       ) : (
         <>
           <button>View all memory</button>
-          {Object.entries(memory).slice(0,5).map(([address, value]) => (
-            <div key={address}>
-              {address}: {value}
-            </div>
-          ))}
-          <div>
-            ...
-          </div>
+          {Object.entries(memory)
+            .slice(0, 5)
+            .map(([address, value]) => (
+              <div key={address}>
+                {address}: {value}
+              </div>
+            ))}
+          <div>...</div>
         </>
       )}
     </div>
-  );
+  )
 }
 
-export default Memory;
+export default Memory

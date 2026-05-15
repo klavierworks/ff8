@@ -1,90 +1,101 @@
-import { Box3, Mesh, Object3D } from "three";
-import { ScriptMethod } from "../../types";
-import {  useEffect, useMemo, useRef, useState } from "react";
-import {  useFrame } from "@react-three/fiber";
-import useGlobalStore from "../../../../store";
-import { ScriptStateStore } from "../state";
-import createScriptController from "../ScriptController/ScriptController";
-import { getPlayerEntity } from "./modelUtils";
-import { CONTROLS_MAP } from "../../../../constants/controls";
+import { useFrame } from '@react-three/fiber'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Box3, Mesh, Object3D } from 'three'
+
+import { CONTROLS_MAP } from '../../../../constants/controls'
+import useGlobalStore from '../../../../store'
+import { ScriptMethod } from '../../types'
+import createScriptController from '../ScriptController/ScriptController'
+import { ScriptStateStore } from '../state'
+import { getPlayerEntity } from './modelUtils'
 
 type useTalkRadiusProps = {
-  isActive: boolean;
-  scriptController: ReturnType<typeof createScriptController>;
-  talkMethod: ScriptMethod | undefined;
-  talkTargetRef: React.RefObject<Object3D | null>;
-  useScriptStateStore: ScriptStateStore,
+  isActive: boolean
+  scriptController: ReturnType<typeof createScriptController>
+  talkMethod: ScriptMethod | undefined
+  talkTargetRef: React.RefObject<null | Object3D>
+  useScriptStateStore: ScriptStateStore
 }
 
-const useTalkRadius = ({ isActive, scriptController, talkMethod, useScriptStateStore, talkTargetRef }: useTalkRadiusProps) => {
-  const isUserControllable = useGlobalStore(state => state.isUserControllable);
-  const isTalkable = useScriptStateStore(state => state.isTalkable);
-  const hasActiveText = useGlobalStore(state => state.currentMessages.length > 0);
-  const hasActiveTalkMethod = useGlobalStore(state => state.hasActiveTalkMethod);
+const useTalkRadius = ({
+  isActive,
+  scriptController,
+  talkMethod,
+  talkTargetRef,
+  useScriptStateStore,
+}: useTalkRadiusProps) => {
+  const isUserControllable = useGlobalStore((state) => state.isUserControllable)
+  const isTalkable = useScriptStateStore((state) => state.isTalkable)
+  const hasActiveText = useGlobalStore((state) => state.currentMessages.length > 0)
+  const hasActiveTalkMethod = useGlobalStore((state) => state.hasActiveTalkMethod)
 
   const hasValidTalkMethod = useMemo(() => {
     if (!talkMethod) {
-      return false;
+      return false
     }
-    return talkMethod.opcodes.filter(opcode => !opcode.name.startsWith('LABEL') && opcode.name !== 'LBL' && opcode.name !== 'RET').length > 0;
-  }, [talkMethod]);
+    return (
+      talkMethod.opcodes.filter(
+        (opcode) => !opcode.name.startsWith('LABEL') && opcode.name !== 'LBL' && opcode.name !== 'RET',
+      ).length > 0
+    )
+  }, [talkMethod])
 
-  
-  const isPlayerAbleToTalk = isUserControllable && isTalkable && !hasActiveTalkMethod && hasValidTalkMethod && !hasActiveText;
+  const isPlayerAbleToTalk =
+    isUserControllable && isTalkable && !hasActiveTalkMethod && hasValidTalkMethod && !hasActiveText
 
-  const [isIntersecting, setIsIntersecting] = useState(false);
+  const [isIntersecting, setIsIntersecting] = useState(false)
 
-  const talkSphereBoxRef = useRef<Box3>(new Box3());
-  const characterBoxRef = useRef<Box3>(new Box3());
+  const talkSphereBoxRef = useRef<Box3>(new Box3())
+  const characterBoxRef = useRef<Box3>(new Box3())
 
-  useFrame(({scene}) => {
+  useFrame(({ scene }) => {
     if (!isActive || !isPlayerAbleToTalk || !talkTargetRef.current) {
-      return;
+      return
     }
 
-    const player = getPlayerEntity(scene);
+    const player = getPlayerEntity(scene)
     if (!player) {
-      return;
+      return
     }
-    const meshHitbox = player.getObjectByName("hitbox") as Mesh;
+    const meshHitbox = player.getObjectByName('hitbox') as Mesh
 
     if (!meshHitbox) {
-      return;
+      return
     }
-  
-    talkSphereBoxRef.current.setFromObject(talkTargetRef.current);
-    characterBoxRef.current.setFromObject(meshHitbox);
 
-    const isIntersecting = talkSphereBoxRef.current.intersectsBox(characterBoxRef.current);
-    setIsIntersecting(isIntersecting);
-  });
+    talkSphereBoxRef.current.setFromObject(talkTargetRef.current)
+    characterBoxRef.current.setFromObject(meshHitbox)
+
+    const isIntersecting = talkSphereBoxRef.current.intersectsBox(characterBoxRef.current)
+    setIsIntersecting(isIntersecting)
+  })
 
   useEffect(() => {
     if (!isActive || !isIntersecting || !isPlayerAbleToTalk) {
-      return;
+      return
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      event.stopImmediatePropagation();
+      event.stopImmediatePropagation()
 
-      const isTalk = event.code === CONTROLS_MAP.confirm;
-      const isCards = event.code === CONTROLS_MAP.card;
+      const isTalk = event.code === CONTROLS_MAP.confirm
+      const isCards = event.code === CONTROLS_MAP.card
       if (!isTalk && !isCards) {
-        return;
+        return
       }
 
-      useGlobalStore.setState({ hasActiveTalkMethod: true });
-      scriptController.setTempVariable(0, isTalk ? 0 : 1);
+      useGlobalStore.setState({ hasActiveTalkMethod: true })
+      scriptController.setTempVariable(0, isTalk ? 0 : 1)
       scriptController.triggerMethod('talk').then(() => {
-        useGlobalStore.setState({ hasActiveTalkMethod: false });
-      });
+        useGlobalStore.setState({ hasActiveTalkMethod: false })
+      })
     }
 
-    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown)
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keydown', onKeyDown)
     }
-  }, [isActive,isIntersecting, talkMethod, scriptController, isPlayerAbleToTalk]);
+  }, [isActive, isIntersecting, talkMethod, scriptController, isPlayerAbleToTalk])
 }
 
-export default useTalkRadius;
+export default useTalkRadius

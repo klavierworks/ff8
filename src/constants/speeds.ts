@@ -1,3 +1,3 @@
 export const SPEEDS = {
-  BG: 6
+  BG: 6,
 }

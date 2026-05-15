@@ -1,56 +1,57 @@
-import { Box } from "@react-three/drei";
-import useGlobalStore from "../../store";
-import { Euler, Mesh, Quaternion, Vector3 } from "three";
-import { RefObject, useMemo } from "react";
+import { Box } from '@react-three/drei'
+import { RefObject, useMemo } from 'react'
+import { Euler, Mesh, Quaternion, Vector3 } from 'three'
 
-type LineBlockProps = {
-  color: string;
-  lineBlockRef: RefObject<Mesh | null>;
-  points: VectorLike[] | undefined;
-} & React.ComponentProps<typeof Box>;
+import useGlobalStore from '../../store'
+
+type LineBlockProps = React.ComponentProps<typeof Box> & {
+  color: string
+  lineBlockRef: RefObject<Mesh | null>
+  points: undefined | VectorLike[]
+}
 
 const LineBlock = ({ color, lineBlockRef, points, ...props }: LineBlockProps) => {
   const box = useMemo(() => {
     if (!points) {
-      return null;
+      return null
     }
-    const [startPoint, endPoint] = points;
-    const midpoint = new Vector3().addVectors(startPoint, endPoint).multiplyScalar(0.5);
-    const direction = new Vector3().subVectors(endPoint, startPoint);
-    const length = direction.length();
-    direction.normalize(); 
-    const quaternion = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), direction);
+    const [startPoint, endPoint] = points
+    const midpoint = new Vector3().addVectors(startPoint, endPoint).multiplyScalar(0.5)
+    const direction = new Vector3().subVectors(endPoint, startPoint)
+    const length = direction.length()
+    direction.normalize()
+    const quaternion = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), direction)
 
-    const hitboxDepth = 0.09;
-    const hitboxMidpoint = midpoint.clone();
-    hitboxMidpoint.x += hitboxDepth / 4;
+    const hitboxDepth = 0.09
+    const hitboxMidpoint = midpoint.clone()
+    hitboxMidpoint.x += hitboxDepth / 4
     return {
-      midpoint,
-      hitboxMidpoint,
       hitboxDepth,
-      rotation: new Euler().setFromQuaternion(quaternion),
+      hitboxMidpoint,
       length,
+      midpoint,
+      rotation: new Euler().setFromQuaternion(quaternion),
     }
-  }, [points]);
+  }, [points])
 
-  const isDebugMode = useGlobalStore(state => state.isDebugMode);
+  const isDebugMode = useGlobalStore((state) => state.isDebugMode)
 
   if (!box) {
-    return null;
+    return null
   }
 
   return (
-      <Box
-        args={[0.001, box.length, 0.1]}
-        position={box.midpoint}
-        rotation={box.rotation}
-        visible={isDebugMode}
-        ref={lineBlockRef}
-        {...props}
-        >
-        <meshBasicMaterial color={color} opacity={1} transparent />
-      </Box>
-  );
+    <Box
+      args={[0.001, box.length, 0.1]}
+      position={box.midpoint}
+      ref={lineBlockRef}
+      rotation={box.rotation}
+      visible={isDebugMode}
+      {...props}
+    >
+      <meshBasicMaterial color={color} opacity={1} transparent />
+    </Box>
+  )
 }
 
-export default LineBlock;
+export default LineBlock

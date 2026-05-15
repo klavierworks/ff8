@@ -1,19 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react'
 
 const Queues = () => {
-  const [queues, setQueues] = useState<Record<number, string>>({});
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [queues, setQueues] = useState<Record<number, string>>({})
+  const [isExpanded, setIsExpanded] = useState(false)
 
   useEffect(() => {
     const interval = setInterval(() => {
       if (!window.QUEUES) {
-        return;
+        return
       }
-      setQueues({...window.QUEUES});
-    }, 200);
+      setQueues({ ...window.QUEUES })
+    }, 200)
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div className="queues" onClick={() => setIsExpanded(!isExpanded)}>
@@ -26,18 +26,18 @@ const Queues = () => {
       ) : (
         <>
           <button>View all script queues</button>
-          {Object.entries(queues).slice(0,5).map(([id, queue]) => (
-            <div key={id}>
-              {id}: {queue}
-            </div>
-          ))}
-          <div>
-            ...
-          </div>
+          {Object.entries(queues)
+            .slice(0, 5)
+            .map(([id, queue]) => (
+              <div key={id}>
+                {id}: {queue}
+              </div>
+            ))}
+          <div>...</div>
         </>
       )}
     </div>
-  );
+  )
 }
 
-export default Queues;
+export default Queues

@@ -1,21 +1,21 @@
-import {  RawFieldData } from "../Field";
-import { OPCODES } from "./constants";
+import { RawFieldData } from '../Field'
+import { OPCODES } from './constants'
 
-export type ScriptType = 'location' | 'model' | 'background' | 'unknown' | 'door' | 'main';
-
-export type Opcode = typeof OPCODES[number]
+export type Opcode = (typeof OPCODES)[number]
 
 export type OpcodeObj = {
-  name: Opcode;
-  label?: string;
-  param: number;
-}
-
-export type ScriptMethod = Omit<RawFieldData['scripts'][number]['methods'][number], 'opcodes'> & {
-  opcodes: OpcodeObj[];
+  label?: string
+  name: Opcode
+  param: number
 }
 
 export type Script = Omit<RawFieldData['scripts'][number], 'methods' | 'type'> & {
-  methods: ScriptMethod[];
-  type: ScriptType;
-};
+  methods: ScriptMethod[]
+  type: ScriptType
+}
+
+export type ScriptMethod = Omit<RawFieldData['scripts'][number]['methods'][number], 'opcodes'> & {
+  opcodes: OpcodeObj[]
+}
+
+export type ScriptType = 'background' | 'door' | 'location' | 'main' | 'model' | 'unknown'

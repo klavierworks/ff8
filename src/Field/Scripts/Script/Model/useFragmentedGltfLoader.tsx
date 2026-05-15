@@ -1,28 +1,25 @@
-import { useGLTF } from "@react-three/drei";
-import gltfIndex from './gltf_index.json';
+import { useGLTF } from '@react-three/drei'
 
-const typedGltfIndex: GLTFIndex = gltfIndex as GLTFIndex;
+import gltfIndex from './gltf_index.json'
+
+const typedGltfIndex: GLTFIndex = gltfIndex as GLTFIndex
 type GLTFIndex = {
   [fieldName: string]: {
-    [baseGltf: string]: string;
-  };
+    [baseGltf: string]: string
+  }
 }
 export const useFragmentedGLTFLoader = (baseGltf: string, fieldName: string) => {
-  const gltfFilename = typedGltfIndex[fieldName]?.[baseGltf];
+  const gltfFilename = typedGltfIndex[fieldName]?.[baseGltf]
 
   if (!gltfFilename) {
-    console.warn(`GLTF file not found for baseGltf: ${baseGltf} in field: ${fieldName}. Using Squall`);
+    console.warn(`GLTF file not found for baseGltf: ${baseGltf} in field: ${fieldName}. Using Squall`)
   }
 
-  // Fallback to a random Squall model if there isn't a model. This only happens on bad maps.
-  const [baseName, hashedName] = gltfFilename?.split('_') ?? [
-    'd000',
-    '0ec20e06.gltf'
-  ];
+  const [baseName, hashedName] = gltfFilename?.split('_') ?? ['d000', '0ec20e06.gltf']
 
-  const result = useGLTF(`/models/optimized/${baseName}/${hashedName}`);
+  const result = useGLTF(`/models/optimized/${baseName}/${hashedName}`)
 
-  return result;
+  return result
 }
 
 useFragmentedGLTFLoader.preload = () => null

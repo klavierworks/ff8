@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
-import { ViteImageOptimizer } from 'vite-plugin-image-optimizer';
-import { customManifestPlugin } from './vite-custom-manifest-plugin.js';
+import { ViteImageOptimizer } from 'vite-plugin-image-optimizer'
+import { customManifestPlugin } from './vite-custom-manifest-plugin.js'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
@@ -13,10 +13,10 @@ export default defineConfig({
     ViteImageOptimizer({
       png: {
         quality: 100,
-      }
+      },
     }),
     VitePWA({
-      strategies: "injectManifest",
+      strategies: 'injectManifest',
       injectRegister: false,
       manifest: false,
       injectManifest: {
@@ -25,6 +25,6 @@ export default defineConfig({
       srcDir: 'src/serviceWorker',
       filename: '_sw.ts',
     }),
-    customManifestPlugin()
+    customManifestPlugin(),
   ],
 })

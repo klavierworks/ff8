@@ -1,44 +1,44 @@
-import { useEffect, useRef } from "react"
-import useGlobalStore from "./store";
-import FieldLoader from "./Field/Field";
-import { attachKeyDownListeners } from "./Field/Scripts/Script/common";
-import { getInitialField } from "./utils";
-import MAP_NAMES from "./constants/maps";
-import { useFrame, useThree } from "@react-three/fiber";
-import { Scene } from "three";
+import { useFrame, useThree } from '@react-three/fiber'
+import { useEffect, useRef } from 'react'
+import { Scene } from 'three'
 
+import MAP_NAMES from './constants/maps'
+import FieldLoader from './Field/Field'
+import { attachKeyDownListeners } from './Field/Scripts/Script/common'
+import useGlobalStore from './store'
+import { getInitialField } from './utils'
 
 useGlobalStore.setState({
-  pendingFieldId: (getInitialField() ?? 'menu') as typeof MAP_NAMES[number], 
-});
+  pendingFieldId: (getInitialField() ?? 'menu') as (typeof MAP_NAMES)[number],
+})
 
 type EntrypointProps = {
-  setWorldScene: (scene: Scene) => void;
+  setWorldScene: (scene: Scene) => void
 }
 const Entrypoint = ({ setWorldScene }: EntrypointProps) => {
   useEffect(() => {
-    attachKeyDownListeners();
-  }, []);
+    attachKeyDownListeners()
+  }, [])
 
-  const fadeSpring = useGlobalStore(state => state.fadeSpring);
+  const fadeSpring = useGlobalStore((state) => state.fadeSpring)
 
-  const currentStyleRef = useRef<number>(0);
+  const currentStyleRef = useRef<number>(0)
   useFrame(() => {
-    const isMapFadeEnabled = useGlobalStore.getState().isMapFadeEnabled;
+    const isMapFadeEnabled = useGlobalStore.getState().isMapFadeEnabled
     if (!isMapFadeEnabled) {
-      return;
+      return
     }
-    const currentStyle = fadeSpring.get();
+    const currentStyle = fadeSpring.get()
     if (currentStyleRef.current === currentStyle) {
-      return;
+      return
     }
-    currentStyleRef.current = currentStyle;
-    document.body.style.setProperty('--canvas-opacity', currentStyle.toString());
+    currentStyleRef.current = currentStyle
+    document.body.style.setProperty('--canvas-opacity', currentStyle.toString())
   })
 
-  const scene = useThree(state => state.scene);
+  const scene = useThree((state) => state.scene)
   useEffect(() => {
-    setWorldScene(scene);
+    setWorldScene(scene)
   }, [scene, setWorldScene])
 
   return (
@@ -48,4 +48,4 @@ const Entrypoint = ({ setWorldScene }: EntrypointProps) => {
   )
 }
 
-export default Entrypoint;
+export default Entrypoint

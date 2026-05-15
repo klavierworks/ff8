@@ -1,14 +1,14 @@
 export const CONTROLS_MAP = {
-  menu: 'KeyS',
-  card: 'KeyA',
   cancel: 'KeyX',
+  card: 'KeyA',
   confirm: 'KeyZ',
-  debug: 'Escape'
-};
+  debug: 'Escape',
+  menu: 'KeyS',
+}
 
 export const PSX_CONTROLS_MAP = {
-  triangle: CONTROLS_MAP.menu,
-  square: CONTROLS_MAP.card,
   circle: CONTROLS_MAP.cancel,
   cross: CONTROLS_MAP.confirm,
-};
+  square: CONTROLS_MAP.card,
+  triangle: CONTROLS_MAP.menu,
+}
