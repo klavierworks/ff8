@@ -10,6 +10,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "sharp": "^0.34.5",
     "ws": "^8.19.0"
   },
   "devDependencies": {

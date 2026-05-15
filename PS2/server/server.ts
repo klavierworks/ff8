@@ -1,28 +1,11 @@
-// server.ts
-// Combined HTTP + WebSocket + TCP streaming server
-//
-// Endpoints:
-//   HTTP preview page:        http://localhost:8080/preview
-//   WebSocket ingest:         ws://localhost:8080/ingest
-//   WebSocket preview view:   ws://localhost:8080/view
-//   TCP raw stream (PS2):     tcp://localhost:9090
-
-import {
-  createServer as createHttpServer,
-  type IncomingMessage,
-  type ServerResponse,
-} from "node:http";
-
-import {
-  createServer as createTcpServer,
-  type Socket as TcpSocket,
-} from "node:net";
-
+import { createServer as createHttpServer } from "node:http";
+import { createServer as createTcpServer, type Socket as TcpSocket } from "node:net";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 
 const httpPort = 8080;
-const tcpPort = 9090;
-const TCP_CHUNK_SIZE = 10450;
+const tcpPort = 8081;
+const TCP_CHUNK_SIZE = 512;
 
 /* -------------------------------------------------------------------------- */
 /* Utility Logging                                                            */
@@ -34,11 +17,7 @@ const getRemoteAddress = (socket: { remoteAddress?: string; remotePort?: number 
   return `${address}:${port}`;
 };
 
-const logConnection = (
-  type: string,
-  remote: string,
-  extra: string | null = null,
-) => {
+const logConnection = (type: string, remote: string, extra: string | null = null) => {
   const timestamp = new Date().toISOString();
   const message = extra
     ? `[${timestamp}] CONNECT ${type} ${remote} ${extra}`
@@ -92,10 +71,7 @@ const previewHtml = `
       const canvas = document.getElementById("screen");
       const context = canvas.getContext("2d");
 
-      const protocol = location.protocol === "https:" ? "wss" : "ws";
-      const socketUrl = \`\${protocol}://\${location.host}/view\`;
-
-      const socket = new WebSocket(socketUrl);
+      const socket = new WebSocket(\`ws://\${location.host}/view\`);
       socket.binaryType = "arraybuffer";
 
       let buffer = new Uint8Array(0);
@@ -119,21 +95,14 @@ const previewHtml = `
 
         while (buffer.length >= 4) {
           const length = readUint32BE(buffer);
-
-          if (buffer.length < 4 + length) {
-            return;
-          }
+          if (buffer.length < 4 + length) return;
 
           const jpegBytes = buffer.subarray(4, 4 + length);
           buffer = buffer.subarray(4 + length);
 
           const blob = new Blob([jpegBytes], { type: "image/jpeg" });
           const bitmap = await createImageBitmap(blob);
-
-          if (latestBitmap) {
-            latestBitmap.close();
-          }
-
+          if (latestBitmap) latestBitmap.close();
           latestBitmap = bitmap;
         }
       };
@@ -155,46 +124,29 @@ const previewHtml = `
 /* HTTP Server                                                                */
 /* -------------------------------------------------------------------------- */
 
-const httpServer = createHttpServer(
-  (request: IncomingMessage, response: ServerResponse) => {
-    const url = request.url ?? "/";
+const httpServer = createHttpServer((request: IncomingMessage, response: ServerResponse) => {
+  const url = request.url ?? "/";
 
-    if (url === "/" || url === "/preview") {
-      response.statusCode = 200;
-      response.setHeader("content-type", "text/html; charset=utf-8");
-      response.end(previewHtml);
-      return;
-    }
+  if (url === "/" || url === "/preview") {
+    response.statusCode = 200;
+    response.setHeader("content-type", "text/html; charset=utf-8");
+    response.end(previewHtml);
+    return;
+  }
 
-    response.statusCode = 404;
-    response.end("Not Found");
-  },
-);
+  response.statusCode = 404;
+  response.end("Not Found");
+});
 
 /* -------------------------------------------------------------------------- */
-/* WebSocket Servers                                                          */
+/* Shared State                                                               */
 /* -------------------------------------------------------------------------- */
-
-const ingestWebSocketServer = new WebSocketServer({ noServer: true });
-const viewWebSocketServer = new WebSocketServer({ noServer: true });
 
 const viewClients = new Set<WebSocket>();
+const pendingTcpSenders = new Set<() => void>();
 
-/* -------------------------------------------------------------------------- */
-/* TCP Client State                                                           */
-/* -------------------------------------------------------------------------- */
-
-type TcpClientState = {
-  ready: boolean;
-  incomingBuffer: string;
-  pendingChunks: string[];
-};
-
-const tcpClientStates = new Map<TcpSocket, TcpClientState>();
-
-/* -------------------------------------------------------------------------- */
-/* Broadcast Helpers                                                          */
-/* -------------------------------------------------------------------------- */
+let latestFrame: Buffer | null = null;
+let latestFrameId = 0;
 
 const broadcastToViewClients = (buffer: Buffer) => {
   viewClients.forEach((client) => {
@@ -207,74 +159,45 @@ const broadcastToViewClients = (buffer: Buffer) => {
   });
 };
 
-const sendNextChunk = (client: TcpSocket, state: TcpClientState) => {
-  if (client.destroyed) {
-    tcpClientStates.delete(client);
-    return;
+const encodeU32BE = (value: number): Buffer => {
+  const buf = Buffer.alloc(4);
+  buf.writeUInt32BE(value, 0);
+  return buf;
+};
+
+const writeFrameToTcpSocket = (socket: TcpSocket, frame: Buffer) => {
+  const header = encodeU32BE(frame.length);
+  const packet = Buffer.concat([header, frame]);
+  console.log(`[TCP] Writing frame: ${packet.length} bytes (${frame.length} payload)`);
+  const flushed = socket.write(packet);
+  if (!flushed) {
+    console.log(`[TCP] Write buffer full, waiting for drain`);
+    socket.once("drain", () => {
+      console.log(`[TCP] Drained`);
+    });
   }
-  if (state.pendingChunks.length === 0) return;
-
-  const chunk = state.pendingChunks.shift()!;
-  console.log(
-    `Sending chunk, ${chunk.length} bytes, ${state.pendingChunks.length} remaining`
-  );
-  client.write(chunk);
 };
 
-const broadcastToTcpClients = (buffer: Buffer) => {
-  tcpClientStates.forEach((state, client) => {
-    if (client.destroyed) {
-      tcpClientStates.delete(client);
-      return;
-    }
-    if (!state.ready) {
-      console.log("TCP client not ready, skipping frame");
-      return;
-    }
-
-    const message = buffer.toString("base64") + "|";
-    console.log("Queuing frame for TCP client, total length:", message.length);
-
-    // Split into chunks
-    state.pendingChunks = [];
-    for (let i = 0; i < message.length; i += TCP_CHUNK_SIZE) {
-      state.pendingChunks.push(message.slice(i, i + TCP_CHUNK_SIZE));
-    }
-
-    state.ready = false;
-    sendNextChunk(client, state);
-  });
-};
 /* -------------------------------------------------------------------------- */
-/* WebSocket Ingest                                                           */
+/* WebSocket Servers                                                          */
 /* -------------------------------------------------------------------------- */
+
+const ingestWebSocketServer = new WebSocketServer({ noServer: true });
+const viewWebSocketServer = new WebSocketServer({ noServer: true });
 
 ingestWebSocketServer.on("connection", (socket, request) => {
   const remote = getRemoteAddress(request.socket);
   const userAgent = request.headers["user-agent"] ?? "unknown-user-agent";
-
   logConnection("WebSocket Ingest", remote, `UA=${userAgent}`);
-
-  let ingestBuffer = Buffer.alloc(0);
 
   socket.on("message", (data) => {
     if (typeof data === "string") return;
+    const newData = Buffer.from(data as Buffer);
 
-    ingestBuffer = Buffer.concat([ingestBuffer, Buffer.from(data as Buffer)]);
-
-    while (ingestBuffer.length >= 4) {
-      const frameLength = ingestBuffer.readUInt32BE(0);
-
-      if (ingestBuffer.length < 4 + frameLength) break;
-
-      const completeFrame = ingestBuffer.subarray(0, 4 + frameLength);
-      ingestBuffer = ingestBuffer.subarray(4 + frameLength);
-
-      if (completeFrame.length < 30000) continue;
-
-      broadcastToViewClients(completeFrame);
-      broadcastToTcpClients(completeFrame);
-    }
+    latestFrame = newData;
+    latestFrameId++;
+    broadcastToViewClients(latestFrame);
+    pendingTcpSenders.forEach((flush) => flush());
   });
 
   socket.on("close", () => {
@@ -282,21 +205,16 @@ ingestWebSocketServer.on("connection", (socket, request) => {
   });
 });
 
-/* -------------------------------------------------------------------------- */
-/* WebSocket Preview                                                          */
-/* -------------------------------------------------------------------------- */
-
 viewWebSocketServer.on("connection", (socket, request) => {
   const remote = getRemoteAddress(request.socket);
   const userAgent = request.headers["user-agent"] ?? "unknown-user-agent";
-
-  logConnection("WebSocket Preview", remote, `UA=${userAgent}`);
+  logConnection("WebSocket View", remote, `UA=${userAgent}`);
 
   viewClients.add(socket);
 
   socket.on("close", () => {
     viewClients.delete(socket);
-    logDisconnection("WebSocket Preview", remote);
+    logDisconnection("WebSocket View", remote);
   });
 });
 
@@ -321,42 +239,56 @@ httpServer.on("upgrade", (request, socket, head) => {
 });
 
 /* -------------------------------------------------------------------------- */
-/* TCP Server                                                                 */
+/* TCP Output Server                                                          */
 /* -------------------------------------------------------------------------- */
 
-const tcpServer = createTcpServer((socket) => {
+const tcpServer = createTcpServer((socket: TcpSocket) => {
   const remote = getRemoteAddress(socket);
+  logConnection("TCP View", remote);
 
-  logConnection("TCP Stream Client", remote);
+  let ackBuffer = "";
+  let pendingAck = false;
+  let lastSentFrameId = -1;
 
-  tcpClientStates.set(socket, { ready: true, incomingBuffer: "" });
-socket.on("data", (chunk) => {
-  const state = tcpClientStates.get(socket);
-  if (!state) return;
+  const trySendFrame = () => {
+    if (!latestFrame || latestFrameId === lastSentFrameId) {
+      pendingAck = true;
+      return;
+    }
+    pendingAck = false;
+    lastSentFrameId = latestFrameId;
+    writeFrameToTcpSocket(socket, latestFrame);
+  };
 
-  state.incomingBuffer += chunk.toString();
+  const tryFlush = () => {
+    if (pendingAck) trySendFrame();
+  };
 
-  if (!state.incomingBuffer.includes("ACK")) return;
-  state.incomingBuffer = "";
+  pendingTcpSenders.add(tryFlush);
 
-  if (state.pendingChunks.length > 0) {
-    // More chunks to send for current frame
-    sendNextChunk(socket, state);
-  } else {
-    // All chunks sent, ready for next frame
-    console.log("TCP client ready for next frame");
-    state.ready = true;
-  }
-});
-
-  socket.on("close", () => {
-    tcpClientStates.delete(socket);
-    logDisconnection("TCP Stream Client", remote);
+  socket.on("data", (chunk: Buffer) => {
+    ackBuffer += chunk.toString("ascii");
+    while (ackBuffer.includes("\n")) {
+      const idx = ackBuffer.indexOf("\n");
+      const line = ackBuffer.slice(0, idx).trim();
+      ackBuffer = ackBuffer.slice(idx + 1);
+      if (line === "ACK") {
+        console.log(`[TCP] Received ACK from ${remote}`);
+        trySendFrame();
+      } else {
+        console.log(`[TCP] Unexpected data from ${remote}: ${line}`);
+      }
+    }
   });
 
-  socket.on("error", () => {
-    tcpClientStates.delete(socket);
-    logDisconnection("TCP Stream Client", remote);
+  socket.on("close", () => {
+    pendingTcpSenders.delete(tryFlush);
+    logDisconnection("TCP View", remote);
+  });
+
+  socket.on("error", (err) => {
+    console.error(`TCP error from ${remote}:`, err.message);
+    pendingTcpSenders.delete(tryFlush);
   });
 });
 
@@ -365,11 +297,11 @@ socket.on("data", (chunk) => {
 /* -------------------------------------------------------------------------- */
 
 httpServer.listen(httpPort, () => {
-  console.log(`HTTP preview: http://localhost:${httpPort}/preview`);
+  console.log(`HTTP preview:     http://localhost:${httpPort}/preview`);
   console.log(`WebSocket ingest: ws://localhost:${httpPort}/ingest`);
-  console.log(`WebSocket preview: ws://localhost:${httpPort}/view`);
+  console.log(`WebSocket view:   ws://localhost:${httpPort}/view`);
 });
 
 tcpServer.listen(tcpPort, () => {
-  console.log(`TCP stream server listening on port ${tcpPort}`);
+  console.log(`TCP view:         tcp://localhost:${tcpPort}`);
 });

@@ -1,74 +1,22 @@
 const SERVER_HOST = "192.168.2.20";
-const SERVER_PORT = 9090;
-let currentFrame;
+const SERVER_PORT = 8081;
 const font = new Font("default");
-
 const log = (message, ...args) => {
-  if (typeof message !== "string") return;
-  const file = std.open("log.log", "a");
-  if (!file) return;
-  const messageWithNewline = message + " " + args.join(" ") + "\n";
-  const length = messageWithNewline.length;
-  const arrayBuffer = new ArrayBuffer(length);
-  const byteView = new Uint8Array(arrayBuffer);
-  for (let i = 0; i < length; i++) {
-    byteView[i] = messageWithNewline.charCodeAt(i) & 0xff;
-  }
-  file.write(arrayBuffer, 0, length);
-  file.close();
+ // if (typeof message !== "string") return;
+ // const file = std.open("log.log", "a");
+ // if (!file) return;
+ // const messageWithNewline = message + " " + args.join(" ") + "\n";
+ // const length = messageWithNewline.length;
+ // const arrayBuffer = new ArrayBuffer(length);
+ // const byteView = new Uint8Array(arrayBuffer);
+ // for (let i = 0; i < length; i++) {
+ //   byteView[i] = messageWithNewline.charCodeAt(i) & 0xff;
+ // }
+ // file.write(arrayBuffer, 0, length);
+ // file.close();
 };
-
 Screen.setParam(Screen.DEPTH_TEST_ENABLE, false);
 Screen.setFrameCounter(true);
-
-const draw = () => {
-  if (currentFrame) {
-    currentFrame.draw(0.0, 0.0);
-  } else {
-    font.print(0, 0, "Waiting for server...");
-  }
-};
-
-const FRAME_FILE_PATH = "stream.jpg";
-const RECEIVE_CHUNK_SIZE = 1450;
-
-function base64ToUint8Array(base64) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  const lookup = new Uint8Array(256);
-  for (let i = 0; i < chars.length; i++) {
-    lookup[chars.charCodeAt(i)] = i;
-  }
-  const len = base64.length;
-  let bufLen = Math.floor(len * 3 / 4);
-  if (base64[len - 1] === '=') bufLen--;
-  if (base64[len - 2] === '=') bufLen--;
-  const output = new Uint8Array(bufLen);
-  let i = 0, j = 0;
-  while (i < len) {
-    const a = lookup[base64.charCodeAt(i++)];
-    const b = lookup[base64.charCodeAt(i++)];
-    const c = lookup[base64.charCodeAt(i++)];
-    const d = lookup[base64.charCodeAt(i++)];
-    output[j++] = (a << 2) | (b >> 4);
-    if (j < bufLen) output[j++] = ((b & 0xF) << 4) | (c >> 2);
-    if (j < bufLen) output[j++] = ((c & 0x3) << 6) | d;
-  }
-  return output;
-}
-
-const writeWholeFile = (path, byteView) => {
-  const flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC;
-  const fileDescriptor = os.open(path, flags);
-  if (fileDescriptor < 0) {
-    throw new Error(`os.open failed: ${fileDescriptor}`);
-  }
-  const written = os.write(fileDescriptor, byteView.buffer, byteView.byteOffset, byteView.byteLength);
-  os.close(fileDescriptor);
-  if (written !== byteView.byteLength) {
-    throw new Error(`os.write short: ${written}/${byteView.byteLength}`);
-  }
-};
-
 const connectToServer = () => {
   IOP.reset();
   IOP.loadModule("padman");
@@ -77,48 +25,100 @@ const connectToServer = () => {
   log("Connecting to server at", SERVER_HOST, SERVER_PORT);
   const socket = new Socket(Socket.AF_INET, Socket.SOCK_STREAM);
   socket.connect(SERVER_HOST, SERVER_PORT);
-  log("Connected to server at", SERVER_HOST, SERVER_PORT);
+  log("Connected to server");
   return socket;
 };
-
 const socket = connectToServer();
-
-let receiveBuffer = "";
-
-const poll = () => {
-  const chunk = socket.recv(RECEIVE_CHUNK_SIZE);
-  if (!chunk || chunk.length === 0) return;
-
-  receiveBuffer += chunk;
-  log("Got chunk, size:", chunk.length, "buffer size:", receiveBuffer.length);
-log(receiveBuffer)
-  const delimiterIndex = receiveBuffer.indexOf("|");
-  log("Delimiter index:", delimiterIndex);
-  if (delimiterIndex === -1) {
-    // Mid-frame chunk, request next
-    socket.send("ACK");
+const ACK = (() => {
+  const buf = new ArrayBuffer(4);
+  const view = new Uint8Array(buf);
+  view[0] = 0x41;
+  view[1] = 0x43;
+  view[2] = 0x4b;
+  view[3] = 0x0a;
+  return buf;
+})();
+const HEADER_SIZE = 4;
+const getFrameSize = () => {
+  const frameSizeHeaderBuffer = socket.recv(HEADER_SIZE, true);
+  const frameSizeHeader = new Uint8Array(frameSizeHeaderBuffer);
+  return (
+    (frameSizeHeader[0] << 24) |
+    (frameSizeHeader[1] << 16) |
+    (frameSizeHeader[2] << 8) |
+    frameSizeHeader[3]
+  );
+};
+let currentImage = null;
+let imageToFree = null;
+let isFetchingFrame = false;
+const recvFull = (size) => {
+  const buf = new ArrayBuffer(size);
+  if (buf.byteLength !== size) {
+    log("recvFull: allocation failed for size", size);
+    return null;
+  }
+  const view = new Uint8Array(buf);
+  let received = 0;
+  while (received < size) {
+    const chunk = socket.recv(size - received, true);
+    if (!chunk || chunk.byteLength === 0) {
+      log("recvFull: got empty chunk, aborting");
+      return null;
+    }
+    const chunkView = new Uint8Array(chunk);
+    view.set(chunkView, received);
+    received += chunk.byteLength;
+  }
+  return buf;
+};
+const requestThread = new Thread(() => {
+  isFetchingFrame = true;
+  log("thread: sending ACK");
+  socket.send(ACK);
+  log("thread: getting frame size");
+  const frameSize = getFrameSize();
+  if (frameSize <= 0) {
+    log("thread: invalid frame size", frameSize);
+    isFetchingFrame = false;
     return;
   }
-
-  // Complete frame
-  log("Got complete frame, base64 length:", delimiterIndex);
-  const base64 = receiveBuffer.substring(0, delimiterIndex);
-  receiveBuffer = "";
-
-  try {
-    const jpegBytes = base64ToUint8Array(base64);
-    writeWholeFile(FRAME_FILE_PATH, jpegBytes);
-    currentFrame = new Bitmap(FRAME_FILE_PATH);
-    log("Frame loaded successfully");
-  } catch (e) {
-    log("Error processing frame:", e.message);
+  log("thread: receiving frame", frameSize, "bytes");
+  const frameBuffer = recvFull(frameSize);
+  if (!frameBuffer) {
+    log("thread: recvFull failed");
+    isFetchingFrame = false;
+    return;
   }
-
-  // Ready for next frame
-  socket.send("ACK");
-};
-
+  log("thread: decoding jpeg");
+  const newImage = Image.fromJpeg(frameBuffer);
+  log("thread: swapping image");
+  const oldImage = currentImage;
+  currentImage = newImage;
+  currentImage.width = 640;
+  currentImage.height = 480;
+  imageToFree = oldImage;
+  log("thread: done");
+  isFetchingFrame = false;
+}, "RequestThread");
 Screen.display(() => {
-  draw();
-  poll();
+  if (!isFetchingFrame) {
+    log("display: starting request thread");
+    requestThread.start();
+    log("display: request thread started");
+  }
+  if (currentImage) {
+    log("display: drawing");
+    currentImage.draw(0, 0);
+    log("display: drawn");
+  }
+  if (imageToFree) {
+    log("display: freeing old image");
+    imageToFree.free();
+    imageToFree = null;
+    log("display: freed");
+  }
+  const stats = System.getMemoryStats();
+  font.print(0, 0, "RAM allocs: " + stats.allocs + " used: " + stats.used);
+  font.print(40, 40, "Random number: " + Math.random());
 });

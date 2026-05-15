@@ -5,48 +5,11 @@ import type { RootState } from "@react-three/fiber";
 
 type UseJpegSocketStreamOptions = {
   wsUrl: string;
-  fps?: number; // default 15
-  jpegQuality?: number; // default 0.7
-  maxBufferedBytes?: number; // default 2_000_000
-};
-
-const isCanvasBlank = (canvas: HTMLCanvasElement): boolean => {
-  const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
-  if (!gl) {
-    // Fall back to 2d context sample
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return true;
-    const { data } = ctx.getImageData(0, 0, 1, 1);
-    return data[0] === 0 && data[1] === 0 && data[2] === 0 && data[3] === 0;
-  }
-
-  // Sample a few pixels spread across the canvas
-  const samples = [
-    [0, 0],
-    [canvas.width >> 1, canvas.height >> 1],       // center
-    [canvas.width - 1, canvas.height - 1],          // bottom-right
-  ];
-
-  const pixel = new Uint8Array(4);
-  for (const [x, y] of samples) {
-    // WebGL y-axis is flipped
-    gl.readPixels(x, canvas.height - 1 - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-    if (pixel[0] !== 0 || pixel[1] !== 0 || pixel[2] !== 0 || pixel[3] !== 0) {
-      return false;
-    }
-  }
-
-  return true;
-};
-const encodeU32BE = (value: number): Uint8Array => {
-  const bytes = new Uint8Array(4);
-
-  bytes[0] = (value >>> 24) & 0xff;
-  bytes[1] = (value >>> 16) & 0xff;
-  bytes[2] = (value >>> 8) & 0xff;
-  bytes[3] = value & 0xff;
-
-  return bytes;
+  fps?: number;
+  jpegQuality?: number;
+  maxBufferedBytes?: number;
+  targetWidth?: number;
+  targetHeight?: number;
 };
 
 const clamp01 = (value: number): number => {
@@ -89,14 +52,12 @@ const canvasToJpegBytes = async (
           reject(new Error("toBlob() returned null"));
           return;
         }
-
         resolve(result);
       },
       "image/jpeg",
       jpegQuality,
     );
   });
-
   return new Uint8Array(await blob.arrayBuffer());
 };
 
@@ -122,6 +83,8 @@ export const useJpegSocketStream = (options: UseJpegSocketStreamOptions): void =
     fps = 15,
     jpegQuality = 0.7,
     maxBufferedBytes = 2_000_000,
+    targetWidth = 320,
+    targetHeight = 240,
   } = options;
 
   const { gl } = useThree();
@@ -194,34 +157,25 @@ export const useJpegSocketStream = (options: UseJpegSocketStreamOptions): void =
     return true;
   };
 
-  
   const sendFrame = async (): Promise<void> => {
     const ws = wsRef.current;
-
-    if (!ws) {
-      return;
-    }
+    if (!ws) return;
 
     const canvas = gl.domElement;
-const source = gl.domElement;
+    if (!(canvas instanceof HTMLCanvasElement)) return;
 
-    if (!(canvas instanceof HTMLCanvasElement)) {
-      return;
-    }
+    // Draw to offscreen synchronously before any await
+    const offscreen = document.createElement("canvas");
+    offscreen.width = targetWidth;
+    offscreen.height = targetHeight;
+    const ctx = offscreen.getContext("2d")!;
+    ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
 
-  if (isCanvasBlank(canvas)) return;  // <-- bail early
-    const jpegBytes = await canvasToJpegBytes(canvas, safeQuality);
-
-    const header = encodeU32BE(jpegBytes.byteLength);
-    const packet = new Uint8Array(4 + jpegBytes.byteLength);
-
-    packet.set(header, 0);
-    packet.set(jpegBytes, 4);
-
-    ws.send(packet.buffer);
+    // Now encode asynchronously from the offscreen canvas
+    const jpegBytes = await canvasToJpegBytes(offscreen, safeQuality);
+    ws.send(jpegBytes.buffer);
     markSent();
   };
-
   const maybeSendFrame = async (): Promise<void> => {
     if (!shouldSendNow()) {
       return;
