@@ -64,7 +64,14 @@ const Location = ({ scriptController, useScriptStateStore }: LocationProps) => {
       onAcross: () => {
         scriptController.triggerMethod('across')
       },
-      onTouch: () => {
+      onTouchOff: () => {
+        window.removeEventListener('keydown', onKeyDown)
+        scriptController.triggerMethod('touchoff')
+      },
+      onTouchOn: () => {
+        window.addEventListener('keydown', onKeyDown)
+        scriptController.triggerMethod('touchon')
+
         const touchMethod = scriptController.script.methods.find((method) => method.methodId === 'touch')
         const hasValidTouchMethod = isValidActionableMethod(touchMethod)
         if (hasValidTouchMethod) {
@@ -76,14 +83,6 @@ const Location = ({ scriptController, useScriptStateStore }: LocationProps) => {
         if (hasValidPushMethod) {
           scriptController.triggerMethod('push')
         }
-      },
-      onTouchOff: () => {
-        window.removeEventListener('keydown', onKeyDown)
-        scriptController.triggerMethod('touchoff')
-      },
-      onTouchOn: () => {
-        window.addEventListener('keydown', onKeyDown)
-        scriptController.triggerMethod('touchon')
       },
     },
     linePoints ?? [],

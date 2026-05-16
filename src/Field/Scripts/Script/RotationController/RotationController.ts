@@ -6,6 +6,29 @@ import { RefObject } from "react";
 import LerpValue from "../../../../LerpValue";
 import { framesToMs } from "../../../../timing";
 
+// A turn speed can be expressed as:
+//   - 'gentle': walking-style turn (~1s per half-revolution, 4 units/frame)
+//   - 'fast':   combat-style turn  (~0.5s per half-revolution, 8 units/frame)
+//   - a fixed frame count (e.g. 0 = instant snap, 30 = 1 second @ 30Hz)
+//   - a per-frame rate object, from which the frame count is derived from the
+//     angle delta — so a 180° turn takes twice as long as a 90° turn.
+export type TurnSpeed = 'gentle' | 'fast' | number | { ratePerFrame: number }
+
+const GENTLE_RATE_PER_FRAME = { ratePerFrame: 4 }
+const FAST_RATE = { ratePerFrame: 8 }
+
+const resolveSpeed = (speed: TurnSpeed): number | { ratePerFrame: number } => {
+  if (speed === 'gentle') return GENTLE_RATE_PER_FRAME
+  if (speed === 'fast') return FAST_RATE
+  return speed
+}
+
+const framesForSpeed = (speed: TurnSpeed, angleDelta: number) => {
+  const resolved = resolveSpeed(speed)
+  if (typeof resolved === 'number') return resolved
+  return Math.max(1, Math.ceil(angleDelta / resolved.ratePerFrame))
+}
+
 const createRotationController = (
   id: number | string,
   movementController: ReturnType<typeof createMovementController>,
@@ -36,7 +59,7 @@ const createRotationController = (
 
   const turnToFaceAngle = async (
     angle: number,
-    duration: number,
+    speed: TurnSpeed,
     direction: 'shortest' | 'clockwise' | 'counterclockwise' = 'shortest',
   ) => {
     const currentAngle = getState().angle
@@ -54,6 +77,8 @@ const createRotationController = (
     const limits = getState().limits
     const limitedAngle = limits ? Math.max(limits[0], Math.min(limits[1], targetAngle)) : targetAngle
 
+    const duration = framesForSpeed(speed, Math.abs(limitedAngle - current))
+
     if (duration === 0) {
       currentAngle.set(limitedAngle % 256)
       return
@@ -61,7 +86,7 @@ const createRotationController = (
     await currentAngle.start(limitedAngle % 256, framesToMs(duration));
   }
 
-  const turnToFaceDirection = async (direction: Vector3, duration: number) => {
+  const turnToFaceDirection = async (direction: Vector3, speed: TurnSpeed) => {
     const quaternion = entityRef.current?.quaternion.clone()
     if (!quaternion) {
       console.warn('No quaternion found')
@@ -75,18 +100,18 @@ const createRotationController = (
 
     const absoluteAngleFromZero = signedAngleBetweenVectors(zeroUnitDirection, direction, meshUp)
     const targetAngle = radiansToUnit(absoluteAngleFromZero)
-    await turnToFaceAngle(targetAngle, duration)
+    await turnToFaceAngle(targetAngle, speed)
   }
 
-  const turnToFaceVector = async (target: Vector3, duration: number) => {
+  const turnToFaceVector = async (target: Vector3, speed: TurnSpeed) => {
     if (target.equals(movementController.getPosition())) {
       return
     }
     const targetDirection = getDirectionToVector(target, movementController.getPosition())
-    await turnToFaceDirection(targetDirection, duration)
+    await turnToFaceDirection(targetDirection, speed)
   }
 
-  const turnToFaceEntity = async (name: string, scene: Scene, duration: number) => {
+  const turnToFaceEntity = async (name: string, scene: Scene, speed: TurnSpeed) => {
     const entity = scene.getObjectByName(name)
     if (!entity) {
       console.warn(`Entity ${name} not found in scene`)
@@ -94,7 +119,7 @@ const createRotationController = (
     }
     const target = entity.getWorldPosition(new Vector3())
 
-    await turnToFaceVector(target, duration)
+    await turnToFaceVector(target, speed)
   }
 
   const stop = () => {

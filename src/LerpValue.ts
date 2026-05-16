@@ -6,6 +6,7 @@ class LerpValue {
   private currentValue: number
   private duration: number
   private isLooping: boolean = false
+  private pendingResolve: (() => void) | null = null
   private speedMultiplier: number = 1.0
   private startTime: number
   private startValue: number
@@ -38,7 +39,17 @@ class LerpValue {
 
   start(targetValue: number, duration: number, delay: number = 0, isLooping: boolean = false): Promise<void> {
     return new Promise((resolve) => {
+      // stop() settles any previously-pending Promise (so an interrupted
+      // turn/lerp resolves rather than leaking forever), then we install
+      // ours as the new pending resolver.
       this.stop()
+      this.pendingResolve = resolve
+
+      const settle = () => {
+        const pending = this.pendingResolve
+        this.pendingResolve = null
+        pending?.()
+      }
 
       this.startValue = this.currentValue
       this.targetValue = targetValue
@@ -54,7 +65,7 @@ class LerpValue {
           if (this.isLooping) {
             this.start(this.targetValue, this.duration, 0, true)
           }
-          resolve()
+          settle()
           return
         }
 
@@ -80,7 +91,7 @@ class LerpValue {
             } else {
               this.isAnimating = false
               this.animationId = null
-              resolve()
+              settle()
             }
           }
         }
@@ -100,8 +111,11 @@ class LerpValue {
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId)
       this.animationId = null
-      this.isAnimating = false
     }
+    this.isAnimating = false
+    const pending = this.pendingResolve
+    this.pendingResolve = null
+    pending?.()
   }
 }
 

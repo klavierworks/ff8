@@ -134,8 +134,8 @@ const Camera = ({ backgroundPanRef, data }: CameraProps) => {
       finalPanX = clippedPanX - xPan / 256
       finalPanY = clippedPanY - yPan / 256
     } else {
-      finalPanX = xPan / 256
-      finalPanY = yPan / 256
+      finalPanX = -xPan / 256
+      finalPanY = -yPan / 256
     }
 
     const { RIGHT, UP } = WORLD_DIRECTIONS

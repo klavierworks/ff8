@@ -24,6 +24,7 @@ import { framesToMs, MS_PER_FRAME } from "../../../timing";
 const dummiedCommand = () => { }
 const unusedCommand = () => { }
 
+
 export const musicController = MusicController();
 
 type HandlerArgs = {
@@ -534,25 +535,28 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   },
   CSCROLLP2: unusedCommand,
 
-  // Turn to face entity
-  CTURN: ({ rotationController, scene, STACK }) => {
-    const duration = STACK.pop() as number;
+  // Pause the script while this character does a quick, combat-style turn to
+  // look at another character on screen. The turn is snappier than LTURN.
+  CTURN: async ({ rotationController, scene, STACK }) => {
+    STACK.pop() as number; // animation byte — stack-balance only
     const targetId = STACK.pop() as number;
 
-    rotationController.turnToFaceEntity(`entity--${targetId}`, scene, duration);
+    await rotationController.turnToFaceEntity(`entity--${targetId}`, scene, 'fast');
   },
 
-  // Turn to angle. The L/R suffix in the original is vestigial — both branches
-  // resolve to shortest-path in the binary, so we don't pass a direction hint.
+  // Pause the script while this character does a quick, combat-style turn to
+  // a specific compass direction. The L/R suffix in the original probably meant "favour
+  // turning left/right" but both branches collapse to the shortest path, so we
+  // don't pass a direction hint.
   CTURNL: async ({ rotationController, STACK }) => {
-    const duration = STACK.pop() as number;
+    STACK.pop() as number; // animation byte — stack-balance only
     const angle = STACK.pop() as number;
-    await rotationController.turnToFaceAngle(angle, duration);
+    await rotationController.turnToFaceAngle(angle, 'fast');
   },
   CTURNR: async ({ rotationController, STACK }) => {
-    const duration = STACK.pop() as number;
+    STACK.pop() as number; // animation byte — stack-balance only
     const angle = STACK.pop() as number;
-    await rotationController.turnToFaceAngle(angle, duration);
+    await rotationController.turnToFaceAngle(angle, 'fast');
   },
 
   DCOLADD: ({ STACK }) => {
@@ -590,23 +594,27 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     }));
   },
   DEBUG: unusedCommand,
+  // Snap this character to face a given compass direction instantly — no
+  // turning animation, they just pop to the new orientation.
   DIR: ({ rotationController, STACK }) => {
     const angle = STACK.pop() as number;
     rotationController.turnToFaceAngle(angle, 0);
   },
+  // Snap this character to face another character on screen instantly.
   DIRA: ({ rotationController, scene, STACK }) => {
     const targetActorId = STACK.pop() as number;
     rotationController.turnToFaceEntity(`entity--${targetActorId}`, scene, 0);
   },
 
-  // I think this sets rotation to a vector?
+  // Snap this character to face a specific spot in the world instantly,
+  // given as an (x, y, z) point rather than an angle.
   DIRP: ({ rotationController, STACK }) => {
     const z = STACK.pop() as number;
-    const y = STACK.pop() as number; 
+    const y = STACK.pop() as number;
     const x = STACK.pop() as number;
-    
-    const directionVector = vectorToFloatingPoint({x, y, z});
-    rotationController.turnToFaceDirection(directionVector, 0);
+
+    const worldTarget = vectorToFloatingPoint({ x, y, z });
+    rotationController.turnToFaceVector(worldTarget, 0);
   },
   DISC: ({ STACK }) => {
     STACK.pop() as number;
@@ -655,7 +663,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const y = STACK.pop() as number;
     const x = STACK.pop() as number;
 
-    setCameraScroll(x, y, 0, 'camera');
+    setCameraScroll(x, y, 0, 'level');
   },
   DSCROLL2: async ({ STACK }) => {
     const y = STACK.pop() as number;
@@ -663,7 +671,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
 
     const layerID = STACK.pop() as number;
 
-    setLayerScroll(layerID, x, y, 0, 'camera');
+    setLayerScroll(layerID, x, y, 0, 'level');
   },
   DSCROLL3: unusedCommand,
   DSCROLLA: async ({ scene, STACK }) => {
@@ -1203,20 +1211,27 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     setCameraAndLayerFocus(mesh, duration);
   },
   LSCROLLP2: unusedCommand,
-  LTURN: async ({ rotationController, STACK }) => {
-    const duration = STACK.pop() as number;
-    const angle = STACK.pop() as number;
-    await rotationController.turnToFaceAngle(angle, duration);
+  // Pause the script while this character does a slow, walking-style turn to
+  // look at another character on screen. Gentler and more natural-looking
+  // than CTURN.
+  LTURN: async ({ rotationController, scene, STACK }) => {
+    STACK.pop() as number; // animation byte — stack-balance only
+    const targetId = STACK.pop() as number;
+    await rotationController.turnToFaceEntity(`entity--${targetId}`, scene, 'gentle');
   },
+  // Pause the script while this character does a slow, walking-style turn to
+  // a specific compass direction. The L/R suffix in the original probably meant
+  // "favour turning left/right" but both branches collapse to the shortest
+  // path, so we don't pass a direction hint.
   LTURNL: async ({ rotationController, STACK }) => {
-    const duration = STACK.pop() as number;
+    STACK.pop() as number; // animation byte — stack-balance only
     const angle = STACK.pop() as number;
-    await rotationController.turnToFaceAngle(angle, duration);
+    await rotationController.turnToFaceAngle(angle, 'gentle');
   },
   LTURNR: async ({ rotationController, STACK }) => {
-    const duration = STACK.pop() as number;
+    STACK.pop() as number; // animation byte — stack-balance only
     const angle = STACK.pop() as number;
-    await rotationController.turnToFaceAngle(angle, duration);
+    await rotationController.turnToFaceAngle(angle, 'gentle');
   },
   MACCEL: ({ STACK }) => {
     STACK.pop() as number;
@@ -1463,20 +1478,17 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     STACK.pop() as number;
   },
   PCOPYINFO: unusedCommand,
-  PCTURN: ({  rotationController, scene, STACK }) => {
-    const duration = STACK.pop() as number;
+  // Pause the script while this character does a quick, combat-style turn to
+  // look at one of the active party members.
+  PCTURN: async ({ rotationController, scene, STACK }) => {
+    STACK.pop() as number; // animation byte — stack-balance only
     const partyMemberId = STACK.pop() as number;
-    rotationController.turnToFaceEntity(`party--${partyMemberId}`, scene, duration);
+    await rotationController.turnToFaceEntity(`party--${partyMemberId}`, scene, 'fast');
   },
-  // Retrieves the current angle of player
-  PDIRA: ({ scene, STACK }) => {
+  // Snap this character to face one of the active party members instantly.
+  PDIRA: ({ rotationController, scene, STACK }) => {
     const partyMemberId = STACK.pop() as number;
-    const player = getPartyMemberModelComponent(scene, partyMemberId);
-    if (!player) {
-      console.warn('No player found for party member ID', partyMemberId);
-      return;
-    }
-    STACK.push((player.userData.rotationController as HandlerArgs['rotationController']).getState().angle.get())
+    rotationController.turnToFaceEntity(`party--${partyMemberId}`, scene, 0);
   },
   PGETINFO: ({ scene, script, STACK, TEMP_STACK }) => {
     const partyMemberId = STACK.pop() as number;
@@ -1514,8 +1526,12 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
 
     movementController.jumpToPosition(targetPoint, 32);
   },
-  PLTURN: async ({ rotationController, scene }) => {
-    await rotationController.turnToFaceEntity(`party--0`, scene, 0);
+  // Pause the script while this character does a slow, walking-style turn to
+  // look at one of the active party members.
+  PLTURN: async ({ rotationController, scene, STACK }) => {
+    STACK.pop() as number; // animation byte — stack-balance only
+    const partyMemberId = STACK.pop() as number;
+    await rotationController.turnToFaceEntity(`party--${partyMemberId}`, scene, 'gentle');
   },
 
   // PMOVEA: move to party member
@@ -1581,11 +1597,11 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     await remoteExecutePartyMember(scene, partyMemberIndex, label, priority, true)
     console.log('end preqew', partyMemberIndex, label, priority)
   },
-  PREQSW: ({ currentOpcode, scene, STACK }) => {
+  PREQSW: async ({ currentOpcode, scene, STACK }) => {
     const partyMemberIndex = currentOpcode.param as number;
     const label = STACK.pop() as number;
     const priority = STACK.pop() as number;
-    remoteExecutePartyMember(scene, partyMemberIndex, label, priority, true)
+    await remoteExecutePartyMember(scene, partyMemberIndex, label, priority, true, 'start')
   },
   PSHAC: ({ currentOpcode, STACK }) => {
     STACK.push(currentOpcode.param);
@@ -1788,10 +1804,10 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     console.log('REQEW', script.name, label, priority)
     await remoteExecute(label, priority, true)
   },
-  REQSW: ({ STACK }) => {
+  REQSW: async ({ STACK }) => {
     const label = STACK.pop() as number;
     const priority = STACK.pop();
-    remoteExecute(label, priority, true)
+    await remoteExecute(label, priority, true, 'start')
   },
   // Removes GFs from character. Unsure if stashes details in memory for recall
   RESETGF: ({ STACK }) => {
@@ -2246,13 +2262,21 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     STACK.pop() as number;
   },
   UNKNOWN10: dummiedCommand,
-  UNKNOWN11: async ({ rotationController, STACK }) => {
-    const startAngle = STACK.pop() as number;
-    const endAngle = STACK.pop() as number;
-    await rotationController.turnToFaceAngle(startAngle, 0)
-    await rotationController.turnToFaceAngle(endAngle, 0)
+  // Start turning this character to look at a party member without pausing
+  // the script — the turn keeps playing in the background while later
+  // opcodes run. Use UNKNOWN12 (PIVOT_SYNC) later to wait for it to finish.
+  UNKNOWN11: ({ rotationController, scene, STACK }) => {
+    STACK.pop() as number; // animation byte — stack-balance only
+    const partyMemberId = STACK.pop() as number;
+    rotationController.turnToFaceEntity(`party--${partyMemberId}`, scene, 'fast');
   }, // "PIVOT"
-  UNKNOWN12: () => {}, // "PIVOT_SYNC"
+  // Pause the script here until the background pivot turn started by
+  // UNKNOWN11 has finished playing.
+  UNKNOWN12: async ({ rotationController }) => {
+    while (rotationController.getState().angle.isAnimating) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+  }, // "PIVOT_SYNC"
   UNKNOWN13: ({ STACK }) => {
     STACK.pop() as number;
   },
@@ -2283,29 +2307,34 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   UNKNOWN4: ({ STACK }) => {
     STACK.pop() as number;
   },
-  // CLOCKWISETURN — forced-clockwise lerp turn
-  UNKNOWN6: ({ rotationController, STACK }) => {
-    const duration = STACK.pop() as number;
+  // Pause the script while this character does a slow, walking-style turn to
+  // a specific compass direction, forced to spin clockwise even when the
+  // shorter route would be counter-clockwise (useful for dramatic spins).
+  UNKNOWN6: async ({ rotationController, STACK }) => {
+    STACK.pop() as number; // animation byte — stack-balance only
     const angle = STACK.pop() as number;
-    rotationController.turnToFaceAngle(angle, duration, 'clockwise');
+    await rotationController.turnToFaceAngle(angle, 'gentle', 'clockwise');
   },
-  // COUNTERCLOCKWISETURN — forced-counter-clockwise lerp turn
-  UNKNOWN7: ({ rotationController, STACK }) => {
-    const duration = STACK.pop() as number;
+  // Pause the script while this character does a slow, walking-style turn to
+  // a specific compass direction, forced to spin counter-clockwise.
+  UNKNOWN7: async ({ rotationController, STACK }) => {
+    STACK.pop() as number; // animation byte — stack-balance only
     const angle = STACK.pop() as number;
-    rotationController.turnToFaceAngle(angle, duration, 'counterclockwise');
+    await rotationController.turnToFaceAngle(angle, 'gentle', 'counterclockwise');
   },
-  // CLOCKWISETURN2 — forced-clockwise constant turn (walking-turn variant)
-  UNKNOWN8: ({ rotationController, STACK }) => {
-    const duration = STACK.pop() as number;
+  // Pause the script while this character does a quick, combat-style turn to
+  // a specific compass direction, forced to spin clockwise.
+  UNKNOWN8: async ({ rotationController, STACK }) => {
+    STACK.pop() as number; // animation byte — stack-balance only
     const angle = STACK.pop() as number;
-    rotationController.turnToFaceAngle(angle, duration, 'clockwise');
+    await rotationController.turnToFaceAngle(angle, 'fast', 'clockwise');
   },
-  // COUNTERCLOCKWISETURN2 — forced-counter-clockwise constant turn (walking-turn variant)
-  UNKNOWN9: ({ rotationController, STACK }) => {
-    const duration = STACK.pop() as number;
+  // Pause the script while this character does a quick, combat-style turn to
+  // a specific compass direction, forced to spin counter-clockwise.
+  UNKNOWN9: async ({ rotationController, STACK }) => {
+    STACK.pop() as number; // animation byte — stack-balance only
     const angle = STACK.pop() as number;
-    rotationController.turnToFaceAngle(angle, duration, 'counterclockwise');
+    await rotationController.turnToFaceAngle(angle, 'fast', 'counterclockwise');
   },
   UNUSE: ({ setState }) => {
     setState({ isUnused: true })

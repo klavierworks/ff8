@@ -14,6 +14,7 @@ import createScriptState from '../state'
 
 type QueueItem = {
   activeOpcodeIndex: number
+  hasStarted: boolean
   isAwaiting: boolean
   isGuaranteed: boolean
   isLooping: boolean
@@ -21,6 +22,8 @@ type QueueItem = {
   priority: number
   uniqueId: string
 }
+
+type WaitMode = 'start' | 'end'
 
 const createScriptController = ({
   animationController,
@@ -50,16 +53,27 @@ const createScriptController = ({
     script,
   }))
 
-  const triggerMethodByIndex = async (methodIndex: number, priority = 10, isGuaranteed = false) => {
+  const triggerMethodByIndex = async (
+    methodIndex: number,
+    priority = 10,
+    isGuaranteed = false,
+    waitMode: WaitMode = 'end',
+  ) => {
     const method = script.methods[methodIndex]
     if (!method) {
       console.trace(`Method with index ${methodIndex} not found in script for ${script.groupId}`)
       return
     }
-    await triggerMethod(method.methodId, priority, isGuaranteed)
+    await triggerMethod(method.methodId, priority, true, isGuaranteed, waitMode)
   }
 
-  const triggerMethod = async (methodId: string, priority = 10, canDuplicate = false, isGuaranteed = false) => {
+  const triggerMethod = async (
+    methodId: string,
+    priority = 10,
+    canDuplicate = false,
+    isGuaranteed = false,
+    waitMode: WaitMode = 'end',
+  ) => {
     const method = script.methods.find((method) => method.methodId === methodId)
     if (!method) {
       console.warn(`Method with id ${methodId} not found in script for ${script.groupId}`)
@@ -76,6 +90,7 @@ const createScriptController = ({
 
     addToQueue({
       activeOpcodeIndex: 0,
+      hasStarted: false,
       isAwaiting: false,
       isGuaranteed,
       isLooping,
@@ -84,14 +99,15 @@ const createScriptController = ({
       uniqueId,
     })
 
+    const eventName = waitMode === 'start' ? 'scriptStart' : 'scriptEnd'
     return new Promise<void>((resolve) => {
       const handler = ({ detail }: { detail: string }) => {
         if (detail === uniqueId) {
-          document.removeEventListener('scriptEnd', handler)
+          document.removeEventListener(eventName, handler)
           resolve()
         }
       }
-      document.addEventListener('scriptEnd', handler)
+      document.addEventListener(eventName, handler)
     })
   }
 
@@ -184,8 +200,13 @@ const createScriptController = ({
       return
     }
 
+    if (!queueItem.hasStarted) {
+      document.dispatchEvent(new CustomEvent('scriptStart', { detail: uniqueId }))
+    }
+
     updateQueueItem({
       ...queueItem,
+      hasStarted: true,
       isAwaiting: true,
     })
 

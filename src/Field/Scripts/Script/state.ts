@@ -94,10 +94,10 @@ const createScriptState = (script: Script) => {
 
     pendingBackgroundMusic: undefined,
     pendingBackgroundMusicSrc: undefined,
-    pushRadius: 0,
+    pushRadius: 48,
 
     spuValue: 0,
-    talkRadius: 100,
+    talkRadius: 128,
 
     winSize: {},
   }))

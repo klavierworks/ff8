@@ -1,6 +1,6 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Box3, Mesh, Object3D } from 'three'
+import { Box3, Mesh, Sphere, Vector3 } from 'three'
 
 import { CONTROLS_MAP } from '../../../../constants/controls'
 import useGlobalStore from '../../../../store'
@@ -13,7 +13,7 @@ type useTalkRadiusProps = {
   isActive: boolean
   scriptController: ReturnType<typeof createScriptController>
   talkMethod: ScriptMethod | undefined
-  talkTargetRef: React.RefObject<null | Object3D>
+  talkTargetRef: React.RefObject<Mesh | null>
   useScriptStateStore: ScriptStateStore
 }
 
@@ -45,8 +45,9 @@ const useTalkRadius = ({
 
   const [isIntersecting, setIsIntersecting] = useState(false)
 
-  const talkSphereBoxRef = useRef<Box3>(new Box3())
+  const reusableSphere = useRef(new Sphere())
   const characterBoxRef = useRef<Box3>(new Box3())
+  const tempVector = useRef(new Vector3())
 
   useFrame(({ scene }) => {
     if (!isActive || !isPlayerAbleToTalk || !talkTargetRef.current) {
@@ -63,10 +64,24 @@ const useTalkRadius = ({
       return
     }
 
-    talkSphereBoxRef.current.setFromObject(talkTargetRef.current)
-    characterBoxRef.current.setFromObject(meshHitbox)
+    if (!talkTargetRef.current.geometry.boundingSphere) {
+      talkTargetRef.current.geometry.computeBoundingSphere()
+      return
+    }
 
-    const isIntersecting = talkSphereBoxRef.current.intersectsBox(characterBoxRef.current)
+    const sphere = reusableSphere.current.copy(talkTargetRef.current.geometry.boundingSphere)
+    talkTargetRef.current.getWorldPosition(tempVector.current)
+    sphere.center.copy(tempVector.current)
+
+    const worldScale = Math.max(
+      talkTargetRef.current.scale.x,
+      talkTargetRef.current.scale.y,
+      talkTargetRef.current.scale.z,
+    )
+    sphere.radius *= worldScale
+
+    characterBoxRef.current.setFromObject(meshHitbox)
+    const isIntersecting = sphere.intersectsBox(characterBoxRef.current)
     setIsIntersecting(isIntersecting)
   })
 

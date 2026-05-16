@@ -261,21 +261,20 @@ const Model = ({
   return (
     <group>
       {hasPushableSphere && (
-        <Sphere args={[(0.1 / 500) * pushRadius, 16, 16]} ref={pushableSphereRef} visible={isDebugMode}>
+        <Sphere args={[pushRadius / 4096, 16, 16]} ref={pushableSphereRef} visible={isDebugMode}>
           <meshBasicMaterial color="green" opacity={0.2} side={DoubleSide} transparent />
         </Sphere>
       )}
       {hasTalkableSphere && (
-        <Box
-          args={characterDimensions.toArray().map((i) => (i * talkRadius) / 50) as [number, number, number]}
+        <Sphere
+          args={[talkRadius / 4096, 16, 16]}
           name="talkRadius"
-          position={[0, 0, characterDimensions.z / 2.5]}
           ref={talkRadiusRef}
           userData={{ isSolid: false }}
           visible={isDebugMode}
         >
-          <meshBasicMaterial color="white" opacity={1} wireframe />
-        </Box>
+          <meshBasicMaterial color="white" opacity={0.2} side={DoubleSide} transparent wireframe />
+        </Sphere>
       )}
       <Box
         args={characterDimensions.toArray().map((i) => i + 0.01) as [number, number]}

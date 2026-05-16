@@ -44,6 +44,7 @@ declare global {
     messageClosed: CustomEvent<{ id: string; selectedOption: number }>
     scriptEnd: CustomEvent<string>
     scriptFinished: CustomEvent<{ key: string }>
+    scriptStart: CustomEvent<string>
   }
 
   type Door = FieldData['doors'][number] & {
@@ -54,6 +55,7 @@ declare global {
     key: string
     priority: number
     scriptLabel: number
+    waitMode?: 'start' | 'end'
   }
 
   type FormattedGateway = {

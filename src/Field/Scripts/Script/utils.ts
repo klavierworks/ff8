@@ -11,7 +11,12 @@ export const unusedCommand = () => {}
 
 export const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-export const remoteExecute = async (scriptLabel: number, priority = 10, isGuaranteed = false) =>
+export const remoteExecute = async (
+  scriptLabel: number,
+  priority = 10,
+  isGuaranteed = false,
+  waitMode: 'start' | 'end' = 'end',
+) =>
   new Promise<void>((resolve) => {
     const key = Math.random().toString(36).substring(7)
 
@@ -32,6 +37,7 @@ export const remoteExecute = async (scriptLabel: number, priority = 10, isGuaran
           key,
           priority,
           scriptLabel,
+          waitMode,
         } as ExecuteScriptEventDetail,
       }),
     )
@@ -43,6 +49,7 @@ export const remoteExecutePartyMember = async (
   scriptLabel: number,
   priority = 10,
   isGuaranteed = false,
+  waitMode: 'start' | 'end' = 'end',
 ) => {
   const actor = getPartyMemberModelComponent(scene, partyMemberIndex)
   if (!actor) {
@@ -56,9 +63,7 @@ export const remoteExecutePartyMember = async (
     console.warn(`Script controller not found for party member ${partyMemberIndex}`)
     return
   }
-  console.log(`Executing script ${scriptLabel} on party member ${partyMemberIndex} ${partyMemberIndex}`)
-  await scriptController.triggerMethodByIndex(scriptLabel, priority, isGuaranteed)
-  console.log(`Finished script ${scriptLabel} on party member ${partyMemberIndex} ${partyMemberIndex}`)
+  await scriptController.triggerMethodByIndex(scriptLabel, priority, isGuaranteed, waitMode)
 }
 
 export const openMessage = (

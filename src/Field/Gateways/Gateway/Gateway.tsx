@@ -5,7 +5,7 @@ import useGlobalStore from '../../../store'
 import { vectorToFloatingPoint } from '../../../utils'
 import { FieldData } from '../../Field'
 import LineBlock from '../../LineBlock/LineBlock'
-import useIntersection from '../../Scripts/Script/useIntersection'
+import useIntersection, { STATES } from '../../Scripts/Script/useIntersection'
 
 const Gateway = ({
   gateway,
@@ -24,12 +24,20 @@ const Gateway = ({
   }, [gateway])
 
   const isMapJumpEnabled = useGlobalStore((state) => state.isMapJumpEnabled)
+  const spawnSideRef = useRef<STATES>(undefined)
 
   useIntersection(
     lineRef,
     isMapJumpEnabled,
     {
-      onTouchOn: () => onIntersect(formattedGateway),
+      onInitialized: (side) => {
+        spawnSideRef.current = side
+      },
+      onTouchOn: (entrySide) => {
+        if (entrySide === spawnSideRef.current) {
+          onIntersect(formattedGateway)
+        }
+      },
     },
     formattedGateway.sourceLine,
   )
