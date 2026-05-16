@@ -6,7 +6,9 @@ import JumpCurve from "./JumpCurve";
 import { isTouching } from "../common";
 import type WalkmeshMovementController from "../../../WalkMesh/WalkmeshMovement";
 import WorldmapMeshController from "../../../Worldmap/WorldmapMovementController";
-import { framesToSeconds } from "../../../../timing";
+import { framesToSeconds, TARGET_FPS } from "../../../../timing";
+
+const NATIVE_SPEED_TO_TS_PER_FRAME = 1 / (256 * 4096);
 
 type MoveOptions = {
   customMovementTarget: undefined | Vector3
@@ -388,8 +390,8 @@ const createMovementController = (
 
     const positionGoal = waypoints?.[0]
     if (positionGoal) {
-      const speed = movementSpeed / 2560
-      const maxDistance = speed * delta * (duration && duration > 0 ? duration : 1)
+      const speedPerSecond = movementSpeed * NATIVE_SPEED_TO_TS_PER_FRAME * TARGET_FPS
+      const maxDistance = speedPerSecond * delta
 
       const remainingDistance = currentPosition.distanceTo(positionGoal)
 
@@ -421,7 +423,7 @@ const createMovementController = (
         })
       } else {
         const direction = positionGoal.clone().sub(currentPosition).normalize()
-        const desiredNextPos = currentPosition.clone().add(direction.multiplyScalar(maxDistance).divideScalar(10))
+        const desiredNextPos = currentPosition.clone().add(direction.multiplyScalar(maxDistance))
         currentPosition.copy(desiredNextPos)
         const triangle = walkmeshController.getTriangleForPosition(currentPosition)
         if (triangle !== null && triangle !== undefined && triangle !== getState().position.walkmeshTriangle) {

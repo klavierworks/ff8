@@ -125,7 +125,10 @@ export const createAnimationController = (id: number | string) => {
       return
     }
 
-    currentRunState.time += currentRunState.direction * delta
+    const animationSpeed = getState().animationSpeed
+
+    // "Normal" animation speed is 16.
+    currentRunState.time += currentRunState.direction * delta * (animationSpeed / 16)
 
     if (currentRunState.time >= endTime && activeAnimation.isLooping && direction === 1) {
       currentRunState.time = startTime
@@ -385,7 +388,7 @@ export const createAnimationController = (id: number | string) => {
 
     if (!movementSpeed) {
       playMovementAnimation('standing')
-    } else if (movementSpeed > 3600) {
+    } else if (movementSpeed >= 2696) {
       playMovementAnimation('running')
     } else {
       playMovementAnimation('walking')

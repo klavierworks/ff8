@@ -12,7 +12,7 @@ import useKeyboardControls from './useKeyboardControls'
 
 export const SPEED = {
   RUNNING: 0.175,
-  WALKING: 0.06,
+  WALKING: 0.08,
 }
 
 type useControlsProps = {
@@ -183,7 +183,7 @@ const useControls = ({ characterHeight, isActive, movementController, rotationCo
       movementController.setPosition(newPosition)
       movementController.setHasMoved(true)
 
-      const movementSpeed = isWalking ? 2560 : 7560
+      const movementSpeed = isWalking ? 2560 : 7929
       return [newPosition, movementSpeed]
     },
     [
