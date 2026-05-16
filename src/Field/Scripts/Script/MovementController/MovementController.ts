@@ -1,13 +1,12 @@
-import { Line3, Object3D, Scene, Vector3 } from 'three'
-import { create } from 'zustand'
-
-import type WalkmeshMovementController from '../../../WalkMesh/WalkmeshMovement'
-
-import PromiseSignal from '../../../../PromiseSignal'
-import { numberToFloatingPoint } from '../../../../utils'
-import WorldmapMeshController from '../../../Worldmap/WorldmapMovementController'
-import { isTouching } from '../common'
-import JumpCurve from './JumpCurve'
+import { Line3, Object3D, Scene, Vector3 } from "three";
+import { create } from "zustand";
+import { numberToFloatingPoint } from "../../../../utils";
+import PromiseSignal from "../../../../PromiseSignal";
+import JumpCurve from "./JumpCurve";
+import { isTouching } from "../common";
+import type WalkmeshMovementController from "../../../WalkMesh/WalkmeshMovement";
+import WorldmapMeshController from "../../../Worldmap/WorldmapMovementController";
+import { framesToSeconds } from "../../../../timing";
 
 type MoveOptions = {
   customMovementTarget: undefined | Vector3
@@ -443,8 +442,8 @@ const createMovementController = (
     const { current: currentOffset, duration: offsetDuration, goal: offsetGoal, totalDistance } = offset
 
     if (offsetGoal) {
-      const durationInSeconds = offsetDuration / 25
-      const remainingDistance = currentOffset.distanceTo(offsetGoal)
+      const durationInSeconds = framesToSeconds(offsetDuration);
+      const remainingDistance = currentOffset.distanceTo(offsetGoal);
 
       if (remainingDistance < 0.0005 || durationInSeconds <= 0) {
         currentOffset.copy(offsetGoal)
@@ -468,8 +467,8 @@ const createMovementController = (
 
     const { curve, directLine, duration: jumpDuration, progress } = jump
     if (directLine && curve) {
-      const durationInSeconds = jumpDuration / 25
-      const remainingProgress = Math.abs(1 - progress)
+      const durationInSeconds = framesToSeconds(jumpDuration);
+      const remainingProgress = Math.abs(1 - progress);
 
       if (remainingProgress < 0.001 || durationInSeconds <= 0) {
         resolvePendingJumpSignal()

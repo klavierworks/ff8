@@ -1,8 +1,8 @@
-import { useFrame, useThree } from '@react-three/fiber'
-import { useCallback, useRef } from 'react'
-import { MathUtils } from 'three'
-
-import useGlobalStore from '../store'
+import { useCallback, useRef } from "react";
+import useGlobalStore from "../store";
+import { useFrame, useThree } from "@react-three/fiber";
+import { MathUtils } from "three";
+import { framesToSeconds } from "../timing";
 
 const useScrollTransition = (type: 'camera' | 'layer', layerID?: number) => {
   const currentValue = useRef({
@@ -59,9 +59,9 @@ const useScrollTransition = (type: 'camera' | 'layer', layerID?: number) => {
       transitionState.current.startTime = state.clock.elapsedTime
     }
 
-    const { duration, endX, endY, positioning, startX, startY } = transitionState.current.currentTransition
-    const elapsed = state.clock.elapsedTime - transitionState.current.startTime
-    const progress = duration === 0 ? 1 : Math.min(elapsed / (duration / 30), 1)
+    const { startX, endX, startY, endY, duration, positioning } = transitionState.current.currentTransition;
+    const elapsed = state.clock.elapsedTime - transitionState.current.startTime;
+    const progress = duration === 0 ? 1 : Math.min(elapsed / framesToSeconds(duration), 1);
 
     const isSimpleLerp =
       (positioning === 'camera' && type === 'camera') || (positioning === 'level' && type === 'layer')

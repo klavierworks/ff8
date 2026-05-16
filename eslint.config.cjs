@@ -109,6 +109,7 @@ module.exports = defineConfig([{
         "jsx-a11y/no-noninteractive-tabindex": OFF,
         "jsx-a11y/no-static-element-interactions": OFF,
         "no-console": OFF,
+        "no-dupe-keys": ERROR,
         radix: [ERROR, "as-needed"],
         "react-hooks/exhaustive-deps": ERROR,
         "react-hooks/rules-of-hooks": ERROR,

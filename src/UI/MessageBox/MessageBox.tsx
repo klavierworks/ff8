@@ -1,15 +1,15 @@
-import { Plane, useTexture } from '@react-three/drei'
-import { invalidate, useFrame } from '@react-three/fiber'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CanvasTexture, ClampToEdgeWrapping, RepeatWrapping, Scene, Texture } from 'three'
+import { Plane, useTexture } from "@react-three/drei"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { CanvasTexture, ClampToEdgeWrapping, RepeatWrapping, Scene, Texture } from "three"
+import { SCREEN_HEIGHT, SCREEN_WIDTH } from "../../constants/constants"
+import { invalidate, useFrame } from "@react-three/fiber"
+import { formatNameTags } from "../textUtils.ts"
+import useGlobalStore from "../../store.ts"
+import { FontColor, Modifier, Placement } from "../textTypes.ts"
+import { saveGame } from "../../Field/fieldUtils.ts"
+import { closeMessage } from "../../Field/Scripts/Script/utils.ts"
+import { CONTROLS_MAP } from "../../constants/controls.ts"
 
-import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../constants/constants'
-import { CONTROLS_MAP } from '../../constants/controls.ts'
-import { saveGame } from '../../Field/fieldUtils.ts'
-import { closeMessage } from '../../Field/Scripts/Script/utils.ts'
-import useGlobalStore from '../../store.ts'
-import { FontColor, Modifier, Placement } from '../textTypes.ts'
-import { formatNameTags } from '../textUtils.ts'
 import {
   calculateSafePlacement,
   calculateScaledDimensions,
@@ -23,6 +23,7 @@ import {
   processTextLayout,
   updateScale,
 } from './messageBoxUtils'
+import { framesToMs } from "../../timing.ts"
 
 type MessageBoxProps = {
   isCloseableFocus: boolean
@@ -257,7 +258,7 @@ const MessageBox = ({ isCloseableFocus, isSavePoint, message, worldScene }: Mess
       return false
     }
 
-    if (pausedAtTime && Date.now() - pausedAtTime < (placement.duration / 25) * 500) {
+    if (pausedAtTime && Date.now() - pausedAtTime < framesToMs(placement.duration)) {
       return true
     }
 

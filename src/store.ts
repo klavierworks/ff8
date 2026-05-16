@@ -74,7 +74,6 @@ interface GlobalState {
 
   isMapSuspended: boolean
   isOfflineSupported: boolean
-  isPartyFollowing: boolean
 
   isPlayerClimbingLadder: boolean
 
@@ -120,6 +119,7 @@ interface GlobalState {
   >
 
   party: number[]
+  partyMembersFollowing: number[]
   pendingCharacterPosition: undefined | Vector3
 
   pendingFieldId: (typeof MAP_NAMES)[number] | undefined
@@ -189,7 +189,6 @@ const INITIAL_STATE: GlobalState = {
 
   isMapSuspended: false,
   isOfflineSupported: false,
-  isPartyFollowing: true,
 
   isPlayerClimbingLadder: false,
 
@@ -208,8 +207,9 @@ const INITIAL_STATE: GlobalState = {
 
   party: [0],
   pendingCharacterPosition: undefined,
-
   pendingFieldId: undefined as unknown as (typeof MAP_NAMES)[number],
+
+  partyMembersFollowing: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   playerMovementSpeed: 0,
   sleepingParty: [],
   spuValue: 0,

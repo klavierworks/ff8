@@ -1,5 +1,6 @@
-import { Howl } from 'howler'
-import { create } from 'zustand'
+import {Howl} from 'howler'
+import { create } from 'zustand';
+import { framesToMs } from '../../../timing';
 
 const BASE_VOLUME = 0.4
 
@@ -105,7 +106,7 @@ const MusicController = () => {
     if (!audio) {
       return
     }
-    audio.fade(audio.volume(), (volume / 127) * BASE_VOLUME, duration * 30)
+    audio.fade(audio.volume(), volume / 127 * BASE_VOLUME, framesToMs(duration));
   }
 
   const setBattleMusic = (musicId: number) => {

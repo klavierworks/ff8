@@ -1,15 +1,10 @@
-import { RefObject } from 'react'
-import { Object3D, Scene, Vector3 } from 'three'
-import { create } from 'zustand'
-
-import LerpValue from '../../../../LerpValue'
-import createMovementController from '../MovementController/MovementController'
-import {
-  getDirectionToVector,
-  getShortestRouteToAngle,
-  radiansToUnit,
-  signedAngleBetweenVectors,
-} from './rotationUtils'
+import { Object3D, Scene, Vector3 } from "three";
+import { create } from "zustand";
+import createMovementController from "../MovementController/MovementController";
+import { getDirectionToVector, getShortestRouteToAngle, radiansToUnit, signedAngleBetweenVectors } from "./rotationUtils";
+import { RefObject } from "react";
+import LerpValue from "../../../../LerpValue";
+import { framesToMs } from "../../../../timing";
 
 const createRotationController = (
   id: number | string,
@@ -42,10 +37,19 @@ const createRotationController = (
   const turnToFaceAngle = async (
     angle: number,
     duration: number,
-    _direction: 'either' | 'left' | 'right' = 'either',
+    direction: 'shortest' | 'clockwise' | 'counterclockwise' = 'shortest',
   ) => {
     const currentAngle = getState().angle
-    const targetAngle = getShortestRouteToAngle(angle, currentAngle.get())
+    const current = currentAngle.get();
+
+    let targetAngle: number;
+    if (direction === 'clockwise') {
+      targetAngle = current < angle ? angle - 256 : angle;
+    } else if (direction === 'counterclockwise') {
+      targetAngle = current > angle ? angle + 256 : angle;
+    } else {
+      targetAngle = getShortestRouteToAngle(angle, current);
+    }
 
     const limits = getState().limits
     const limitedAngle = limits ? Math.max(limits[0], Math.min(limits[1], targetAngle)) : targetAngle
@@ -54,7 +58,7 @@ const createRotationController = (
       currentAngle.set(limitedAngle % 256)
       return
     }
-    await currentAngle.start(limitedAngle % 256, (duration * 1000) / 30)
+    await currentAngle.start(limitedAngle % 256, framesToMs(duration));
   }
 
   const turnToFaceDirection = async (direction: Vector3, duration: number) => {

@@ -1,4 +1,4 @@
-const FPS = 30
+import { framesToMs } from "./timing"
 
 class LerpValue {
   public isAnimating: boolean = false
@@ -22,7 +22,7 @@ class LerpValue {
   }
 
   calculateDuration(speed: number): number {
-    return (speed / FPS) * 1000 * this.speedMultiplier
+    return framesToMs(speed) * this.speedMultiplier;
   }
 
   get(): number {
