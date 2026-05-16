@@ -54,6 +54,42 @@ const MusicController = () => {
     preloadedSrc = undefined
   }
 
+  // Crossfade the preloaded track in on channel 0, fading any existing
+  // track out over the same duration. Volume is a 0–127 PSX/AKAO value.
+  const crossMusic = (volume: number, fadeFrames: number) => {
+    if (!preloadedAudio) {
+      console.warn('No music preloaded for CROSSMUSIC')
+      return
+    }
+    const targetVolume = ((volume & 0x7F) / 127) * BASE_VOLUME
+    const fadeMs = framesToMs(fadeFrames)
+
+    if (preloadedSrc === channel0Src && channel0) {
+      channel0.fade(channel0.volume(), targetVolume, fadeMs)
+      preloadedAudio = undefined
+      preloadedSrc = undefined
+      return
+    }
+
+    if (channel0) {
+      const outgoing = channel0
+      outgoing.fade(outgoing.volume(), 0, fadeMs)
+      outgoing.once('fade', () => {
+        outgoing.stop()
+      })
+    }
+
+    const incoming = preloadedAudio
+    incoming.volume(0)
+    incoming.play()
+    incoming.fade(0, targetVolume, fadeMs)
+
+    channel0 = incoming
+    channel0Src = preloadedSrc
+    preloadedAudio = undefined
+    preloadedSrc = undefined
+  }
+
   const dualMusic = (volume: number) => {
     setVolume(1, volume * BASE_VOLUME)
 
@@ -114,6 +150,7 @@ const MusicController = () => {
   }
 
   return {
+    crossMusic,
     dualMusic,
     pauseChannel,
     playMusic,

@@ -468,8 +468,9 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     STACK.pop() as number;
   },
   CROSSMUSIC: ({ STACK }) => {
-    STACK.pop() as number;
-    STACK.pop() as number;
+    const fadeFrames = STACK.pop() as number;
+    const volume = STACK.pop() as number;
+    musicController.crossMusic(volume, fadeFrames);
   },
   CSCROLL: ({ STACK }) => {
     const duration = STACK.pop() as number;
