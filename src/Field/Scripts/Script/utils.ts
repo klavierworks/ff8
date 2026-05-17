@@ -5,10 +5,6 @@ import { ScriptMethod } from '../types'
 import { getPartyMemberModelComponent } from './Model/modelUtils'
 import createScriptController from './ScriptController/ScriptController'
 
-export const dummiedCommand = () => {}
-
-export const unusedCommand = () => {}
-
 export const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export const remoteExecute = async (

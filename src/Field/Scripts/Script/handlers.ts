@@ -2,7 +2,7 @@ import { Scene, Vector3 } from "three";
 import useGlobalStore from "../../../store";
 import { floatingPointToNumber, numberToFloatingPoint, vectorToFloatingPoint } from "../../../utils";
 import { Opcode, OpcodeObj, Script } from "../types";
-import { closeMessage, openMessage, enableMessageToClose, remoteExecute, remoteExecutePartyMember, unusedCommand, wait } from "./utils";
+import { closeMessage, openMessage, enableMessageToClose, remoteExecute, remoteExecutePartyMember, wait } from "./utils";
 import MAP_NAMES from "../../../constants/maps";
 import { getPartyMemberModelComponent, getScriptEntity } from "./Model/modelUtils";
 import { displayMessage, isKeyDown, KEY_FLAGS, isTouching, setCameraAndLayerFocus, wasKeyPressed, setCameraScroll, setLayerScroll } from "./common";
