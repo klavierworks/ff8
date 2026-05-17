@@ -1,32 +1,26 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { MutableRefObject, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
 import { clamp } from 'three/src/math/MathUtils.js'
 
-import { SCREEN_HEIGHT } from '../../constants/constants'
+import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../constants/constants'
 import { CONTROLS_MAP } from '../../constants/controls'
 import LerpValue from '../../LerpValue'
 import useGlobalStore from '../../store'
-import { vectorToFloatingPoint, WORLD_DIRECTIONS } from '../../utils'
+import { vectorToFloatingPoint } from '../../utils'
 import { FieldData } from '../Field'
-import useScrollTransition from '../useScrollTransition'
 import {
-  calculateAngleForParallax,
   calculateFOV,
-  calculateParallax,
   getBoundaries,
   getCameraDirections,
-  getReliableRotationAxes,
-  getRotationAngleAroundAxis,
 } from './cameraUtils'
 import Focus from './Focus/Focus'
 
 type CameraProps = {
-  backgroundPanRef: MutableRefObject<CameraPanAngle>
   data: FieldData
 }
 
-const Camera = ({ backgroundPanRef, data }: CameraProps) => {
+const Camera = ({ data }: CameraProps) => {
   const { cameras, limits } = data
 
   const [initialCameraTargetPosition, setInitialCameraTargetPosition] = useState(new Vector3())
@@ -75,7 +69,12 @@ const Camera = ({ backgroundPanRef, data }: CameraProps) => {
     const direction = new Vector3(0, 0, -1)
     direction.applyQuaternion(new Quaternion().setFromEuler(camera.rotation))
 
+    const { rightVector, upVector } = getCameraDirections(camera)
+
     camera.userData = {
+      forwardAxis: camAxisZ.clone(),
+      rightAxis: rightVector.clone(),
+      upAxis: upVector.clone(),
       initialDirection: direction.clone(),
       initialPosition: camera.position.clone(),
       initialTargetPosition: lookAtTarget.clone(),
@@ -86,12 +85,8 @@ const Camera = ({ backgroundPanRef, data }: CameraProps) => {
 
   const boundaries = useMemo(() => getBoundaries(limits), [limits])
 
-  const scrollSpring = useScrollTransition('camera')
-
   useFrame(({ scene }) => {
     if (activeCameraId !== 0) {
-      backgroundPanRef.current.panX = 0
-      backgroundPanRef.current.panY = 0
       return
     }
 
@@ -102,52 +97,59 @@ const Camera = ({ backgroundPanRef, data }: CameraProps) => {
     }
 
     camera.lookAt(initialCameraTargetPosition)
-    const initialCameraRotation = camera.rotation.clone()
-    const initialCameraQuaternion = new Quaternion().setFromEuler(initialCameraRotation)
 
-    const position = focusObject.position.clone()
-    focusObject.getWorldPosition(position)
-    camera.lookAt(position)
+    const entityPos = new Vector3()
+    focusObject.getWorldPosition(entityPos)
 
-    const currentCameraQuaternion = new Quaternion().setFromEuler(camera.rotation)
+    const { rightAxis, upAxis, forwardAxis } = camera.userData as { rightAxis: Vector3; upAxis: Vector3; forwardAxis: Vector3 }
+    const delta = entityPos.clone().sub(camera.position)
+    const lookAtDelta = initialCameraTargetPosition.clone().sub(camera.position)
 
-    const { pitchAxis, yawAxis } = getReliableRotationAxes(camera)
+    const camSpaceX = rightAxis.dot(delta)
+    const camSpaceY = upAxis.dot(delta)
+    const camSpaceZ = forwardAxis.dot(delta)
 
-    const yawAngle = getRotationAngleAroundAxis(initialCameraQuaternion, currentCameraQuaternion, yawAxis)
-
-    const pitchAngle = getRotationAngleAroundAxis(initialCameraQuaternion, currentCameraQuaternion, pitchAxis)
+    const lookAtSpaceX = rightAxis.dot(lookAtDelta)
+    const lookAtSpaceY = upAxis.dot(lookAtDelta)
+    const lookAtSpaceZ = forwardAxis.dot(lookAtDelta)
 
     const cameraZoom = data.cameras[0].camera_zoom
+    const scale = cameraZoom / camSpaceZ
+    const lookAtScale = cameraZoom / lookAtSpaceZ
 
-    const panX = calculateParallax(yawAngle, cameraZoom)
+    const panX = camSpaceX * scale + lookAtSpaceX * lookAtScale
+    const panY = -1 * camSpaceY * scale + lookAtSpaceY * lookAtScale
 
-    const panY = calculateParallax(-pitchAngle, cameraZoom)
+    const hasHorizontalPan = boundaries.left !== boundaries.right
+    const hasVerticalPan = boundaries.top !== boundaries.bottom
 
-    camera.rotation.copy(initialCameraRotation)
-
-    const { positioning, x: xPan, y: yPan } = scrollSpring.current
+    if (!hasHorizontalPan && !hasVerticalPan) {
+      camera.clearViewOffset()
+      moveableCamera.clearViewOffset()
+      return
+    }
 
     const clippedPanX = clamp(panX, boundaries.left, boundaries.right)
     const clippedPanY = clamp(panY, boundaries.top, boundaries.bottom)
-    let finalPanX, finalPanY
-    if (positioning === 'camera') {
-      finalPanX = clippedPanX - xPan / 256
-      finalPanY = clippedPanY - yPan / 256
-    } else {
-      finalPanX = -xPan / 256
-      finalPanY = -yPan / 256
-    }
 
-    const { RIGHT, UP } = WORLD_DIRECTIONS
-    const yawRotation = new Quaternion().setFromAxisAngle(UP, calculateAngleForParallax(finalPanX, cameraZoom))
-    camera.quaternion.multiply(yawRotation)
-
-    const pitchRotation = new Quaternion().setFromAxisAngle(RIGHT, -calculateAngleForParallax(finalPanY, cameraZoom))
-    camera.quaternion.multiply(pitchRotation)
-
-    backgroundPanRef.current.boundaries = boundaries
-    backgroundPanRef.current.panX = finalPanX * 256
-    backgroundPanRef.current.panY = finalPanY * 256
+    camera.setViewOffset(
+      SCREEN_WIDTH,
+      SCREEN_HEIGHT,
+      clippedPanX,
+      clippedPanY,
+      SCREEN_WIDTH,
+      SCREEN_HEIGHT,
+    )
+    camera.updateProjectionMatrix()
+    moveableCamera.setViewOffset(
+      SCREEN_WIDTH,
+      SCREEN_HEIGHT,
+      clippedPanX,
+      clippedPanY,
+      SCREEN_WIDTH,
+      SCREEN_HEIGHT,
+    )
+    moveableCamera.updateProjectionMatrix()
   })
 
   const [isDebugModeActive, setIsDebugModeActive] = useState(false)

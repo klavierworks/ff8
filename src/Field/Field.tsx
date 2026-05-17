@@ -46,17 +46,6 @@ type FieldProps = {
 }
 
 const Field = ({ data }: FieldProps) => {
-  const backgroundPanRef = useRef<CameraPanAngle>({
-    boundaries: {
-      bottom: 0,
-      left: 0,
-      right: 0,
-      top: 0,
-    },
-    panX: 0,
-    panY: 0,
-  })
-
   const currentLocationPlaceName = useGlobalStore((state) => state.currentLocationPlaceName as number)
   useEffect(() => {
     const name = AREA_NAMES[currentLocationPlaceName as keyof typeof AREA_NAMES]
@@ -75,9 +64,9 @@ const Field = ({ data }: FieldProps) => {
         <WalkMesh walkmesh={data.walkmesh} />
         {walkmeshController && (
           <>
-            <Camera backgroundPanRef={backgroundPanRef} data={data} />
+            <Camera data={data} />
             <Scripts doors={data.doors} models={data.models} scripts={data.scripts} sounds={data.sounds} />
-            <Background backgroundPanRef={backgroundPanRef} data={data} />
+            <Background data={data} />
             <Gateways fieldId={data.id} />
           </>
         )}

@@ -161,7 +161,7 @@ const useControls = ({ characterHeight, isActive, movementController, rotationCo
         POSITION_VECTOR.set(currentPosition.x, currentPosition.y, currentPosition.z),
         meshForward,
         moveDistance,
-        movementController.getState().position.walkmeshTriangle!,
+        movementController.getState().position.walkmeshTriangle ?? undefined,
       )
 
       if (!newPosition) {

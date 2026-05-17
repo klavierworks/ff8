@@ -1,15 +1,12 @@
-import { MutableRefObject } from 'react'
-
 import { FieldData } from '../Field'
 import Layer from './Layer/Layer'
 import useLayeredTiles from './useLayeredTiles'
 
 type BackgroundProps = {
-  backgroundPanRef: MutableRefObject<CameraPanAngle>
   data: FieldData
 }
 
-const Background = ({ backgroundPanRef, data }: BackgroundProps) => {
+const Background = ({ data }: BackgroundProps) => {
   const { backgroundDetails, limits, tiles } = data
 
   let width = Math.round(backgroundDetails.width / 16) * 16
@@ -30,7 +27,6 @@ const Background = ({ backgroundPanRef, data }: BackgroundProps) => {
 
   return layers.map((layer, index) => (
     <Layer
-      backgroundPanRef={backgroundPanRef}
       isTiled={index === layers.length - 1 && hasTiledRear}
       key={layer.id}
       layer={layer}

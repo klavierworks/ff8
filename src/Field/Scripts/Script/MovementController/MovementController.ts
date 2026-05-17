@@ -117,9 +117,9 @@ const createMovementController = (
   }
 
   const setPosition = async (position: Vector3, walkmeshTriangle?: number) => {
-    let triangle = walkmeshTriangle
-    if (!triangle) {
-      triangle = walkmeshController.getTriangleForPosition(position)!
+    let triangle: null | number = walkmeshTriangle ?? null
+    if (triangle === null) {
+      triangle = walkmeshController.getTriangleForPosition(position, undefined, true)
     }
 
     resolvePendingPositionSignal()
@@ -186,10 +186,6 @@ const createMovementController = (
     resolvePendingPositionSignal()
     const signal = new PromiseSignal()
 
-    const waypoints = isAllowedToLeaveWalkmesh
-      ? undefined
-      : walkmeshController.findPath(getState().position.current, target, isAllowedToCrossBlockedTriangles)
-
     setState({
       position: {
         current: getState().position.current,
@@ -205,7 +201,7 @@ const createMovementController = (
         targetObject,
         userControlledSpeed,
         walkmeshTriangle: getState().position.walkmeshTriangle,
-        waypoints: waypoints ?? [target],
+        waypoints: [target],
       },
     })
 
@@ -403,7 +399,7 @@ const createMovementController = (
             ...getState().position,
             isPaused: true,
             userControlledSpeed: undefined,
-            walkmeshTriangle: walkmeshController.getTriangleForPosition(positionGoal),
+            walkmeshTriangle: walkmeshController.getTriangleForPosition(positionGoal, undefined, true) ?? getState().position.walkmeshTriangle,
             waypoints: undefined,
           },
         })
@@ -415,17 +411,27 @@ const createMovementController = (
         setState({
           position: {
             ...getState().position,
-            isPaused: waypoints.length === 0,
+            isPaused: true,
             userControlledSpeed: undefined,
-            walkmeshTriangle: walkmeshController.getTriangleForPosition(positionGoal),
-            waypoints: waypoints.length > 1 ? waypoints.slice(1) : undefined,
+            walkmeshTriangle: walkmeshController.getTriangleForPosition(positionGoal, undefined, true) ?? getState().position.walkmeshTriangle,
+            waypoints: undefined,
           },
         })
-      } else {
+      } else if (position.isAllowedToLeaveWalkmesh) {
         const direction = positionGoal.clone().sub(currentPosition).normalize()
-        const desiredNextPos = currentPosition.clone().add(direction.multiplyScalar(maxDistance))
-        currentPosition.copy(desiredNextPos)
-        const triangle = walkmeshController.getTriangleForPosition(currentPosition)
+        currentPosition.add(direction.multiplyScalar(maxDistance))
+      } else {
+        const direction = new Vector3().subVectors(positionGoal, currentPosition)
+        direction.z = 0
+        direction.normalize()
+        const newPosition = walkmeshController.getNextPositionOnWalkmesh(
+          currentPosition,
+          direction,
+          maxDistance,
+          getState().position.walkmeshTriangle ?? undefined,
+        )
+        currentPosition.copy(newPosition)
+        const triangle = walkmeshController.getTriangleForPosition(currentPosition, undefined, true)
         if (triangle !== null && triangle !== undefined && triangle !== getState().position.walkmeshTriangle) {
           setState({
             position: {

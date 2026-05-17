@@ -566,7 +566,9 @@ class WalkmeshMovementController {
     let high = maxDistance
     let bestDistance = 0
 
-    while (high - low > 0.01) {
+    const precision = Math.max(maxDistance * 0.01, 1e-6)
+
+    while (high - low > precision) {
       const mid = (low + high) / 2
       const testPosition = currentPosition.clone().add(slideDirection.clone().multiplyScalar(mid))
 

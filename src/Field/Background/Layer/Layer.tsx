@@ -13,7 +13,6 @@ import {
   Vector2,
   Vector3,
 } from 'three'
-import { clamp } from 'three/src/math/MathUtils.js'
 
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../constants/constants'
 import useGlobalStore from '../../../store'
@@ -21,7 +20,6 @@ import { getCameraDirections } from '../../Camera/cameraUtils'
 import useCameraScroll from '../../useScrollTransition'
 
 type LayerProps = {
-  backgroundPanRef: React.MutableRefObject<CameraPanAngle>
   isTiled: boolean
   layer: Layer
 }
@@ -40,7 +38,7 @@ function getVisibleDimensionsAtDistance(
 
 const CAMERA_WORLD_DIRECTION = new Vector3()
 const CAMERA_WORLD_POSITION = new Vector3()
-const Layer = ({ backgroundPanRef, isTiled, layer }: LayerProps) => {
+const Layer = ({ isTiled, layer }: LayerProps) => {
   const layerRef = useRef<Mesh | Sprite>(null)
 
   const [line] = useState<Line3>(new Line3(new Vector3(), new Vector3()))
@@ -62,7 +60,7 @@ const Layer = ({ backgroundPanRef, isTiled, layer }: LayerProps) => {
       initialTargetPosition: Vector3
     }
 
-    const { backgroundAnimations, backgroundLayerVisibility, backgroundScrollRatios } = useGlobalStore.getState()
+    const { backgroundAnimations, backgroundLayerVisibility } = useGlobalStore.getState()
 
     const currentParameterState = backgroundAnimations[parameter]
 
@@ -111,64 +109,30 @@ const Layer = ({ backgroundPanRef, isTiled, layer }: LayerProps) => {
     const widthUnits = result.width / SCREEN_WIDTH
     const heightUnits = result.height / SCREEN_HEIGHT
 
-    const panX = backgroundPanRef.current.panX
-    const panY = backgroundPanRef.current.panY
-
-    const { bottom, left, right, top } = backgroundPanRef.current.boundaries
-    const ratio = backgroundScrollRatios[layer.renderID]
-
-    const xLeft = left * 256
-    const xRight = right * 256
-
-    const yTop = top * 256
-    const yBottom = bottom * 256
-
-    let ratioAdjustedX = clamp(panX, xLeft, xRight)
-    let ratioAdjustedY = clamp(panY, yTop, yBottom)
-
-    if (ratio) {
-      const standardXRange = xRight - xLeft
-      const standardYRange = yBottom - yTop
-
-      ratioAdjustedX = ratioAdjustedX * (standardXRange / ratio.x)
-      ratioAdjustedY = ratioAdjustedY * (standardYRange / ratio.y)
-    }
-
-    if (Number.isNaN(ratioAdjustedX) || !Number.isFinite(ratioAdjustedX)) {
-      ratioAdjustedX = 0
-    }
-    if (Number.isNaN(ratioAdjustedY) || !Number.isFinite(ratioAdjustedY)) {
-      ratioAdjustedY = 0
-    }
+    let ratioAdjustedX = 0
+    let ratioAdjustedY = 0
 
     const { layerScrollAdjustments } = useGlobalStore.getState()
     const controlledScroll = layerScrollAdjustments[layer.renderID]
     if (controlledScroll) {
-      const { xOffset, xScrollSpeed, yOffset, yScrollSpeed } = controlledScroll
-
-      const adjustedX = (ratioAdjustedX / 256) * xScrollSpeed
-      const adjustedY = (ratioAdjustedY / 256) * yScrollSpeed
-
-      ratioAdjustedX = xOffset + adjustedX
-      ratioAdjustedY = -yOffset + adjustedY
+      const { xOffset, yOffset } = controlledScroll
+      ratioAdjustedX = xOffset
+      ratioAdjustedY = -yOffset
     }
 
     if (layerScroll.current.positioning === 'camera') {
-      if (layerScroll.current.x !== 0) {
-        ratioAdjustedX -= layerScroll.current.x
-      }
-      if (layerScroll.current.y !== 0) {
-        ratioAdjustedY -= layerScroll.current.y
-      }
+      ratioAdjustedX -= layerScroll.current.x
+      ratioAdjustedY -= layerScroll.current.y
     } else {
       ratioAdjustedX += layerScroll.current.x
       ratioAdjustedY += layerScroll.current.y
     }
 
-    const directions = getCameraDirections(camera)
-
-    layerRef.current.position.add(directions.rightVector.clone().multiplyScalar(ratioAdjustedX * widthUnits))
-    layerRef.current.position.add(directions.upVector.clone().multiplyScalar(ratioAdjustedY * heightUnits))
+    if (ratioAdjustedX !== 0 || ratioAdjustedY !== 0) {
+      const directions = getCameraDirections(camera)
+      layerRef.current.position.add(directions.rightVector.clone().multiplyScalar(ratioAdjustedX * widthUnits / 8))
+      layerRef.current.position.add(directions.upVector.clone().multiplyScalar(ratioAdjustedY * heightUnits / 8))
+    }
   })
 
   const isDebugMode = useGlobalStore((state) => state.isDebugMode)

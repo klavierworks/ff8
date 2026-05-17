@@ -20,6 +20,23 @@ const getPointSideOfLine = (lineStart: VectorLike, lineEnd: VectorLike, point: V
   }
 }
 
+const segmentsCrossInXY = (
+  p1: VectorLike, p2: VectorLike,
+  q1: VectorLike, q2: VectorLike,
+): boolean => {
+  const d1x = p2.x - p1.x
+  const d1y = p2.y - p1.y
+  const d2x = q2.x - q1.x
+  const d2y = q2.y - q1.y
+  const denom = d1x * d2y - d1y * d2x
+  if (denom === 0) return false
+  const dx = q1.x - p1.x
+  const dy = q1.y - p1.y
+  const t = (dx * d2y - dy * d2x) / denom
+  const s = (dx * d1y - dy * d1x) / denom
+  return t >= 0 && t <= 1 && s >= 0 && s <= 1
+}
+
 const useIntersection = (
   _targetMeshRef: RefObject<null | Object3D>,
   isActive = true,
@@ -38,6 +55,7 @@ const useIntersection = (
 ) => {
   const currentStateRef = useRef<STATES>(undefined)
   const [playerPosition] = useState(new Vector3())
+  const [previousPosition] = useState(new Vector3())
   const isUserControllable = useGlobalStore((state) => state.isUserControllable)
 
   useFrame(({ scene }) => {
@@ -65,20 +83,26 @@ const useIntersection = (
     if (currentStateRef.current === undefined) {
       if (!side) return
       currentStateRef.current = side
+      previousPosition.copy(playerPosition)
       onInitialized?.(side)
       return
     }
 
     if (!hasMoved) {
+      previousPosition.copy(playerPosition)
       return
     }
 
     if (side && side !== currentStateRef.current) {
-      onTouchOn?.(currentStateRef.current)
-      onTouchOff?.(side)
-      onAcross?.()
+      if (segmentsCrossInXY(previousPosition, playerPosition, line[0], line[1])) {
+        onTouchOn?.(currentStateRef.current)
+        onTouchOff?.(side)
+        onAcross?.()
+      }
       currentStateRef.current = side
     }
+
+    previousPosition.copy(playerPosition)
   })
 }
 
