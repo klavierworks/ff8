@@ -15,6 +15,7 @@ import {
   getCameraDirections,
 } from './cameraUtils'
 import Focus from './Focus/Focus'
+import useScrollTransition from '../useScrollTransition'
 
 type CameraProps = {
   data: FieldData
@@ -29,6 +30,8 @@ const Camera = ({ data }: CameraProps) => {
   const moveableCamera = useThree(({ camera }) => camera as PerspectiveCamera)
   const camera = useThree(({ scene }) => scene.getObjectByName('sceneCamera') as PerspectiveCamera)
 
+  const scrollSpring = useScrollTransition('camera')
+  
   const isDebugMode = useGlobalStore((state) => state.isDebugMode)
   useEffect(() => {
     const { camera_axis, camera_position, camera_zoom } = cameras[activeCameraId]
@@ -120,23 +123,32 @@ const Camera = ({ data }: CameraProps) => {
     const panX = camSpaceX * scale + lookAtSpaceX * lookAtScale
     const panY = -1 * camSpaceY * scale + lookAtSpaceY * lookAtScale
 
-    const hasHorizontalPan = boundaries.left !== boundaries.right
-    const hasVerticalPan = boundaries.top !== boundaries.bottom
+    const clippedPanX = clamp(panX, boundaries.left, boundaries.right)
+    const clippedPanY = clamp(panY, boundaries.top, boundaries.bottom)
 
-    if (!hasHorizontalPan && !hasVerticalPan) {
+    const { positioning, x: scrollX, y: scrollY } = scrollSpring.current
+
+    let finalPanX: number
+    let finalPanY: number
+    if (positioning === 'camera') {
+      finalPanX = clippedPanX - scrollX
+      finalPanY = clippedPanY - scrollY
+    } else {
+      finalPanX = -scrollX
+      finalPanY = -scrollY
+    }
+
+    if (finalPanX === 0 && finalPanY === 0) {
       camera.clearViewOffset()
       moveableCamera.clearViewOffset()
       return
     }
 
-    const clippedPanX = clamp(panX, boundaries.left, boundaries.right)
-    const clippedPanY = clamp(panY, boundaries.top, boundaries.bottom)
-
     camera.setViewOffset(
       SCREEN_WIDTH,
       SCREEN_HEIGHT,
-      clippedPanX,
-      clippedPanY,
+      finalPanX,
+      finalPanY,
       SCREEN_WIDTH,
       SCREEN_HEIGHT,
     )
@@ -144,8 +156,8 @@ const Camera = ({ data }: CameraProps) => {
     moveableCamera.setViewOffset(
       SCREEN_WIDTH,
       SCREEN_HEIGHT,
-      clippedPanX,
-      clippedPanY,
+      finalPanX,
+      finalPanY,
       SCREEN_WIDTH,
       SCREEN_HEIGHT,
     )
