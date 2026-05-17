@@ -7,6 +7,7 @@ import type { Script, ScriptMethod } from '../../types'
 import { sendToDebugger } from '../../../../Debugger/debugUtils'
 import { createAnimationController } from '../AnimationController/AnimationController'
 import { OPCODE_HANDLERS } from '../handlers'
+import createHeadRotationController from '../HeadRotationController/HeadRotationController'
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
 import createSFXController from '../SFXController/SFXController'
@@ -36,7 +37,7 @@ const createScriptController = ({
   useScriptStateStore,
 }: {
   animationController: ReturnType<typeof createAnimationController>
-  headController: ReturnType<typeof createRotationController>
+  headController: ReturnType<typeof createHeadRotationController>
   movementController: ReturnType<typeof createMovementController>
   rotationController: ReturnType<typeof createRotationController>
   scene: Scene

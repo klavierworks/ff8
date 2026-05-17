@@ -6,6 +6,7 @@ import { Bone, Box3, Color, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStan
 import useGlobalStore from '../../../../store'
 import { Script } from '../../types'
 import { createAnimationController } from '../AnimationController/AnimationController'
+import createHeadRotationController from '../HeadRotationController/HeadRotationController'
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
 import createScriptController from '../ScriptController/ScriptController'
@@ -19,6 +20,7 @@ import useTalkRadius from './useTalkRadius'
 
 type ModelProps = {
   animationController: ReturnType<typeof createAnimationController>
+  headController: ReturnType<typeof createHeadRotationController>
   models: string[]
   movementController: ReturnType<typeof createMovementController>
   rotationController: ReturnType<typeof createRotationController>
@@ -41,6 +43,7 @@ const components = Object.fromEntries(
 
 const Model = ({
   animationController,
+  headController,
   models,
   movementController,
   rotationController,
@@ -99,11 +102,11 @@ const Model = ({
         return
       }
       convertMaterialsToBasic(ref.group.current)
-      animationController.setHeadBone(ref.nodes.bone_4 as unknown as Bone)
+      headController.setBone(ref.nodes.bone_4 as unknown as Bone | undefined)
       animationController.initialize(ref.animations.mixer, ref.animations.clips, ref.group.current)
       setMeshGroup(ref.group.current)
     },
-    [convertMaterialsToBasic, animationController],
+    [convertMaterialsToBasic, animationController, headController],
   )
 
   useEffect(() => {

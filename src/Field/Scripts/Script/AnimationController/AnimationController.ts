@@ -1,4 +1,4 @@
-import { AnimationAction, AnimationClip, AnimationMixer, Bone, Object3D } from "three";
+import { AnimationAction, AnimationClip, AnimationMixer, Object3D } from "three";
 import { create } from "zustand"
 import { applyAnimationAtTime } from "./animationUtils";
 import createMovementController from "../MovementController/MovementController";
@@ -411,9 +411,6 @@ export const createAnimationController = (id: number | string) => {
     playMovementAnimation,
     setAnimationSpeed,
     setHasAdjustedZ,
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    setHeadBone: (_head: Bone) => {},
     setIdleAnimations,
     setLadderAnimation,
     stopLadderAnimation,

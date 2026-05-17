@@ -8,9 +8,9 @@ import { Script as ScriptType } from '../types'
 import { createAnimationController } from './AnimationController/AnimationController'
 import Door from './Door/Door'
 import DrawPoint from './DrawPoint/DrawPoint'
+import createHeadRotationController from './HeadRotationController/HeadRotationController'
 import Location from './Location/Location'
 import Model from './Model/Model'
-import { getPlayerEntity } from './Model/modelUtils'
 import createMovementController from './MovementController/MovementController'
 import createRotationController from './RotationController/RotationController'
 import createScriptController from './ScriptController/ScriptController'
@@ -37,13 +37,13 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
     () => createMovementController(script.groupId, walkmeshController!),
     [script.groupId, walkmeshController],
   )
-  const headController = useMemo(
-    () => createRotationController(script.groupId, movementController, entityRef),
-    [script.groupId, movementController],
-  )
   const rotationController = useMemo(
     () => createRotationController(script.groupId, movementController, entityRef),
     [script.groupId, movementController],
+  )
+  const headController = useMemo(
+    () => createHeadRotationController(script.groupId, movementController, rotationController),
+    [script.groupId, movementController, rotationController],
   )
   const sfxController = useMemo(() => createSFXController(script.groupId, sounds ?? []), [script.groupId, sounds])
   const scriptController = useMemo(
@@ -184,14 +184,7 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
 
     entityRef.current.quaternion.setFromAxisAngle(meshUp, radians)
 
-    if (useScriptStateStore.getState().isHeadTrackingPlayer) {
-      const player = getPlayerEntity(scene)
-      if (!player) {
-        console.warn('Player character not found for head tracking')
-        return
-      }
-      headController.turnToFaceDirection(player.getWorldPosition(new Vector3()), 0)
-    }
+    headController.tick()
   })
 
   if (isUnused) {
@@ -224,6 +217,7 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
           ) : (
             <Model
               animationController={animationController}
+              headController={headController}
               models={models}
               movementController={movementController}
               rotationController={rotationController}

@@ -6,7 +6,7 @@ import LineBlock from '../../../LineBlock/LineBlock'
 import { Script } from '../../types'
 import createScriptController from '../ScriptController/ScriptController'
 import { ScriptStateStore } from '../state'
-import useIntersection, { STATES } from '../useIntersection'
+import useIntersection, { Side } from '../useIntersection'
 
 type DoorProps = {
   doors: Door[]
@@ -30,8 +30,8 @@ const Door = ({ doors, script, scriptController, useScriptStateStore }: DoorProp
 
   const hitboxRef = useRef<Mesh>(null)
 
-  const [playerOpenedFromSide, setPlayerOpenedFromSide] = useState<STATES>()
-  const handleIntersect = async (entrySide: STATES) => {
+  const [playerOpenedFromSide, setPlayerOpenedFromSide] = useState<Side>()
+  const handleIntersect = async (entrySide: Side) => {
     if (playerOpenedFromSide) {
       return
     }
@@ -41,7 +41,7 @@ const Door = ({ doors, script, scriptController, useScriptStateStore }: DoorProp
     setIsDoorOpen(true)
   }
 
-  const handleExit = async (entrySide: STATES) => {
+  const handleExit = async (entrySide: Side) => {
     if (entrySide !== playerOpenedFromSide) {
       return
     }
@@ -54,7 +54,6 @@ const Door = ({ doors, script, scriptController, useScriptStateStore }: DoorProp
   const linePoints = useMemo(() => door && door.line.map(vectorToFloatingPoint), [door])
 
   useIntersection(
-    hitboxRef,
     isDoorOn,
     {
       onTouchOff: handleExit,

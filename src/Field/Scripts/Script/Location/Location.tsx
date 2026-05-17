@@ -58,7 +58,6 @@ const Location = ({ scriptController, useScriptStateStore }: LocationProps) => {
   const isUserControllable = useGlobalStore((state) => state.isUserControllable)
 
   useIntersection(
-    lineRef,
     isLineOn && isUserControllable,
     {
       onAcross: () => {

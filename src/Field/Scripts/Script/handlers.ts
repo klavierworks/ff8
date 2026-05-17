@@ -8,6 +8,7 @@ import { getPartyMemberModelComponent, getScriptEntity } from "./Model/modelUtil
 import { displayMessage, isKeyDown, KEY_FLAGS, isTouching, setCameraAndLayerFocus, wasKeyPressed, setCameraScroll, setLayerScroll } from "./common";
 import createScriptState, { ScriptState } from "./state";
 import { createAnimationController } from "./AnimationController/AnimationController";
+import createHeadRotationController from "./HeadRotationController/HeadRotationController";
 import createMovementController from "./MovementController/MovementController";
 import { MUSIC_IDS } from "../../../constants/audio";
 import MusicController from "./MusicController";
@@ -32,7 +33,7 @@ type HandlerArgs = {
   currentOpcode: OpcodeObj,
   currentOpcodeIndex: number,
   currentState: Readonly<ScriptState>,
-  headController: ReturnType<typeof createRotationController>,
+  headController: ReturnType<typeof createHeadRotationController>,
   movementController: ReturnType<typeof createMovementController>,
   rotationController: ReturnType<typeof createRotationController>,
   opcodes: OpcodeObj[],
@@ -737,39 +738,30 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const z = STACK.pop() as number;
     const y = STACK.pop() as number;
     const x = STACK.pop() as number;
-    
-    const directionVector = vectorToFloatingPoint({x, y, z});
-    headController.turnToFaceDirection(directionVector, duration);
+    headController.turnToFaceWorldPosition(vectorToFloatingPoint({x, y, z}), duration);
   },
   FACEDIRA: ({ headController, scene, STACK }) => {
     const duration = STACK.pop() as number;
     const targetActorId = STACK.pop() as number;
     headController.turnToFaceEntity(`entity--${targetActorId}`, scene, duration);
   },
-  // No idea how this differs to facedir. Inverted?
-  FACEDIRI: async ({ headController, STACK }) => {
+  FACEDIRI: ({ headController, STACK }) => {
     const duration = STACK.pop() as number;
-    const y = STACK.pop() as number;
-    const z = STACK.pop() as number;
-    const x = STACK.pop() as number;
-    console.log(x,y,z,duration)
-    const directionVector = vectorToFloatingPoint({x, y, z});
-    await headController.turnToFaceDirection(directionVector, duration);
+    const yaw = STACK.pop() as number;
+    STACK.pop(); // roll is never used in the real game
+    const pitch = STACK.pop() as number;
+    headController.disable(yaw, pitch, duration);
   },
-
-
-  FACEDIRINIT: ({ setState }) => {
-    setState({
-      isHeadTrackingPlayer: true,
-    })
-  },
-  // This sets the maximum angle allowed, likely when a model's head loops to follow another entity
-  FACEDIRLIMIT: ({ STACK }) => {
-    STACK.splice(-3);
+  FACEDIRINIT: () => {},
+  FACEDIRLIMIT: ({ headController, STACK }) => {
+    const yawLimit = STACK.pop() as number;
+    STACK.pop(); // roll limit — unused (v29 = 0 in sub_472B30)
+    const pitchLimit = STACK.pop() as number;
+    headController.setLimits(pitchLimit, yawLimit);
   },
   FACEDIROFF: ({ headController, STACK }) => {
     const duration = STACK.pop() as number;
-    headController.turnToFaceAngle(0, duration);
+    headController.disable(0, 0, duration);
   },
   FACEDIRP: ({ headController, scene, STACK }) => {
     const duration = STACK.pop() as number;
@@ -777,9 +769,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     headController.turnToFaceEntity(`party--${partyMemberId}`, scene, duration);
   },
   FACEDIRSYNC: async ({ headController }) => {
-    while (headController.getState().angle.isAnimating) {
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-    }
+    await headController.sync();
   },
   FADEBLACK: () => {
     const { fadeSpring } = useGlobalStore.getState()
@@ -1824,19 +1814,23 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const z = STACK.pop() as number;
     const y = STACK.pop() as number;
     const x = STACK.pop() as number;
-    
-    const directionVector = vectorToFloatingPoint({x, y, z});
-    await headController.turnToFaceDirection(directionVector, duration);
+    await headController.turnToFaceWorldPosition(vectorToFloatingPoint({x, y, z}), duration);
   },
   RFACEDIRA: async ({ headController, scene, STACK }) => {
     const duration = STACK.pop() as number;
     const targetActorId = STACK.pop() as number;
     await headController.turnToFaceEntity(`entity--${targetActorId}`, scene, duration);
   },
-  RFACEDIRI: unusedCommand,
-  RFACEDIROFF: async ({ headController, STACK }) => {
+  RFACEDIRI: ({ headController, STACK }) => {
     const duration = STACK.pop() as number;
-    await headController.turnToFaceAngle(0, duration)
+    const yaw = STACK.pop() as number;
+    STACK.pop(); // roll is never used by the real game
+    const pitch = STACK.pop() as number;
+    headController.disable(yaw, pitch, duration);
+  },
+  RFACEDIROFF: ({ headController, STACK }) => {
+    const duration = STACK.pop() as number;
+    headController.disable(0, 0, duration);
   },
   RFACEDIRP: async ({ headController, scene, STACK }) => {
     const duration = STACK.pop() as number;

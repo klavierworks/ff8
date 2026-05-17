@@ -1,6 +1,6 @@
 import { useFrame } from '@react-three/fiber'
 import { useCallback, useMemo, useRef } from 'react'
-import { Bone, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector3 } from 'three'
+import { DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector3 } from 'three'
 
 import { createAnimationController } from '../../Scripts/Script/AnimationController/AnimationController'
 import SquallModel from '../../Scripts/Script/Model/gltf/d001'
@@ -45,7 +45,6 @@ const Player = ({ worldmapMeshController }: PlayerProps) => {
       }
 
       convertMaterialsToBasic(ref.group.current)
-      animationController.setHeadBone(ref.nodes.bone_4 as unknown as Bone)
       animationController.initialize(ref.animations.mixer, ref.animations.clips, ref.group.current)
       entityRef.current = ref.group.current
     },

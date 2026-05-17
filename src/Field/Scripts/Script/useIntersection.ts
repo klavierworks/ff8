@@ -1,44 +1,49 @@
 import { useFrame } from '@react-three/fiber'
-import { RefObject, useRef, useState } from 'react'
-import { Object3D, Vector3 } from 'three'
+import { useRef, useState } from 'react'
+import { Vector3 } from 'three'
 
 import useGlobalStore from '../../../store'
 import { getPlayerEntity } from './Model/modelUtils'
 import createMovementController from './MovementController/MovementController'
 
-export type STATES = 'LEFT' | 'RIGHT' | undefined
+export type Side = 'LEFT' | 'RIGHT' | undefined
 
-const getPointSideOfLine = (lineStart: VectorLike, lineEnd: VectorLike, point: Vector3): STATES => {
-  const lineDirection = new Vector3().subVectors(lineEnd, lineStart)
-  const pointVector = new Vector3().subVectors(point, lineStart)
-  const cross = new Vector3().crossVectors(lineDirection, pointVector)
+export const DEFAULT_TRIGGER_RADIUS = 0.02
 
-  if (cross.z > 0) {
+const getPointSideOfLine = (lineStart: VectorLike, lineEnd: VectorLike, point: VectorLike): Side => {
+  const crossZ = (lineEnd.x - lineStart.x) * (point.y - lineStart.y) - (lineEnd.y - lineStart.y) * (point.x - lineStart.x)
+  if (crossZ > 0) {
     return 'LEFT'
-  } else if (cross.z < 0) {
+  }
+  if (crossZ < 0) {
     return 'RIGHT'
   }
 }
 
-const segmentsCrossInXY = (
-  p1: VectorLike, p2: VectorLike,
-  q1: VectorLike, q2: VectorLike,
-): boolean => {
-  const d1x = p2.x - p1.x
-  const d1y = p2.y - p1.y
-  const d2x = q2.x - q1.x
-  const d2y = q2.y - q1.y
-  const denom = d1x * d2y - d1y * d2x
-  if (denom === 0) return false
-  const dx = q1.x - p1.x
-  const dy = q1.y - p1.y
-  const t = (dx * d2y - dy * d2x) / denom
-  const s = (dx * d1y - dy * d1x) / denom
-  return t >= 0 && t <= 1 && s >= 0 && s <= 1
+const getClosestPointOnSegmentXY = (
+  point: VectorLike,
+  segmentStart: VectorLike,
+  segmentEnd: VectorLike,
+) => {
+  const segmentX = segmentEnd.x - segmentStart.x
+  const segmentY = segmentEnd.y - segmentStart.y
+  const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY
+  let t = 0
+  if (segmentLengthSquared > 0) {
+    t = ((point.x - segmentStart.x) * segmentX + (point.y - segmentStart.y) * segmentY) / segmentLengthSquared
+  }
+  const clamped = Math.max(0, Math.min(1, t))
+  const closestX = segmentStart.x + clamped * segmentX
+  const closestY = segmentStart.y + clamped * segmentY
+  const deltaX = point.x - closestX
+  const deltaY = point.y - closestY
+  return {
+    distanceSquared: deltaX * deltaX + deltaY * deltaY,
+    isInSegment: t >= 0 && t <= 1,
+  }
 }
 
 const useIntersection = (
-  _targetMeshRef: RefObject<null | Object3D>,
   isActive = true,
   {
     onAcross,
@@ -47,15 +52,16 @@ const useIntersection = (
     onTouchOn,
   }: {
     onAcross?: () => void
-    onInitialized?: (spawnSide: STATES) => void
-    onTouchOff?: (side: STATES) => void
-    onTouchOn?: (fromSide: STATES) => void
+    onInitialized?: (spawnSide: Side) => void
+    onTouchOff?: (side: Side) => void
+    onTouchOn?: (fromSide: Side) => void
   },
   line: VectorLike[],
+  radius: number = DEFAULT_TRIGGER_RADIUS,
 ) => {
-  const currentStateRef = useRef<STATES>(undefined)
+  const hasInitializedRef = useRef(false)
+  const wasInRangeRef = useRef(false)
   const [playerPosition] = useState(new Vector3())
-  const [previousPosition] = useState(new Vector3())
   const isUserControllable = useGlobalStore((state) => state.isUserControllable)
 
   useFrame(({ scene }) => {
@@ -69,40 +75,38 @@ const useIntersection = (
     }
 
     const movementController = player.userData.movementController as ReturnType<typeof createMovementController>
-    const { hasBeenPlaced, hasMoved } = movementController.getState()
-
+    const { hasBeenPlaced } = movementController.getState()
     if (!hasBeenPlaced) {
       return
     }
 
     player.getWorldPosition(playerPosition)
     const side = getPointSideOfLine(line[0], line[1], playerPosition)
+    if (!side) {
+      return
+    }
 
-    // Capture spawn side before first movement. cross.z === 0 is practically
-    // impossible with floating point, but skip that frame if it happens.
-    if (currentStateRef.current === undefined) {
-      if (!side) return
-      currentStateRef.current = side
-      previousPosition.copy(playerPosition)
+    const { distanceSquared, isInSegment } = getClosestPointOnSegmentXY(playerPosition, line[0], line[1])
+    const isInRange = isInSegment && distanceSquared <= radius * radius
+
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true
+      wasInRangeRef.current = isInRange
       onInitialized?.(side)
       return
     }
 
-    if (!hasMoved) {
-      previousPosition.copy(playerPosition)
+    if (isInRange === wasInRangeRef.current) {
       return
     }
+    wasInRangeRef.current = isInRange
 
-    if (side && side !== currentStateRef.current) {
-      if (segmentsCrossInXY(previousPosition, playerPosition, line[0], line[1])) {
-        onTouchOn?.(currentStateRef.current)
-        onTouchOff?.(side)
-        onAcross?.()
-      }
-      currentStateRef.current = side
+    if (isInRange) {
+      onTouchOn?.(side)
+      onAcross?.()
+      return
     }
-
-    previousPosition.copy(playerPosition)
+    onTouchOff?.(side)
   })
 }
 

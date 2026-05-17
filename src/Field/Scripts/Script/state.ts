@@ -18,7 +18,6 @@ export type ScriptState = {
   isDrawPoint: boolean
 
   isHalted: boolean
-  isHeadTrackingPlayer: boolean
   isLineOn: boolean
 
   isPushable: boolean
@@ -73,7 +72,6 @@ const createScriptState = (script: Script) => {
     isDrawPoint: false,
     isHalted: false,
 
-    isHeadTrackingPlayer: false,
     isLineOn: true,
     isPlayingBackgroundMusic: false,
 
