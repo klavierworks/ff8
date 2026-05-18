@@ -5,10 +5,9 @@ import { create } from 'zustand'
 
 import MAP_NAMES from './constants/maps'
 import { sendToDebugger } from './Debugger/debugUtils'
-import { FieldData } from './Field/Field'
-import createSFXController from './Field/Scripts/Script/SFXController/SFXController'
-import WalkmeshMovementController from './Field/WalkMesh/WalkmeshMovement'
-import WorldmapMovementController from './Field/Worldmap/WorldmapMovementController'
+import { FieldData } from './modules/field/Field'
+import createSFXController from './modules/field/Scripts/Script/SFXController/SFXController'
+import WalkmeshMovementController from './modules/field/WalkMesh/WalkmeshMovement'
 import LerpValue from './LerpValue'
 
 interface GlobalState {
@@ -118,6 +117,8 @@ interface GlobalState {
     }
   >
 
+  module: 'field' | 'worldmap' | 'battle' | 'menu',
+
   party: number[]
   partyMembersFollowing: number[]
   pendingCharacterPosition: undefined | Vector3
@@ -128,7 +129,7 @@ interface GlobalState {
   spuValue: number
 
   systemSfxController: ReturnType<typeof createSFXController>
-  walkmeshController: undefined | WalkmeshMovementController | WorldmapMovementController
+  walkmeshController: undefined | WalkmeshMovementController
 }
 
 const INITIAL_STATE: GlobalState = {
@@ -204,7 +205,7 @@ const INITIAL_STATE: GlobalState = {
   lockedTriangles: [],
 
   messageStyles: {},
-
+  module: 'menu',
   party: [0],
   pendingCharacterPosition: undefined,
   pendingFieldId: undefined as unknown as (typeof MAP_NAMES)[number],

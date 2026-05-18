@@ -30,5 +30,8 @@ public/models_adjusted
 public/*.glb
 converter/target
 
+CLAUDE.md
+
 # Local Netlify folder
 .netlify
+public/worldmap

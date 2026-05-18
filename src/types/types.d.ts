@@ -1,7 +1,7 @@
 import { useAnimations } from '@react-three/drei'
 import { Blending, SkinnedMesh } from 'three'
 
-import { FieldData } from '../Field/Field'
+import { FieldData } from '../modules/field/Field'
 
 declare global {
   type AskOptions = {

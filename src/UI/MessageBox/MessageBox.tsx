@@ -6,8 +6,8 @@ import { invalidate, useFrame } from "@react-three/fiber"
 import { formatNameTags } from "../textUtils.ts"
 import useGlobalStore from "../../store.ts"
 import { FontColor, Modifier, Placement } from "../textTypes.ts"
-import { saveGame } from "../../Field/fieldUtils.ts"
-import { closeMessage } from "../../Field/Scripts/Script/utils.ts"
+import { saveGame } from "../../modules/field/fieldUtils.ts"
+import { closeMessage } from "../../modules/field/Scripts/Script/utils.ts"
 import { CONTROLS_MAP } from "../../constants/controls.ts"
 
 import {

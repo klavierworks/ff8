@@ -1,5 +1,5 @@
 import { CONTROLS_MAP } from '../constants/controls'
-import { MESSAGE_VARS } from '../Field/Scripts/Script/handlers'
+import { MESSAGE_VARS } from '../modules/field/Scripts/Script/handlers'
 import { Modifier } from './textTypes'
 
 export const createModifier = (tag: string) => {

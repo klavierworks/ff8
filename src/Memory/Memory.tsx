@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { MEMORY } from '../Field/Scripts/Script/handlers'
+import { MEMORY } from '../modules/field/Scripts/Script/handlers'
 
 const Memory = () => {
   const [memory, setMemory] = useState<Record<number, number>>({})

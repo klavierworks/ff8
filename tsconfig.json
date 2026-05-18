@@ -33,7 +33,7 @@
     "node_modules",
     "dist",
     "public",
-    "src/Field/Scripts/Model/gltf/*.tsx"
+    "src/modules/Field/Scripts/Model/gltf/*.tsx"
   ],
   "references": [
     {

@@ -133,8 +133,8 @@ const Debugger = () => {
     const layersEl = document.getElementById('layers')
     if (layersEl) {
       layersEl.innerHTML = ''
-      // @ts-expect-error CBA typing debug
       Object.values(layers)
+        // @ts-expect-error CBA typing debug
         .sort((a, b) => b.index - a.index)
         .forEach((layer) => {
           const layerEl = document.createElement('div')

@@ -3,10 +3,11 @@ import { useEffect, useRef } from 'react'
 import { Scene } from 'three'
 
 import MAP_NAMES from './constants/maps'
-import FieldLoader from './Field/Field'
-import { attachKeyDownListeners } from './Field/Scripts/Script/common'
+import FieldLoader from './modules/field/Field'
+import { attachKeyDownListeners } from './modules/field/Scripts/Script/common'
 import useGlobalStore from './store'
 import { getInitialField } from './utils'
+import Menu from './modules/menu/Menu'
 
 useGlobalStore.setState({
   pendingFieldId: (getInitialField() ?? 'menu') as (typeof MAP_NAMES)[number],
@@ -16,6 +17,7 @@ type EntrypointProps = {
   setWorldScene: (scene: Scene) => void
 }
 const Entrypoint = ({ setWorldScene }: EntrypointProps) => {
+  const module = useGlobalStore((state) => state.module)
   useEffect(() => {
     attachKeyDownListeners()
   }, [])
@@ -43,7 +45,8 @@ const Entrypoint = ({ setWorldScene }: EntrypointProps) => {
 
   return (
     <>
-      <FieldLoader />
+      {module === 'field' && <FieldLoader />}
+      {module === 'menu' && <Menu />}
     </>
   )
 }
