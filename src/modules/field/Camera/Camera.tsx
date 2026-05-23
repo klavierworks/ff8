@@ -9,13 +9,9 @@ import LerpValue from '../../../LerpValue'
 import useGlobalStore from '../../../store'
 import { vectorToFloatingPoint } from '../../../utils'
 import { FieldData } from '../Field'
-import {
-  calculateFOV,
-  getBoundaries,
-  getCameraDirections,
-} from './cameraUtils'
-import Focus from './Focus/Focus'
 import useScrollTransition from '../useScrollTransition'
+import { calculateFOV, getBoundaries, getCameraDirections } from './cameraUtils'
+import Focus from './Focus/Focus'
 
 type CameraProps = {
   data: FieldData
@@ -31,7 +27,7 @@ const Camera = ({ data }: CameraProps) => {
   const camera = useThree(({ scene }) => scene.getObjectByName('sceneCamera') as PerspectiveCamera)
 
   const scrollSpring = useScrollTransition('camera')
-  
+
   const isDebugMode = useGlobalStore((state) => state.isDebugMode)
   useEffect(() => {
     const { camera_axis, camera_position, camera_zoom } = cameras[activeCameraId]
@@ -76,11 +72,11 @@ const Camera = ({ data }: CameraProps) => {
 
     camera.userData = {
       forwardAxis: camAxisZ.clone(),
-      rightAxis: rightVector.clone(),
-      upAxis: upVector.clone(),
       initialDirection: direction.clone(),
       initialPosition: camera.position.clone(),
       initialTargetPosition: lookAtTarget.clone(),
+      rightAxis: rightVector.clone(),
+      upAxis: upVector.clone(),
     }
 
     setInitialCameraTargetPosition(lookAtTarget.clone())
@@ -104,7 +100,11 @@ const Camera = ({ data }: CameraProps) => {
     const entityPos = new Vector3()
     focusObject.getWorldPosition(entityPos)
 
-    const { rightAxis, upAxis, forwardAxis } = camera.userData as { rightAxis: Vector3; upAxis: Vector3; forwardAxis: Vector3 }
+    const { forwardAxis, rightAxis, upAxis } = camera.userData as {
+      forwardAxis: Vector3
+      rightAxis: Vector3
+      upAxis: Vector3
+    }
     const delta = entityPos.clone().sub(camera.position)
     const lookAtDelta = initialCameraTargetPosition.clone().sub(camera.position)
 
@@ -144,23 +144,9 @@ const Camera = ({ data }: CameraProps) => {
       return
     }
 
-    camera.setViewOffset(
-      SCREEN_WIDTH,
-      SCREEN_HEIGHT,
-      finalPanX,
-      finalPanY,
-      SCREEN_WIDTH,
-      SCREEN_HEIGHT,
-    )
+    camera.setViewOffset(SCREEN_WIDTH, SCREEN_HEIGHT, finalPanX, finalPanY, SCREEN_WIDTH, SCREEN_HEIGHT)
     camera.updateProjectionMatrix()
-    moveableCamera.setViewOffset(
-      SCREEN_WIDTH,
-      SCREEN_HEIGHT,
-      finalPanX,
-      finalPanY,
-      SCREEN_WIDTH,
-      SCREEN_HEIGHT,
-    )
+    moveableCamera.setViewOffset(SCREEN_WIDTH, SCREEN_HEIGHT, finalPanX, finalPanY, SCREEN_WIDTH, SCREEN_HEIGHT)
     moveableCamera.updateProjectionMatrix()
   })
 

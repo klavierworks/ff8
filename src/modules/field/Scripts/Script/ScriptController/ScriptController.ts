@@ -3,10 +3,10 @@ import { generateUUID } from 'three/src/math/MathUtils.js'
 import { create } from 'zustand'
 
 import type { Script, ScriptMethod } from '../../types'
+import type { OPCODE_HANDLERS } from '../handlers'
 
 import { sendToDebugger } from '../../../../../Debugger/debugUtils'
 import { createAnimationController } from '../AnimationController/AnimationController'
-import type { OPCODE_HANDLERS } from '../handlers'
 import createHeadRotationController from '../HeadRotationController/HeadRotationController'
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
@@ -24,7 +24,7 @@ type QueueItem = {
   uniqueId: string
 }
 
-type WaitMode = 'start' | 'end'
+type WaitMode = 'end' | 'start'
 
 const createScriptController = ({
   animationController,
@@ -37,8 +37,8 @@ const createScriptController = ({
   sfxController,
   useScriptStateStore,
 }: {
-  animationController: ReturnType<typeof createAnimationController>,
-  handlers: typeof OPCODE_HANDLERS,
+  animationController: ReturnType<typeof createAnimationController>
+  handlers: typeof OPCODE_HANDLERS
   headController: ReturnType<typeof createHeadRotationController>
   movementController: ReturnType<typeof createMovementController>
   rotationController: ReturnType<typeof createRotationController>

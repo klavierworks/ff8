@@ -5,10 +5,10 @@ import { create } from 'zustand'
 
 import MAP_NAMES from './constants/maps'
 import { sendToDebugger } from './Debugger/debugUtils'
+import LerpValue from './LerpValue'
 import { FieldData } from './modules/field/Field'
 import createSFXController from './modules/field/Scripts/Script/SFXController/SFXController'
 import WalkmeshMovementController from './modules/field/WalkMesh/WalkmeshMovement'
-import LerpValue from './LerpValue'
 
 interface GlobalState {
   activeCameraId: number
@@ -117,7 +117,7 @@ interface GlobalState {
     }
   >
 
-  module: 'field' | 'worldmap' | 'battle' | 'menu',
+  module: 'battle' | 'field' | 'menu' | 'worldmap'
 
   party: number[]
   partyMembersFollowing: number[]
@@ -207,10 +207,10 @@ const INITIAL_STATE: GlobalState = {
   messageStyles: {},
   module: 'menu',
   party: [0],
-  pendingCharacterPosition: undefined,
-  pendingFieldId: undefined as unknown as (typeof MAP_NAMES)[number],
-
   partyMembersFollowing: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  pendingCharacterPosition: undefined,
+
+  pendingFieldId: undefined as unknown as (typeof MAP_NAMES)[number],
   playerMovementSpeed: 0,
   sleepingParty: [],
   spuValue: 0,

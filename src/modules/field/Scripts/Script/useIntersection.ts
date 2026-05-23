@@ -11,7 +11,8 @@ export type Side = 'LEFT' | 'RIGHT' | undefined
 export const DEFAULT_TRIGGER_RADIUS = 0.02
 
 const getPointSideOfLine = (lineStart: VectorLike, lineEnd: VectorLike, point: VectorLike): Side => {
-  const crossZ = (lineEnd.x - lineStart.x) * (point.y - lineStart.y) - (lineEnd.y - lineStart.y) * (point.x - lineStart.x)
+  const crossZ =
+    (lineEnd.x - lineStart.x) * (point.y - lineStart.y) - (lineEnd.y - lineStart.y) * (point.x - lineStart.x)
   if (crossZ > 0) {
     return 'LEFT'
   }
@@ -20,11 +21,7 @@ const getPointSideOfLine = (lineStart: VectorLike, lineEnd: VectorLike, point: V
   }
 }
 
-const getClosestPointOnSegmentXY = (
-  point: VectorLike,
-  segmentStart: VectorLike,
-  segmentEnd: VectorLike,
-) => {
+const getClosestPointOnSegmentXY = (point: VectorLike, segmentStart: VectorLike, segmentEnd: VectorLike) => {
   const segmentX = segmentEnd.x - segmentStart.x
   const segmentY = segmentEnd.y - segmentStart.y
   const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY

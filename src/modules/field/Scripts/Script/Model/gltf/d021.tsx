@@ -9,11 +9,30 @@ Command: npx gltfjsx@6.5.3 ./optimized/base/models/d021.gltf --types --keepgroup
 import * as THREE from 'three'
 import React, { useImperativeHandle } from 'react'
 import { useGraph } from '@react-three/fiber'
-import { useAnimations } from '@react-three/drei';
+import { useAnimations } from '@react-three/drei'
 import { useFragmentedGLTFLoader } from '../useFragmentedGLTFLoader'
 import { GLTF, SkeletonUtils } from 'three-stdlib'
 
-type ActionName = 'd021_action_000' | 'd021_action_001' | 'd021_action_002' | 'd021_action_003' | 'd021_action_004' | 'd021_action_005' | 'd021_action_006' | 'd021_action_007' | 'd021_action_008' | 'd021_action_009' | 'd021_action_010' | 'd021_action_011' | 'd021_action_012' | 'd021_action_013' | 'd021_action_014' | 'd021_action_015' | 'd021_action_016' | 'd021_action_017' | 'd021_action_018'
+type ActionName =
+  | 'd021_action_000'
+  | 'd021_action_001'
+  | 'd021_action_002'
+  | 'd021_action_003'
+  | 'd021_action_004'
+  | 'd021_action_005'
+  | 'd021_action_006'
+  | 'd021_action_007'
+  | 'd021_action_008'
+  | 'd021_action_009'
+  | 'd021_action_010'
+  | 'd021_action_011'
+  | 'd021_action_012'
+  | 'd021_action_013'
+  | 'd021_action_014'
+  | 'd021_action_015'
+  | 'd021_action_016'
+  | 'd021_action_017'
+  | 'd021_action_018'
 
 interface GLTFAction extends THREE.AnimationClip {
   name: ActionName
@@ -32,27 +51,41 @@ type GLTFResult = GLTF & {
   animations: GLTFAction[]
 }
 
-export default React.forwardRef(function d021(props: JSX.IntrinsicElements['group'], ref: React.Ref<{ actions: Record<ActionName, AnimationAction>, mesh: Group }>) {
+export default React.forwardRef(function d021(
+  props: JSX.IntrinsicElements['group'],
+  ref: React.Ref<{ actions: Record<ActionName, AnimationAction>; mesh: Group }>,
+) {
   const group = React.useRef<THREE.Group>()
   const { scene, animations } = useFragmentedGLTFLoader('d021', props.mapName)
   const clone = React.useMemo(() => SkeletonUtils.clone(scene), [scene])
   const { nodes, materials } = useGraph(clone) as GLTFResult
   const { actions } = useAnimations(animations, group)
 
- const formattedAnimations = useAnimations(animations, group);
- useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }));
-   return (
+  const formattedAnimations = useAnimations(animations, group)
+  useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }))
+  return (
     <group ref={group} {...props} dispose={null}>
       <group name="Scene">
         <group name="d021_armature">
           <primitive object={nodes.bone_0} />
         </group>
         <group name="d021_mesh_0">
-          <skinnedMesh name="d021_mesh_0_mesh" geometry={nodes.d021_mesh_0_mesh.geometry} material={materials.d021_mesh_0_texture_0} skeleton={nodes.d021_mesh_0_mesh.skeleton} />
-          <skinnedMesh name="d021_mesh_0_mesh_1" geometry={nodes.d021_mesh_0_mesh_1.geometry} material={materials.d021_mesh_0_texture_1} skeleton={nodes.d021_mesh_0_mesh_1.skeleton} />
+          <skinnedMesh
+            name="d021_mesh_0_mesh"
+            geometry={nodes.d021_mesh_0_mesh.geometry}
+            material={materials.d021_mesh_0_texture_0}
+            skeleton={nodes.d021_mesh_0_mesh.skeleton}
+          />
+          <skinnedMesh
+            name="d021_mesh_0_mesh_1"
+            geometry={nodes.d021_mesh_0_mesh_1.geometry}
+            material={materials.d021_mesh_0_texture_1}
+            skeleton={nodes.d021_mesh_0_mesh_1.skeleton}
+          />
         </group>
       </group>
     </group>
- ); })
+  )
+})
 
 useFragmentedGLTFLoader.preload('d021')

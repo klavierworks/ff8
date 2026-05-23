@@ -26,11 +26,7 @@ const Background = ({ data }: BackgroundProps) => {
   const layers = useLayeredTiles(tiles, backgroundDetails.sprite, width, height, hasTiledRear)
 
   return layers.map((layer, index) => (
-    <Layer
-      isTiled={index === layers.length - 1 && hasTiledRear}
-      key={layer.id}
-      layer={layer}
-    />
+    <Layer isTiled={index === layers.length - 1 && hasTiledRear} key={layer.id} layer={layer} />
   ))
 }
 

@@ -9,11 +9,17 @@ Command: npx gltfjsx@6.5.3 ./optimized/base/models/p206.gltf --types --keepgroup
 import * as THREE from 'three'
 import React, { useImperativeHandle } from 'react'
 import { useGraph } from '@react-three/fiber'
-import { useAnimations } from '@react-three/drei';
+import { useAnimations } from '@react-three/drei'
 import { useFragmentedGLTFLoader } from '../useFragmentedGLTFLoader'
 import { GLTF, SkeletonUtils } from 'three-stdlib'
 
-type ActionName = 'p206_action_000' | 'p206_action_001' | 'p206_action_002' | 'p206_action_003' | 'p206_action_004' | 'p206_action_005'
+type ActionName =
+  | 'p206_action_000'
+  | 'p206_action_001'
+  | 'p206_action_002'
+  | 'p206_action_003'
+  | 'p206_action_004'
+  | 'p206_action_005'
 
 interface GLTFAction extends THREE.AnimationClip {
   name: ActionName
@@ -30,24 +36,33 @@ type GLTFResult = GLTF & {
   animations: GLTFAction[]
 }
 
-export default React.forwardRef(function p206(props: JSX.IntrinsicElements['group'], ref: React.Ref<{ actions: Record<ActionName, AnimationAction>, mesh: Group }>) {
+export default React.forwardRef(function p206(
+  props: JSX.IntrinsicElements['group'],
+  ref: React.Ref<{ actions: Record<ActionName, AnimationAction>; mesh: Group }>,
+) {
   const group = React.useRef<THREE.Group>()
   const { scene, animations } = useFragmentedGLTFLoader('p206', props.mapName)
   const clone = React.useMemo(() => SkeletonUtils.clone(scene), [scene])
   const { nodes, materials } = useGraph(clone) as GLTFResult
   const { actions } = useAnimations(animations, group)
 
- const formattedAnimations = useAnimations(animations, group);
- useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }));
-   return (
+  const formattedAnimations = useAnimations(animations, group)
+  useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }))
+  return (
     <group ref={group} {...props} dispose={null}>
       <group name="Scene">
         <group name="p206_armature">
           <primitive object={nodes.bone_0} />
         </group>
-        <skinnedMesh name="p206_mesh_0" geometry={nodes.p206_mesh_0.geometry} material={materials.p206_mesh_0_texture_0} skeleton={nodes.p206_mesh_0.skeleton} />
+        <skinnedMesh
+          name="p206_mesh_0"
+          geometry={nodes.p206_mesh_0.geometry}
+          material={materials.p206_mesh_0_texture_0}
+          skeleton={nodes.p206_mesh_0.skeleton}
+        />
       </group>
     </group>
- ); })
+  )
+})
 
 useFragmentedGLTFLoader.preload('p206')

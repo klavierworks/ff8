@@ -56,13 +56,14 @@ const Model = ({
   const partyMemberId = useScriptStateStore((state) => state.partyMemberId)
   const modelId = useScriptStateStore((state) => state.modelId)
 
-  const isLeadCharacter = useGlobalStore(state => state.party[0] === partyMemberId);
-  const isFollower = useGlobalStore(state =>
-    partyMemberId !== undefined
-    && state.party.includes(partyMemberId)
-    && state.partyMembersFollowing.includes(partyMemberId)
-    && !isLeadCharacter
-  );
+  const isLeadCharacter = useGlobalStore((state) => state.party[0] === partyMemberId)
+  const isFollower = useGlobalStore(
+    (state) =>
+      partyMemberId !== undefined &&
+      state.party.includes(partyMemberId) &&
+      state.partyMembersFollowing.includes(partyMemberId) &&
+      !isLeadCharacter,
+  )
 
   const modelName = models[modelId]
   const ModelComponent = components[modelName] ?? components['d000']

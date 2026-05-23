@@ -1,10 +1,11 @@
-import { Bone, Euler, Quaternion, Scene, Vector3 } from "three";
-import { create } from "zustand";
-import createMovementController from "../MovementController/MovementController";
-import createRotationController from "../RotationController/RotationController";
-import { getShortestRouteToAngle, radiansToUnit, signedAngleBetweenVectors } from "../RotationController/rotationUtils";
-import LerpValue, { cosineEaseInOut } from "../../../../../LerpValue";
-import { framesToMs } from "../../../../../timing";
+import { Bone, Euler, Quaternion, Scene, Vector3 } from 'three'
+import { create } from 'zustand'
+
+import LerpValue, { cosineEaseInOut } from '../../../../../LerpValue'
+import { framesToMs } from '../../../../../timing'
+import createMovementController from '../MovementController/MovementController'
+import createRotationController from '../RotationController/RotationController'
+import { getShortestRouteToAngle, radiansToUnit, signedAngleBetweenVectors } from '../RotationController/rotationUtils'
 
 export type TurnSpeed = number
 
@@ -63,7 +64,7 @@ const createHeadRotationController = (
 
   const turnToFaceAngles = async (yawTarget: number, pitchTarget: number, speed: TurnSpeed) => {
     setState((state) => ({ interactionId: state.interactionId + 1, isActive: true }))
-    const { yaw, pitch, limits } = getState()
+    const { limits, pitch, yaw } = getState()
 
     const yawShortest = getShortestRouteToAngle(yawTarget, yaw.get())
     const pitchShortest = getShortestRouteToAngle(pitchTarget, pitch.get())

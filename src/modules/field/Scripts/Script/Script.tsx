@@ -8,6 +8,7 @@ import { Script as ScriptType } from '../types'
 import { createAnimationController } from './AnimationController/AnimationController'
 import Door from './Door/Door'
 import DrawPoint from './DrawPoint/DrawPoint'
+import { OPCODE_HANDLERS } from './handlers'
 import createHeadRotationController from './HeadRotationController/HeadRotationController'
 import Location from './Location/Location'
 import Model from './Model/Model'
@@ -16,7 +17,6 @@ import createRotationController from './RotationController/RotationController'
 import createScriptController from './ScriptController/ScriptController'
 import createSFXController from './SFXController/SFXController'
 import createScriptState from './state'
-import { OPCODE_HANDLERS } from './handlers'
 
 type ScriptProps = {
   doors: Door[]
@@ -51,8 +51,8 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
     () =>
       createScriptController({
         animationController,
-        headController,
         handlers: OPCODE_HANDLERS,
+        headController,
         movementController,
         rotationController,
         scene,

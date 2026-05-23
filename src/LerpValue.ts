@@ -1,4 +1,4 @@
-import { framesToMs } from "./timing"
+import { framesToMs } from './timing'
 
 export type EasingFunction = (t: number) => number
 
@@ -29,7 +29,7 @@ class LerpValue {
   }
 
   calculateDuration(speed: number): number {
-    return framesToMs(speed) * this.speedMultiplier;
+    return framesToMs(speed) * this.speedMultiplier
   }
 
   get(): number {

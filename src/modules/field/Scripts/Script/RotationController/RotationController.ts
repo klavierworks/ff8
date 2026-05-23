@@ -1,10 +1,16 @@
-import { Object3D, Scene, Vector3 } from "three";
-import { create } from "zustand";
-import createMovementController from "../MovementController/MovementController";
-import { getDirectionToVector, getShortestRouteToAngle, radiansToUnit, signedAngleBetweenVectors } from "./rotationUtils";
-import { RefObject } from "react";
-import LerpValue from "../../../../../LerpValue";
-import { framesToMs } from "../../../../../timing";
+import { RefObject } from 'react'
+import { Object3D, Scene, Vector3 } from 'three'
+import { create } from 'zustand'
+
+import LerpValue from '../../../../../LerpValue'
+import { framesToMs } from '../../../../../timing'
+import createMovementController from '../MovementController/MovementController'
+import {
+  getDirectionToVector,
+  getShortestRouteToAngle,
+  radiansToUnit,
+  signedAngleBetweenVectors,
+} from './rotationUtils'
 
 // A turn speed can be expressed as:
 //   - 'gentle': walking-style turn (~1s per half-revolution, 4 units/frame)
@@ -12,20 +18,26 @@ import { framesToMs } from "../../../../../timing";
 //   - a fixed frame count (e.g. 0 = instant snap, 30 = 1 second @ 30Hz)
 //   - a per-frame rate object, from which the frame count is derived from the
 //     angle delta — so a 180° turn takes twice as long as a 90° turn.
-export type TurnSpeed = 'gentle' | 'fast' | number | { ratePerFrame: number }
+export type TurnSpeed = 'fast' | 'gentle' | number | { ratePerFrame: number }
 
 const GENTLE_RATE_PER_FRAME = { ratePerFrame: 4 }
 const FAST_RATE = { ratePerFrame: 8 }
 
 const resolveSpeed = (speed: TurnSpeed): number | { ratePerFrame: number } => {
-  if (speed === 'gentle') return GENTLE_RATE_PER_FRAME
-  if (speed === 'fast') return FAST_RATE
+  if (speed === 'gentle') {
+    return GENTLE_RATE_PER_FRAME
+  }
+  if (speed === 'fast') {
+    return FAST_RATE
+  }
   return speed
 }
 
 const framesForSpeed = (speed: TurnSpeed, angleDelta: number) => {
   const resolved = resolveSpeed(speed)
-  if (typeof resolved === 'number') return resolved
+  if (typeof resolved === 'number') {
+    return resolved
+  }
   return Math.max(1, Math.ceil(angleDelta / resolved.ratePerFrame))
 }
 
@@ -60,18 +72,18 @@ const createRotationController = (
   const turnToFaceAngle = async (
     angle: number,
     speed: TurnSpeed,
-    direction: 'shortest' | 'clockwise' | 'counterclockwise' = 'shortest',
+    direction: 'clockwise' | 'counterclockwise' | 'shortest' = 'shortest',
   ) => {
     const currentAngle = getState().angle
-    const current = currentAngle.get();
+    const current = currentAngle.get()
 
-    let targetAngle: number;
+    let targetAngle: number
     if (direction === 'clockwise') {
-      targetAngle = current < angle ? angle - 256 : angle;
+      targetAngle = current < angle ? angle - 256 : angle
     } else if (direction === 'counterclockwise') {
-      targetAngle = current > angle ? angle + 256 : angle;
+      targetAngle = current > angle ? angle + 256 : angle
     } else {
-      targetAngle = getShortestRouteToAngle(angle, current);
+      targetAngle = getShortestRouteToAngle(angle, current)
     }
 
     const limits = getState().limits
@@ -83,7 +95,7 @@ const createRotationController = (
       currentAngle.set(limitedAngle % 256)
       return
     }
-    await currentAngle.start(limitedAngle % 256, framesToMs(duration));
+    await currentAngle.start(limitedAngle % 256, framesToMs(duration))
   }
 
   const turnToFaceDirection = async (direction: Vector3, speed: TurnSpeed) => {

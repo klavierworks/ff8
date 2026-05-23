@@ -73,6 +73,11 @@ body,
   opacity: var(--canvas-opacity, 1);
 }
 
+.canvas.ui canvas {
+  pointer-events: none;
+  opacity: 1;
+}
+
 .debug {
   position: fixed;
   bottom: 0;

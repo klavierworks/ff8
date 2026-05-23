@@ -9,11 +9,20 @@ Command: npx gltfjsx@6.5.3 ./optimized/base/models/p126.gltf --types --keepgroup
 import * as THREE from 'three'
 import React, { useImperativeHandle } from 'react'
 import { useGraph } from '@react-three/fiber'
-import { useAnimations } from '@react-three/drei';
+import { useAnimations } from '@react-three/drei'
 import { useFragmentedGLTFLoader } from '../useFragmentedGLTFLoader'
 import { GLTF, SkeletonUtils } from 'three-stdlib'
 
-type ActionName = 'p126_action_000' | 'p126_action_001' | 'p126_action_002' | 'p126_action_003' | 'p126_action_004' | 'p126_action_005' | 'p126_action_006' | 'p126_action_007' | 'p126_action_008'
+type ActionName =
+  | 'p126_action_000'
+  | 'p126_action_001'
+  | 'p126_action_002'
+  | 'p126_action_003'
+  | 'p126_action_004'
+  | 'p126_action_005'
+  | 'p126_action_006'
+  | 'p126_action_007'
+  | 'p126_action_008'
 
 interface GLTFAction extends THREE.AnimationClip {
   name: ActionName
@@ -30,24 +39,33 @@ type GLTFResult = GLTF & {
   animations: GLTFAction[]
 }
 
-export default React.forwardRef(function p126(props: JSX.IntrinsicElements['group'], ref: React.Ref<{ actions: Record<ActionName, AnimationAction>, mesh: Group }>) {
+export default React.forwardRef(function p126(
+  props: JSX.IntrinsicElements['group'],
+  ref: React.Ref<{ actions: Record<ActionName, AnimationAction>; mesh: Group }>,
+) {
   const group = React.useRef<THREE.Group>()
   const { scene, animations } = useFragmentedGLTFLoader('p126', props.mapName)
   const clone = React.useMemo(() => SkeletonUtils.clone(scene), [scene])
   const { nodes, materials } = useGraph(clone) as GLTFResult
   const { actions } = useAnimations(animations, group)
 
- const formattedAnimations = useAnimations(animations, group);
- useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }));
-   return (
+  const formattedAnimations = useAnimations(animations, group)
+  useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }))
+  return (
     <group ref={group} {...props} dispose={null}>
       <group name="Scene">
         <group name="p126_armature">
           <primitive object={nodes.bone_0} />
         </group>
-        <skinnedMesh name="p126_mesh_0" geometry={nodes.p126_mesh_0.geometry} material={materials.p126_mesh_0_texture_0} skeleton={nodes.p126_mesh_0.skeleton} />
+        <skinnedMesh
+          name="p126_mesh_0"
+          geometry={nodes.p126_mesh_0.geometry}
+          material={materials.p126_mesh_0_texture_0}
+          skeleton={nodes.p126_mesh_0.skeleton}
+        />
       </group>
     </group>
- ); })
+  )
+})
 
 useFragmentedGLTFLoader.preload('p126')

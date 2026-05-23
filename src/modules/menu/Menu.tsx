@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
 
 import MAP_NAMES from '../../constants/maps'
+import { offlineController } from '../../OfflineController'
+import useGlobalStore from '../../store'
 import { loadGame } from '../field/fieldUtils'
 import { MEMORY } from '../field/Scripts/Script/handlers'
 import { openMessage } from '../field/Scripts/Script/utils'
-import { offlineController } from '../../OfflineController'
-import useGlobalStore from '../../store'
 import { CHAPTERS } from './CHAPTERS'
 
 const closeAllWindows = () => {

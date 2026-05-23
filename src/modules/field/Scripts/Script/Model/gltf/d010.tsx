@@ -9,11 +9,18 @@ Command: npx gltfjsx@6.5.3 ./optimized/base/models/d010.gltf --types --keepgroup
 import * as THREE from 'three'
 import React, { useImperativeHandle } from 'react'
 import { useGraph } from '@react-three/fiber'
-import { useAnimations } from '@react-three/drei';
+import { useAnimations } from '@react-three/drei'
 import { useFragmentedGLTFLoader } from '../useFragmentedGLTFLoader'
 import { GLTF, SkeletonUtils } from 'three-stdlib'
 
-type ActionName = 'd010_action_000' | 'd010_action_001' | 'd010_action_002' | 'd010_action_003' | 'd010_action_004' | 'd010_action_005' | 'd010_action_006'
+type ActionName =
+  | 'd010_action_000'
+  | 'd010_action_001'
+  | 'd010_action_002'
+  | 'd010_action_003'
+  | 'd010_action_004'
+  | 'd010_action_005'
+  | 'd010_action_006'
 
 interface GLTFAction extends THREE.AnimationClip {
   name: ActionName
@@ -32,27 +39,41 @@ type GLTFResult = GLTF & {
   animations: GLTFAction[]
 }
 
-export default React.forwardRef(function d010(props: JSX.IntrinsicElements['group'], ref: React.Ref<{ actions: Record<ActionName, AnimationAction>, mesh: Group }>) {
+export default React.forwardRef(function d010(
+  props: JSX.IntrinsicElements['group'],
+  ref: React.Ref<{ actions: Record<ActionName, AnimationAction>; mesh: Group }>,
+) {
   const group = React.useRef<THREE.Group>()
   const { scene, animations } = useFragmentedGLTFLoader('d010', props.mapName)
   const clone = React.useMemo(() => SkeletonUtils.clone(scene), [scene])
   const { nodes, materials } = useGraph(clone) as GLTFResult
   const { actions } = useAnimations(animations, group)
 
- const formattedAnimations = useAnimations(animations, group);
- useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }));
-   return (
+  const formattedAnimations = useAnimations(animations, group)
+  useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }))
+  return (
     <group ref={group} {...props} dispose={null}>
       <group name="Scene">
         <group name="d010_armature">
           <primitive object={nodes.bone_0} />
         </group>
         <group name="d010_mesh_0">
-          <skinnedMesh name="d010_mesh_0_mesh" geometry={nodes.d010_mesh_0_mesh.geometry} material={materials.d010_mesh_0_texture_0} skeleton={nodes.d010_mesh_0_mesh.skeleton} />
-          <skinnedMesh name="d010_mesh_0_mesh_1" geometry={nodes.d010_mesh_0_mesh_1.geometry} material={materials.d010_mesh_0_texture_1} skeleton={nodes.d010_mesh_0_mesh_1.skeleton} />
+          <skinnedMesh
+            name="d010_mesh_0_mesh"
+            geometry={nodes.d010_mesh_0_mesh.geometry}
+            material={materials.d010_mesh_0_texture_0}
+            skeleton={nodes.d010_mesh_0_mesh.skeleton}
+          />
+          <skinnedMesh
+            name="d010_mesh_0_mesh_1"
+            geometry={nodes.d010_mesh_0_mesh_1.geometry}
+            material={materials.d010_mesh_0_texture_1}
+            skeleton={nodes.d010_mesh_0_mesh_1.skeleton}
+          />
         </group>
       </group>
     </group>
- ); })
+  )
+})
 
 useFragmentedGLTFLoader.preload('d010')

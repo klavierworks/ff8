@@ -1,8 +1,9 @@
-import { AnimationAction, AnimationClip, AnimationMixer, Object3D } from "three";
-import { create } from "zustand"
-import { applyAnimationAtTime } from "./animationUtils";
-import createMovementController from "../MovementController/MovementController";
-import { framesToSeconds } from "../../../../../timing";
+import { AnimationAction, AnimationClip, AnimationMixer, Object3D } from 'three'
+import { create } from 'zustand'
+
+import { framesToSeconds } from '../../../../../timing'
+import createMovementController from '../MovementController/MovementController'
+import { applyAnimationAtTime } from './animationUtils'
 
 type AnimationItem = {
   action: AnimationAction
@@ -182,10 +183,8 @@ export const createAnimationController = (id: number | string) => {
 
     const action = mixer.clipAction(clip)
 
-    const startTime =
-      options?.startFrame !== undefined ? framesToSeconds(options.startFrame) : 0;
-    const endTime =
-      options?.endFrame !== undefined ? framesToSeconds(options.endFrame) : action.getClip().duration;
+    const startTime = options?.startFrame !== undefined ? framesToSeconds(options.startFrame) : 0
+    const endTime = options?.endFrame !== undefined ? framesToSeconds(options.endFrame) : action.getClip().duration
 
     const uniqueId = `${id}-${clipId}--${Date.now()}`
     const animation: AnimationItem = {

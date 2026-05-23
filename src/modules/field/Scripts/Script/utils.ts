@@ -11,7 +11,7 @@ export const remoteExecute = async (
   scriptLabel: number,
   priority = 10,
   isGuaranteed = false,
-  waitMode: 'start' | 'end' = 'end',
+  waitMode: 'end' | 'start' = 'end',
 ) =>
   new Promise<void>((resolve) => {
     const key = Math.random().toString(36).substring(7)
@@ -45,7 +45,7 @@ export const remoteExecutePartyMember = async (
   scriptLabel: number,
   priority = 10,
   isGuaranteed = false,
-  waitMode: 'start' | 'end' = 'end',
+  waitMode: 'end' | 'start' = 'end',
 ) => {
   const actor = getPartyMemberModelComponent(scene, partyMemberIndex)
   if (!actor) {

@@ -9,7 +9,7 @@ Command: npx gltfjsx@6.5.3 ./optimized/base/models/n014.gltf --types --keepgroup
 import * as THREE from 'three'
 import React, { useImperativeHandle } from 'react'
 import { useGraph } from '@react-three/fiber'
-import { useAnimations } from '@react-three/drei';
+import { useAnimations } from '@react-three/drei'
 import { useFragmentedGLTFLoader } from '../useFragmentedGLTFLoader'
 import { GLTF, SkeletonUtils } from 'three-stdlib'
 
@@ -46,47 +46,121 @@ type GLTFResult = GLTF & {
   animations: GLTFAction[]
 }
 
-export default React.forwardRef(function n014(props: JSX.IntrinsicElements['group'], ref: React.Ref<{ actions: Record<ActionName, AnimationAction>, mesh: Group }>) {
+export default React.forwardRef(function n014(
+  props: JSX.IntrinsicElements['group'],
+  ref: React.Ref<{ actions: Record<ActionName, AnimationAction>; mesh: Group }>,
+) {
   const group = React.useRef<THREE.Group>()
   const { scene, animations } = useFragmentedGLTFLoader('n014', props.mapName)
   const clone = React.useMemo(() => SkeletonUtils.clone(scene), [scene])
   const { nodes, materials } = useGraph(clone) as GLTFResult
   const { actions } = useAnimations(animations, group)
 
- const formattedAnimations = useAnimations(animations, group);
- useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }));
-   return (
+  const formattedAnimations = useAnimations(animations, group)
+  useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }))
+  return (
     <group ref={group} {...props} dispose={null}>
       <group name="Scene">
         <group name="n014_armature">
           <primitive object={nodes.bone_0} />
         </group>
         <group name="n014_mesh_0">
-          <skinnedMesh name="n014_mesh_0_mesh" geometry={nodes.n014_mesh_0_mesh.geometry} material={materials.n014_mesh_0_texture_0} skeleton={nodes.n014_mesh_0_mesh.skeleton} />
-          <skinnedMesh name="n014_mesh_0_mesh_1" geometry={nodes.n014_mesh_0_mesh_1.geometry} material={materials.n014_mesh_0_texture_1} skeleton={nodes.n014_mesh_0_mesh_1.skeleton} />
-          <skinnedMesh name="n014_mesh_0_mesh_2" geometry={nodes.n014_mesh_0_mesh_2.geometry} material={materials.n014_mesh_0_texture_2} skeleton={nodes.n014_mesh_0_mesh_2.skeleton} />
-          <skinnedMesh name="n014_mesh_0_mesh_3" geometry={nodes.n014_mesh_0_mesh_3.geometry} material={materials.n014_mesh_0_texture_3} skeleton={nodes.n014_mesh_0_mesh_3.skeleton} />
+          <skinnedMesh
+            name="n014_mesh_0_mesh"
+            geometry={nodes.n014_mesh_0_mesh.geometry}
+            material={materials.n014_mesh_0_texture_0}
+            skeleton={nodes.n014_mesh_0_mesh.skeleton}
+          />
+          <skinnedMesh
+            name="n014_mesh_0_mesh_1"
+            geometry={nodes.n014_mesh_0_mesh_1.geometry}
+            material={materials.n014_mesh_0_texture_1}
+            skeleton={nodes.n014_mesh_0_mesh_1.skeleton}
+          />
+          <skinnedMesh
+            name="n014_mesh_0_mesh_2"
+            geometry={nodes.n014_mesh_0_mesh_2.geometry}
+            material={materials.n014_mesh_0_texture_2}
+            skeleton={nodes.n014_mesh_0_mesh_2.skeleton}
+          />
+          <skinnedMesh
+            name="n014_mesh_0_mesh_3"
+            geometry={nodes.n014_mesh_0_mesh_3.geometry}
+            material={materials.n014_mesh_0_texture_3}
+            skeleton={nodes.n014_mesh_0_mesh_3.skeleton}
+          />
         </group>
         <group name="n014_mesh_1">
-          <skinnedMesh name="n014_mesh_1_mesh" geometry={nodes.n014_mesh_1_mesh.geometry} material={materials.n014_mesh_0_texture_0} skeleton={nodes.n014_mesh_1_mesh.skeleton} />
-          <skinnedMesh name="n014_mesh_1_mesh_1" geometry={nodes.n014_mesh_1_mesh_1.geometry} material={materials.n014_mesh_0_texture_2} skeleton={nodes.n014_mesh_1_mesh_1.skeleton} />
+          <skinnedMesh
+            name="n014_mesh_1_mesh"
+            geometry={nodes.n014_mesh_1_mesh.geometry}
+            material={materials.n014_mesh_0_texture_0}
+            skeleton={nodes.n014_mesh_1_mesh.skeleton}
+          />
+          <skinnedMesh
+            name="n014_mesh_1_mesh_1"
+            geometry={nodes.n014_mesh_1_mesh_1.geometry}
+            material={materials.n014_mesh_0_texture_2}
+            skeleton={nodes.n014_mesh_1_mesh_1.skeleton}
+          />
         </group>
         <group name="n014_mesh_2">
-          <skinnedMesh name="n014_mesh_2_mesh" geometry={nodes.n014_mesh_2_mesh.geometry} material={materials.n014_mesh_0_texture_0} skeleton={nodes.n014_mesh_2_mesh.skeleton} />
-          <skinnedMesh name="n014_mesh_2_mesh_1" geometry={nodes.n014_mesh_2_mesh_1.geometry} material={materials.n014_mesh_0_texture_2} skeleton={nodes.n014_mesh_2_mesh_1.skeleton} />
+          <skinnedMesh
+            name="n014_mesh_2_mesh"
+            geometry={nodes.n014_mesh_2_mesh.geometry}
+            material={materials.n014_mesh_0_texture_0}
+            skeleton={nodes.n014_mesh_2_mesh.skeleton}
+          />
+          <skinnedMesh
+            name="n014_mesh_2_mesh_1"
+            geometry={nodes.n014_mesh_2_mesh_1.geometry}
+            material={materials.n014_mesh_0_texture_2}
+            skeleton={nodes.n014_mesh_2_mesh_1.skeleton}
+          />
         </group>
         <group name="n014_mesh_3">
-          <skinnedMesh name="n014_mesh_3_mesh" geometry={nodes.n014_mesh_3_mesh.geometry} material={materials.n014_mesh_0_texture_0} skeleton={nodes.n014_mesh_3_mesh.skeleton} />
-          <skinnedMesh name="n014_mesh_3_mesh_1" geometry={nodes.n014_mesh_3_mesh_1.geometry} material={materials.n014_mesh_0_texture_1} skeleton={nodes.n014_mesh_3_mesh_1.skeleton} />
+          <skinnedMesh
+            name="n014_mesh_3_mesh"
+            geometry={nodes.n014_mesh_3_mesh.geometry}
+            material={materials.n014_mesh_0_texture_0}
+            skeleton={nodes.n014_mesh_3_mesh.skeleton}
+          />
+          <skinnedMesh
+            name="n014_mesh_3_mesh_1"
+            geometry={nodes.n014_mesh_3_mesh_1.geometry}
+            material={materials.n014_mesh_0_texture_1}
+            skeleton={nodes.n014_mesh_3_mesh_1.skeleton}
+          />
         </group>
         <group name="n014_mesh_4">
-          <skinnedMesh name="n014_mesh_4_mesh" geometry={nodes.n014_mesh_4_mesh.geometry} material={materials.n014_mesh_0_texture_0} skeleton={nodes.n014_mesh_4_mesh.skeleton} />
-          <skinnedMesh name="n014_mesh_4_mesh_1" geometry={nodes.n014_mesh_4_mesh_1.geometry} material={materials.n014_mesh_0_texture_1} skeleton={nodes.n014_mesh_4_mesh_1.skeleton} />
+          <skinnedMesh
+            name="n014_mesh_4_mesh"
+            geometry={nodes.n014_mesh_4_mesh.geometry}
+            material={materials.n014_mesh_0_texture_0}
+            skeleton={nodes.n014_mesh_4_mesh.skeleton}
+          />
+          <skinnedMesh
+            name="n014_mesh_4_mesh_1"
+            geometry={nodes.n014_mesh_4_mesh_1.geometry}
+            material={materials.n014_mesh_0_texture_1}
+            skeleton={nodes.n014_mesh_4_mesh_1.skeleton}
+          />
         </group>
-        <skinnedMesh name="n014_mesh_5" geometry={nodes.n014_mesh_5.geometry} material={materials.n014_mesh_0_texture_2} skeleton={nodes.n014_mesh_5.skeleton} />
-        <skinnedMesh name="n014_mesh_6" geometry={nodes.n014_mesh_6.geometry} material={materials.n014_mesh_0_texture_2} skeleton={nodes.n014_mesh_6.skeleton} />
+        <skinnedMesh
+          name="n014_mesh_5"
+          geometry={nodes.n014_mesh_5.geometry}
+          material={materials.n014_mesh_0_texture_2}
+          skeleton={nodes.n014_mesh_5.skeleton}
+        />
+        <skinnedMesh
+          name="n014_mesh_6"
+          geometry={nodes.n014_mesh_6.geometry}
+          material={materials.n014_mesh_0_texture_2}
+          skeleton={nodes.n014_mesh_6.skeleton}
+        />
       </group>
     </group>
- ); })
+  )
+})
 
 useFragmentedGLTFLoader.preload('n014')

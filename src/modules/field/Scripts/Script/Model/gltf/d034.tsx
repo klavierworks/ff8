@@ -9,11 +9,22 @@ Command: npx gltfjsx@6.5.3 ./optimized/base/models/d034.gltf --types --keepgroup
 import * as THREE from 'three'
 import React, { useImperativeHandle } from 'react'
 import { useGraph } from '@react-three/fiber'
-import { useAnimations } from '@react-three/drei';
+import { useAnimations } from '@react-three/drei'
 import { useFragmentedGLTFLoader } from '../useFragmentedGLTFLoader'
 import { GLTF, SkeletonUtils } from 'three-stdlib'
 
-type ActionName = 'd034_action_000' | 'd034_action_001' | 'd034_action_002' | 'd034_action_003' | 'd034_action_004' | 'd034_action_005' | 'd034_action_006' | 'd034_action_007' | 'd034_action_008' | 'd034_action_009' | 'd034_action_010'
+type ActionName =
+  | 'd034_action_000'
+  | 'd034_action_001'
+  | 'd034_action_002'
+  | 'd034_action_003'
+  | 'd034_action_004'
+  | 'd034_action_005'
+  | 'd034_action_006'
+  | 'd034_action_007'
+  | 'd034_action_008'
+  | 'd034_action_009'
+  | 'd034_action_010'
 
 interface GLTFAction extends THREE.AnimationClip {
   name: ActionName
@@ -30,24 +41,33 @@ type GLTFResult = GLTF & {
   animations: GLTFAction[]
 }
 
-export default React.forwardRef(function d034(props: JSX.IntrinsicElements['group'], ref: React.Ref<{ actions: Record<ActionName, AnimationAction>, mesh: Group }>) {
+export default React.forwardRef(function d034(
+  props: JSX.IntrinsicElements['group'],
+  ref: React.Ref<{ actions: Record<ActionName, AnimationAction>; mesh: Group }>,
+) {
   const group = React.useRef<THREE.Group>()
   const { scene, animations } = useFragmentedGLTFLoader('d034', props.mapName)
   const clone = React.useMemo(() => SkeletonUtils.clone(scene), [scene])
   const { nodes, materials } = useGraph(clone) as GLTFResult
   const { actions } = useAnimations(animations, group)
 
- const formattedAnimations = useAnimations(animations, group);
- useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }));
-   return (
+  const formattedAnimations = useAnimations(animations, group)
+  useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }))
+  return (
     <group ref={group} {...props} dispose={null}>
       <group name="Scene">
         <group name="d034_armature">
           <primitive object={nodes.bone_0} />
         </group>
-        <skinnedMesh name="d034_mesh_0" geometry={nodes.d034_mesh_0.geometry} material={materials.d034_mesh_0_texture_0} skeleton={nodes.d034_mesh_0.skeleton} />
+        <skinnedMesh
+          name="d034_mesh_0"
+          geometry={nodes.d034_mesh_0.geometry}
+          material={materials.d034_mesh_0_texture_0}
+          skeleton={nodes.d034_mesh_0.skeleton}
+        />
       </group>
     </group>
- ); })
+  )
+})
 
 useFragmentedGLTFLoader.preload('d034')

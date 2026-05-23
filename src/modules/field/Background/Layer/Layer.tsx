@@ -130,8 +130,8 @@ const Layer = ({ isTiled, layer }: LayerProps) => {
 
     if (ratioAdjustedX !== 0 || ratioAdjustedY !== 0) {
       const directions = getCameraDirections(camera)
-      layerRef.current.position.add(directions.rightVector.clone().multiplyScalar(ratioAdjustedX * widthUnits / 8))
-      layerRef.current.position.add(directions.upVector.clone().multiplyScalar(ratioAdjustedY * heightUnits / 8))
+      layerRef.current.position.add(directions.rightVector.clone().multiplyScalar((ratioAdjustedX * widthUnits) / 8))
+      layerRef.current.position.add(directions.upVector.clone().multiplyScalar((ratioAdjustedY * heightUnits) / 8))
     }
   })
 

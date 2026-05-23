@@ -55,7 +55,7 @@ declare global {
     key: string
     priority: number
     scriptLabel: number
-    waitMode?: 'start' | 'end'
+    waitMode?: 'end' | 'start'
   }
 
   type FormattedGateway = {

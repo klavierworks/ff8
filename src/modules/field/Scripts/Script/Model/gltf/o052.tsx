@@ -9,7 +9,7 @@ Command: npx gltfjsx@6.5.3 ./optimized/base/models/o052.gltf --types --keepgroup
 import * as THREE from 'three'
 import React, { useImperativeHandle } from 'react'
 import { useGraph } from '@react-three/fiber'
-import { useAnimations } from '@react-three/drei';
+import { useAnimations } from '@react-three/drei'
 import { useFragmentedGLTFLoader } from '../useFragmentedGLTFLoader'
 import { GLTF, SkeletonUtils } from 'three-stdlib'
 
@@ -30,24 +30,33 @@ type GLTFResult = GLTF & {
   animations: GLTFAction[]
 }
 
-export default React.forwardRef(function o052(props: JSX.IntrinsicElements['group'], ref: React.Ref<{ actions: Record<ActionName, AnimationAction>, mesh: Group }>) {
+export default React.forwardRef(function o052(
+  props: JSX.IntrinsicElements['group'],
+  ref: React.Ref<{ actions: Record<ActionName, AnimationAction>; mesh: Group }>,
+) {
   const group = React.useRef<THREE.Group>()
   const { scene, animations } = useFragmentedGLTFLoader('o052', props.mapName)
   const clone = React.useMemo(() => SkeletonUtils.clone(scene), [scene])
   const { nodes, materials } = useGraph(clone) as GLTFResult
   const { actions } = useAnimations(animations, group)
 
- const formattedAnimations = useAnimations(animations, group);
- useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }));
-   return (
+  const formattedAnimations = useAnimations(animations, group)
+  useImperativeHandle(ref, () => ({ animations: formattedAnimations, group, nodes, materials }))
+  return (
     <group ref={group} {...props} dispose={null}>
       <group name="Scene">
         <group name="o052_armature">
           <primitive object={nodes.bone_0} />
         </group>
-        <skinnedMesh name="o052_mesh_0" geometry={nodes.o052_mesh_0.geometry} material={materials.o052_mesh_0_texture_0} skeleton={nodes.o052_mesh_0.skeleton} />
+        <skinnedMesh
+          name="o052_mesh_0"
+          geometry={nodes.o052_mesh_0.geometry}
+          material={materials.o052_mesh_0_texture_0}
+          skeleton={nodes.o052_mesh_0.skeleton}
+        />
       </group>
     </group>
- ); })
+  )
+})
 
 useFragmentedGLTFLoader.preload('o052')

@@ -5,9 +5,11 @@ import { Scene } from 'three'
 import MAP_NAMES from './constants/maps'
 import FieldLoader from './modules/field/Field'
 import { attachKeyDownListeners } from './modules/field/Scripts/Script/common'
+import { musicController } from './modules/field/Scripts/Script/handlers'
+import Menu from './modules/menu/Menu'
+import Worldmap from './modules/worldmap/Worldmap'
 import useGlobalStore from './store'
 import { getInitialField } from './utils'
-import Menu from './modules/menu/Menu'
 
 useGlobalStore.setState({
   pendingFieldId: (getInitialField() ?? 'menu') as (typeof MAP_NAMES)[number],
@@ -43,10 +45,15 @@ const Entrypoint = ({ setWorldScene }: EntrypointProps) => {
     setWorldScene(scene)
   }, [scene, setWorldScene])
 
+  useEffect(() => {
+    musicController.reset()
+  }, [module])
+
   return (
     <>
       {module === 'field' && <FieldLoader />}
       {module === 'menu' && <Menu />}
+      {module === 'worldmap' && <Worldmap />}
     </>
   )
 }
