@@ -15,6 +15,7 @@ import Gateways from './Gateways/Gateways'
 import LoadingController from './LoadingController'
 import { awaitFadesync, triggerFadeout } from './Scripts/Script/common'
 import { MEMORY } from './Scripts/Script/handlers'
+import { useFragmentedGLTFLoader } from './Scripts/Script/Model/useFragmentedGltfLoader'
 import { preloadMapSoundBank } from './Scripts/Script/SFXController/webAudio'
 import Scripts from './Scripts/Scripts'
 import { Script } from './Scripts/types'
@@ -110,6 +111,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
       }
 
       const data = await getFieldData(pendingFieldId)
+      data.models.forEach((model) => useFragmentedGLTFLoader.preload(model, pendingFieldId))
       preloadMapSoundBank(data.sounds)
       setData(data)
 
