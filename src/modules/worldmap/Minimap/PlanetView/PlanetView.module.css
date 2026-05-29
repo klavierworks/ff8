@@ -1,0 +1,19 @@
+.planet {
+  position: absolute;
+  z-index: 10;
+  border-radius: 50%;
+  background-color: rgba(10, 16, 32, 0.85);
+  background-image: url('/worldmap/wmset/textures/world/world_11.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  box-shadow:
+    inset -3px -4px 8px rgba(0, 0, 0, 0.6),
+    inset 2px 2px 4px rgba(180, 210, 255, 0.4),
+    0 0 6px rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0.85;
+}

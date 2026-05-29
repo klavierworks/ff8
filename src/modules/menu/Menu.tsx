@@ -60,7 +60,6 @@ const fieldSelect = async (set = 0) => {
   useGlobalStore.setState((state) => ({
     fieldId: undefined,
     module: 'field',
-    // @ts-expect-error Not sepecified in all chapters
     party: selection.party ?? state.party,
     pendingFieldId: selection.fieldId! as (typeof MAP_NAMES)[number],
   }))
@@ -77,7 +76,6 @@ const optionsSelect = async () => {
     undefined,
   )
   const { isEnablingOffline, isOfflineEnabled } = offlineController.getState()
-  console.log('isOfflineEnabled', isOfflineEnabled, 'isEnablingOffline', isEnablingOffline)
 
   let offlineOptionMessage = `{Green}Enable Offline (2GB){White}`
   if (isEnablingOffline) {

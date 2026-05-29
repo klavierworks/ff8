@@ -38,6 +38,10 @@ function getVisibleDimensionsAtDistance(
 
 const CAMERA_WORLD_DIRECTION = new Vector3()
 const CAMERA_WORLD_POSITION = new Vector3()
+const _scaledDirection = new Vector3()
+const _layerLocalPosition = new Vector3()
+const _scaledRight = new Vector3()
+const _scaledUp = new Vector3()
 const Layer = ({ isTiled, layer }: LayerProps) => {
   const layerRef = useRef<Mesh | Sprite>(null)
 
@@ -84,7 +88,7 @@ const Layer = ({ isTiled, layer }: LayerProps) => {
 
     const direction = camera.getWorldDirection(CAMERA_WORLD_DIRECTION)
     line.start.copy(camera.getWorldPosition(CAMERA_WORLD_POSITION))
-    line.end.copy(line.start).add(direction.clone().multiplyScalar(length))
+    line.end.copy(line.start).add(_scaledDirection.copy(direction).multiplyScalar(length))
 
     layerRef.current.quaternion.copy(camera.quaternion)
 
@@ -92,7 +96,7 @@ const Layer = ({ isTiled, layer }: LayerProps) => {
 
     layerRef.current.position.copy(point)
 
-    const layerPosition = layerRef.current.position.clone()
+    const layerPosition = _layerLocalPosition.copy(layerRef.current.position)
     camera.worldToLocal(layerPosition)
     const zDistance = Math.abs(layerPosition.z)
     const result = getVisibleDimensionsAtDistance(camera, zDistance)
@@ -130,8 +134,12 @@ const Layer = ({ isTiled, layer }: LayerProps) => {
 
     if (ratioAdjustedX !== 0 || ratioAdjustedY !== 0) {
       const directions = getCameraDirections(camera)
-      layerRef.current.position.add(directions.rightVector.clone().multiplyScalar((ratioAdjustedX * widthUnits) / 8))
-      layerRef.current.position.add(directions.upVector.clone().multiplyScalar((ratioAdjustedY * heightUnits) / 8))
+      layerRef.current.position.add(
+        _scaledRight.copy(directions.rightVector).multiplyScalar((ratioAdjustedX * widthUnits) / 8),
+      )
+      layerRef.current.position.add(
+        _scaledUp.copy(directions.upVector).multiplyScalar((ratioAdjustedY * heightUnits) / 8),
+      )
     }
   })
 

@@ -17,6 +17,17 @@ type CameraProps = {
   data: FieldData
 }
 
+const _focusWorldPosition = new Vector3()
+const _entityDelta = new Vector3()
+const _lookAtDelta = new Vector3()
+const _lookingAtQuaternion = new Quaternion()
+const _slerpedQuaternion = new Quaternion()
+const _scenePosition = new Vector3()
+const _debugPosition = new Vector3()
+const _scaledForward = new Vector3()
+const _scaledRight = new Vector3()
+const _scaledUp = new Vector3()
+
 const Camera = ({ data }: CameraProps) => {
   const { cameras, limits } = data
 
@@ -97,7 +108,7 @@ const Camera = ({ data }: CameraProps) => {
 
     camera.lookAt(initialCameraTargetPosition)
 
-    const entityPos = new Vector3()
+    const entityPos = _focusWorldPosition
     focusObject.getWorldPosition(entityPos)
 
     const { forwardAxis, rightAxis, upAxis } = camera.userData as {
@@ -105,8 +116,8 @@ const Camera = ({ data }: CameraProps) => {
       rightAxis: Vector3
       upAxis: Vector3
     }
-    const delta = entityPos.clone().sub(camera.position)
-    const lookAtDelta = initialCameraTargetPosition.clone().sub(camera.position)
+    const delta = _entityDelta.copy(entityPos).sub(camera.position)
+    const lookAtDelta = _lookAtDelta.copy(initialCameraTargetPosition).sub(camera.position)
 
     const camSpaceX = rightAxis.dot(delta)
     const camSpaceY = upAxis.dot(delta)
@@ -188,16 +199,18 @@ const Camera = ({ data }: CameraProps) => {
     }
 
     moveableCamera.lookAt(focus.position)
-    const lookingAtQuaternion = moveableCamera.quaternion.clone()
-    moveableCamera.quaternion.copy(camera.quaternion.clone().slerp(lookingAtQuaternion, pullback.get()))
+    const lookingAtQuaternion = _lookingAtQuaternion.copy(moveableCamera.quaternion)
+    moveableCamera.quaternion.copy(
+      _slerpedQuaternion.copy(camera.quaternion).slerp(lookingAtQuaternion, pullback.get()),
+    )
 
-    const { forwardVector, rightVector, upVector } = getCameraDirections(camera.clone())
+    const { forwardVector, rightVector, upVector } = getCameraDirections(camera)
 
-    const scenePosition = camera.position.clone()
-    const debugPosition = camera.position.clone()
-    debugPosition.sub(forwardVector.clone().multiplyScalar(0.1))
-    debugPosition.sub(rightVector.clone().multiplyScalar(0))
-    debugPosition.add(upVector.clone().multiplyScalar(0.1))
+    const scenePosition = _scenePosition.copy(camera.position)
+    const debugPosition = _debugPosition.copy(camera.position)
+    debugPosition.sub(_scaledForward.copy(forwardVector).multiplyScalar(0.1))
+    debugPosition.sub(_scaledRight.copy(rightVector).multiplyScalar(0))
+    debugPosition.add(_scaledUp.copy(upVector).multiplyScalar(0.1))
 
     moveableCamera.position.copy(scenePosition.lerp(debugPosition, pullback.get()))
 

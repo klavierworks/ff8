@@ -1,0 +1,110 @@
+import { useGLTF } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+
+import useGlobalStore from '../../../store'
+import { MEMORY } from '../../field/Scripts/Script/handlers'
+import { WORLDMAP_SCALE } from '../constants'
+import Tile from './Tile/Tile'
+import TilePrecompiler from './TilePrecompiler/TilePrecompiler'
+import {
+  buildVariantOverrides,
+  computeVisibleTiles,
+  getTileUrl,
+  getWorldStateVariable,
+  isDDistrictPrisonAboveGround,
+  positionToSegmentCol,
+  positionToSegmentRow,
+  tileKey,
+} from './tilesUtils'
+
+type SegmentPosition = { col: number; row: number }
+
+const Tiles = () => {
+  const [segment, setSegment] = useState<null | SegmentPosition>(null)
+  const segmentRef = useRef<null | SegmentPosition>(null)
+
+  useFrame(() => {
+    const position = useGlobalStore.getState().characterPosition
+    if (!position) {
+      return
+    }
+    const col = positionToSegmentCol(position.x)
+    const row = positionToSegmentRow(position.z)
+    const current = segmentRef.current
+    if (current && col === current.col && row === current.row) {
+      return
+    }
+    segmentRef.current = { col, row }
+    setSegment({ col, row })
+  })
+
+  const variantOverrides = useMemo(
+    () => buildVariantOverrides(getWorldStateVariable(MEMORY), isDDistrictPrisonAboveGround(MEMORY)),
+    [],
+  )
+
+  const visibleTiles = useMemo(
+    () => (segment ? computeVisibleTiles(segment.col, segment.row, 3, variantOverrides) : []),
+    [segment, variantOverrides],
+  )
+
+  const preloadTiles = useMemo(
+    () => (segment ? computeVisibleTiles(segment.col, segment.row, 4, variantOverrides) : []),
+    [segment, variantOverrides],
+  )
+
+  const visibleKeySet = useMemo(() => new Set(visibleTiles.map(tileKey)), [visibleTiles])
+
+  const outerRingTiles = useMemo(
+    () => preloadTiles.filter((tile) => !visibleKeySet.has(tileKey(tile))),
+    [preloadTiles, visibleKeySet],
+  )
+
+  useEffect(() => {
+    preloadTiles.forEach((tile) => {
+      useGLTF.preload(
+        tile.kind === 'segment' ? getTileUrl(tile.segmentIndex, undefined) : getTileUrl(undefined, tile.variantIndex),
+      )
+    })
+  }, [preloadTiles])
+
+  if (!segment) {
+    return null
+  }
+
+  return (
+    <group scale={WORLDMAP_SCALE}>
+      {visibleTiles.map((tile) => (
+        <Suspense fallback={null} key={tileKey(tile)}>
+          {tile.kind === 'segment' ? (
+            <Tile
+              offset={tile.offset}
+              segmentIndex={tile.segmentIndex}
+              targetCol={tile.targetCol}
+              targetRow={tile.targetRow}
+            />
+          ) : (
+            <Tile
+              offset={tile.offset}
+              targetCol={tile.targetCol}
+              targetRow={tile.targetRow}
+              variantIndex={tile.variantIndex}
+            />
+          )}
+        </Suspense>
+      ))}
+      {outerRingTiles.map((tile) => (
+        <Suspense fallback={null} key={`pre/${tileKey(tile)}`}>
+          {tile.kind === 'segment' ? (
+            <TilePrecompiler segmentIndex={tile.segmentIndex} />
+          ) : (
+            <TilePrecompiler variantIndex={tile.variantIndex} />
+          )}
+        </Suspense>
+      ))}
+    </group>
+  )
+}
+
+export default Tiles

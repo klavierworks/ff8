@@ -58,28 +58,27 @@ interface GlobalState {
 
   fieldDirection: number
   fieldId: (typeof MAP_NAMES)[number] | undefined
-
   globalMeshTint: [number, number, number]
+
   hasActivePushMethod: boolean
   hasActiveTalkMethod: boolean
   hasMoved: boolean
-
   initialAngle: number | undefined
+
   isDebugMode: boolean
   isLoading: boolean
   isLoadingSavedGame: boolean
   isMapFadeEnabled: boolean
   isMapJumpEnabled: boolean
-
   isMapSuspended: boolean
-  isOfflineSupported: boolean
 
+  isOfflineSupported: boolean
   isPlayerClimbingLadder: boolean
 
   isRunEnabled: boolean
+
   isTransitioningColorOverlay: boolean
   isUserControllable: boolean
-
   layerScrollAdjustments: Record<
     number,
     {
@@ -91,6 +90,7 @@ interface GlobalState {
   >
 
   layerScrollOffsets: Record<number, CameraScrollTransition>
+
   layerTints: Record<
     number,
     {
@@ -108,7 +108,6 @@ interface GlobalState {
     }
   >
   lockedTriangles: number[]
-
   messageStyles: Record<
     number,
     {
@@ -120,15 +119,21 @@ interface GlobalState {
   module: 'battle' | 'field' | 'menu' | 'worldmap'
 
   party: number[]
+
   partyMembersFollowing: number[]
   pendingCharacterPosition: undefined | Vector3
-
   pendingFieldId: (typeof MAP_NAMES)[number] | undefined
+
   playerMovementSpeed: number
   sleepingParty: number[]
   spuValue: number
-
   systemSfxController: ReturnType<typeof createSFXController>
+
+  // Mirror of `useWorldmapStore.vehicleId` for cross-module consumers (Tiles,
+  // field code, etc.) — kept in sync by the worldmap store subscription in
+  // Worldmap.tsx. The canonical source of truth is the worldmap store; this
+  // copy exists so non-worldmap modules can read it without that dependency.
+  vehicleId: number
   walkmeshController: undefined | WalkmeshMovementController
 }
 
@@ -179,43 +184,44 @@ const INITIAL_STATE: GlobalState = {
   hasActivePushMethod: false,
   hasActiveTalkMethod: false,
   hasMoved: false,
-
   initialAngle: undefined,
+
   isDebugMode: false,
   isLoading: false,
-
   isLoadingSavedGame: false,
+
   isMapFadeEnabled: true,
   isMapJumpEnabled: true,
-
   isMapSuspended: false,
-  isOfflineSupported: false,
 
+  isOfflineSupported: false,
   isPlayerClimbingLadder: false,
 
   isRunEnabled: true,
-  isTransitioningColorOverlay: false,
 
+  isTransitioningColorOverlay: false,
   isUserControllable: false,
 
   layerScrollAdjustments: {},
 
   layerScrollOffsets: {},
+
   layerTints: {},
   lockedTriangles: [],
-
   messageStyles: {},
+
   module: 'menu',
   party: [0],
   partyMembersFollowing: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   pendingCharacterPosition: undefined,
+  pendingFieldId: undefined,
 
-  pendingFieldId: undefined as unknown as (typeof MAP_NAMES)[number],
   playerMovementSpeed: 0,
   sleepingParty: [],
   spuValue: 0,
-
   systemSfxController: createSFXController('world', []),
+
+  vehicleId: 128,
   walkmeshController: undefined,
 }
 

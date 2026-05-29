@@ -183,3 +183,15 @@ export const setCameraAndLayerFocus = async (object: Object3D, duration: number)
     await new Promise(requestAnimationFrame)
   }
 }
+
+export const triggerFadeout = () => {
+  const { fadeSpring } = useGlobalStore.getState()
+  fadeSpring.start(0, 500)
+}
+
+export const awaitFadesync = async () => {
+  const { fadeSpring } = useGlobalStore.getState()
+  while (fadeSpring.isAnimating) {
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+  }
+}

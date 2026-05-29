@@ -8,11 +8,29 @@ import {
   VectorKeyframeTrack,
 } from 'three'
 
+type Vector2Settable = { set: (x: number, y: number) => void }
+
 const extractNamesFromTrack = (trackName: string): [string, string] => {
   const propertyIndex = trackName.lastIndexOf('.')
   const objectName = trackName.substring(0, propertyIndex)
   const propertyName = trackName.substring(propertyIndex + 1)
   return [objectName, propertyName]
+}
+
+const getObjectProperty = (object: Object3D, propertyName: string): unknown =>
+  (object as unknown as Record<string, unknown>)[propertyName]
+
+const setObjectProperty = (object: Object3D, propertyName: string, value: number): void => {
+  ;(object as unknown as Record<string, unknown>)[propertyName] = value
+}
+
+const asVector3Property = (value: unknown): undefined | Vector3 => (value instanceof Vector3 ? value : undefined)
+
+const asVector2SettableProperty = (value: unknown): undefined | Vector2Settable => {
+  if (value !== null && typeof value === 'object' && typeof (value as Vector2Settable).set === 'function') {
+    return value as Vector2Settable
+  }
+  return undefined
 }
 
 export const applyAnimationAtTime = (mesh: Object3D, clip: AnimationClip, time: number): void => {
@@ -96,20 +114,20 @@ const applyValuesAtIndex = (
 
     if (stride === 3) {
       const [x, y, z] = value
-      const targetProperty = (object as any)[propertyName] as Vector3
-      if (targetProperty && targetProperty.isVector3) {
+      const targetProperty = asVector3Property(getObjectProperty(object, propertyName))
+      if (targetProperty) {
         targetProperty.set(x, y, z)
       }
     } else if (stride === 2) {
       const [x, y] = value
-      const targetProperty = (object as any)[propertyName]
-      if (targetProperty && targetProperty.set) {
+      const targetProperty = asVector2SettableProperty(getObjectProperty(object, propertyName))
+      if (targetProperty) {
         targetProperty.set(x, y)
       }
     }
   } else if (track instanceof NumberKeyframeTrack) {
     const value = values[index]
-    ;(object as any)[propertyName] = value
+    setObjectProperty(object, propertyName, value)
   }
 }
 
@@ -139,14 +157,14 @@ const interpolateAndApply = (
 
     if (stride === 3) {
       const [x, y, z] = interpolated
-      const targetProperty = (object as any)[propertyName] as Vector3
-      if (targetProperty && targetProperty.isVector3) {
+      const targetProperty = asVector3Property(getObjectProperty(object, propertyName))
+      if (targetProperty) {
         targetProperty.set(x, y, z)
       }
     } else if (stride === 2) {
       const [x, y] = interpolated
-      const targetProperty = (object as any)[propertyName]
-      if (targetProperty && targetProperty.set) {
+      const targetProperty = asVector2SettableProperty(getObjectProperty(object, propertyName))
+      if (targetProperty) {
         targetProperty.set(x, y)
       }
     }
@@ -154,6 +172,6 @@ const interpolateAndApply = (
     const leftValue = values[leftValueIndex]
     const rightValue = values[rightValueIndex]
     const interpolated = leftValue * (1 - t) + rightValue * t
-    ;(object as any)[propertyName] = interpolated
+    setObjectProperty(object, propertyName, interpolated)
   }
 }

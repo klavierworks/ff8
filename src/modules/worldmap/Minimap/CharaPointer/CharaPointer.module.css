@@ -1,0 +1,32 @@
+.marker {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%) rotate(var(--rotation, 0deg));
+  transition: transform 80ms linear;
+  pointer-events: none;
+}
+
+.marker svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pulsing {
+  animation: pulse 1.07s infinite linear;
+}
+
+.solid {
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9));
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}

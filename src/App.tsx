@@ -10,9 +10,10 @@ import { ASPECT_RATIO } from './constants/constants'
 import MAP_NAMES from './constants/maps'
 import Controller from './Controller/Controller'
 import Entrypoint from './Entrypoint'
-import { MEMORY } from './modules/field/Scripts/Script/handlers'
 import Loading from './Loading/Loading'
 import Memory from './Memory/Memory'
+import { MEMORY } from './modules/field/Scripts/Script/handlers'
+import useWorldmapStore from './modules/worldmap/worldmapStore'
 import Queues from './Queues/Queues'
 import useGlobalStore from './store'
 import Ui from './UI/UI'
@@ -31,6 +32,22 @@ if (namedField) {
   })
 }
 
+const spawnPointId = new URLSearchParams(window.location.search).get('spawnPointId')
+if (spawnPointId) {
+  useWorldmapStore.setState({
+    spawnPointId: parseInt(spawnPointId),
+  })
+}
+
+const module = new URLSearchParams(window.location.search).get('module')
+if (module === 'menu' || module === 'worldmap') {
+  useGlobalStore.setState({
+    fieldId: undefined,
+    module,
+    pendingFieldId: undefined,
+  })
+}
+
 const App = () => {
   const isTabActive = useIsTabActive()
 
@@ -38,7 +55,7 @@ const App = () => {
   const progress = MEMORY[256]
   const isDebugMode = useGlobalStore((state) => state.isDebugMode)
 
-  const [isDisclaimerHidden, setIsDisclaimerHidden] = useState(!!namedField || import.meta.env.DEV);
+  const [isDisclaimerHidden, setIsDisclaimerHidden] = useState(!!namedField || import.meta.env.DEV)
 
   const module = useGlobalStore((state) => state.module)
 
@@ -53,11 +70,10 @@ const App = () => {
     url.searchParams.set('progress', progress.toString())
     window.history.pushState({}, '', url.toString())
 
-
     if (module !== 'menu') {
-      setIsDisclaimerHidden(true);
+      setIsDisclaimerHidden(true)
     }
-  }, [fieldId, progress])
+  }, [fieldId, module, progress])
 
   const [worldScene, setWorldScene] = useState<Scene>()
 
@@ -92,7 +108,7 @@ const App = () => {
         </Canvas>
         <Canvas
           camera={undefined}
-          className="canvas"
+          className="canvas ui"
           dpr={window.devicePixelRatio}
           flat={true}
           frameloop={isTabActive ? 'demand' : 'never'}
@@ -110,20 +126,18 @@ const App = () => {
         </Canvas>
         {isDebugMode && <Queues />}
         {isDebugMode && <Memory />}
-        {
-          !isDisclaimerHidden && (
-            <div className="disclaimer">
-              <p>
-                Final Fantasy VIII, all characters, stories, locations, graphics and music are © SQUARE ENIX CO., LTD. All
-                Rights Reserved.
-              </p>
-              <p>
-                This is a fan-made project not affiliated with or endorsed by Square Enix. It is an experiment, a toy, and
-                completely uncommercial.
-              </p>
-            </div>
-          )
-        }
+        {!isDisclaimerHidden && (
+          <div className="disclaimer">
+            <p>
+              Final Fantasy VIII, all characters, stories, locations, graphics and music are © SQUARE ENIX CO., LTD. All
+              Rights Reserved.
+            </p>
+            <p>
+              This is a fan-made project not affiliated with or endorsed by Square Enix. It is an experiment, a toy, and
+              completely uncommercial.
+            </p>
+          </div>
+        )}
       </div>
       <Loading />
       <Controller />

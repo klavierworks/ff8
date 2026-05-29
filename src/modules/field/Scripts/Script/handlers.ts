@@ -13,6 +13,7 @@ import useWorldmapStore from '../../../worldmap/worldmapStore'
 import { Opcode, OpcodeObj, Script } from '../types'
 import { createAnimationController } from './AnimationController/AnimationController'
 import {
+  awaitFadesync,
   displayMessage,
   isKeyDown,
   isTouching,
@@ -20,6 +21,7 @@ import {
   setCameraAndLayerFocus,
   setCameraScroll,
   setLayerScroll,
+  triggerFadeout,
   wasKeyPressed,
 } from './common'
 import createHeadRotationController from './HeadRotationController/HeadRotationController'
@@ -32,8 +34,8 @@ import { preloadSound } from './SFXController/webAudio'
 import createScriptState, { ScriptState } from './state'
 import { closeMessage, enableMessageToClose, openMessage, remoteExecute, remoteExecutePartyMember, wait } from './utils'
 
-const dummiedCommand = () => {}
-const unusedCommand = () => {}
+const dummiedCommand = () => undefined
+const unusedCommand = () => undefined
 
 export const musicController = MusicController()
 
@@ -64,6 +66,7 @@ export let MEMORY: Record<number, number> = {
   72: 9999, // gil
   84: 201, // last area visited
   256: 0, // progress
+  266: 0, // disc
   491: 0, // touk
   528: 0, // subprogress
   534: 1, // ?
@@ -806,16 +809,8 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const { fadeSpring } = useGlobalStore.getState()
     fadeSpring.set(1)
   },
-  FADEOUT: () => {
-    const { fadeSpring } = useGlobalStore.getState()
-    fadeSpring.start(0, 500)
-  },
-  FADESYNC: async () => {
-    const { fadeSpring } = useGlobalStore.getState()
-    while (fadeSpring.isAnimating) {
-      await new Promise((resolve) => requestAnimationFrame(resolve))
-    }
-  },
+  FADEOUT: triggerFadeout,
+  FADESYNC: awaitFadesync,
   FCOLADD: ({ STACK }) => {
     const duration = STACK.pop() as number
     const endBlue = STACK.pop() as number

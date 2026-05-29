@@ -13,7 +13,8 @@ import Camera from './Camera/Camera'
 import { getFieldData } from './fieldUtils'
 import Gateways from './Gateways/Gateways'
 import LoadingController from './LoadingController'
-import { MEMORY, OPCODE_HANDLERS } from './Scripts/Script/handlers'
+import { awaitFadesync, triggerFadeout } from './Scripts/Script/common'
+import { MEMORY } from './Scripts/Script/handlers'
 import { preloadMapSoundBank } from './Scripts/Script/SFXController/webAudio'
 import Scripts from './Scripts/Scripts'
 import { Script } from './Scripts/types'
@@ -90,16 +91,13 @@ const FieldLoader = (props: FieldLoaderProps) => {
         console.warn('Trying to transition with no pending field id')
         return
       }
-      const { isLoadingSavedGame, isMapFadeEnabled } = useGlobalStore.getState()
+      const { isLoadingSavedGame, isMapFadeEnabled, pendingCharacterPosition } = useGlobalStore.getState()
 
       const lastFieldId = useGlobalStore.getState().fieldId
       const isSwitchingBetweenMaps = lastFieldId && pendingFieldId && pendingFieldId !== lastFieldId
       if (isMapFadeEnabled && isSwitchingBetweenMaps) {
-        // @ts-expect-error We don't need args for this function
-        OPCODE_HANDLERS.FADEOUT()
-        // @ts-expect-error We don't need args for this function
-        await OPCODE_HANDLERS.FADESYNC()
-        console.log('FADED OUT')
+        triggerFadeout()
+        await awaitFadesync()
         MEMORY[87] = 1
       }
 
@@ -110,13 +108,10 @@ const FieldLoader = (props: FieldLoaderProps) => {
       if (lastFieldId) {
         MEMORY[84] = Object.values(MAP_NAMES).indexOf(lastFieldId)
       }
-      console.log('Transitioning to field', pendingFieldId)
 
       const data = await getFieldData(pendingFieldId)
       preloadMapSoundBank(data.sounds)
       setData(data)
-
-      const pendingCharacterPosition = useGlobalStore.getState().pendingCharacterPosition
 
       if (!isLoadingSavedGame) {
         MEMORY[261] = 0

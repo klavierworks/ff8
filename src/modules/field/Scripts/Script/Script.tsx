@@ -28,6 +28,8 @@ type ScriptProps = {
   sounds: FieldData['sounds']
 }
 
+const _meshUp = new Vector3()
+
 const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, sounds }: ScriptProps) => {
   const entityRef = useRef<Group>(null)
   const scene = useThree((state) => state.scene)
@@ -163,7 +165,7 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
     movementController.tick(entityRef.current, delta, scene)
 
     entityRef.current.quaternion.identity()
-    const meshUp = new Vector3(0, 0, 1).applyQuaternion(entityRef.current.quaternion).normalize()
+    const meshUp = _meshUp.set(0, 0, 1).applyQuaternion(entityRef.current.quaternion).normalize()
 
     const { isFacingTarget, waypoints } = movementController.getState().position
     if (waypoints && isFacingTarget) {

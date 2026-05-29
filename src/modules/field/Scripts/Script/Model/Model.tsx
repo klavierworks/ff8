@@ -188,7 +188,7 @@ const Model = ({
 
     boundingbox.setFromObject(animationGroupRef.current, true)
 
-    characterDimensions.copy(boundingbox.getSize(new Vector3()))
+    boundingbox.getSize(characterDimensions)
 
     const searchResult = getLowestTriangleBelowMesh(boundingbox)
     if (searchResult?.triangleId === -1) {

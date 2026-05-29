@@ -1,4 +1,10 @@
-export const CHAPTERS = {
+type Chapter = {
+  fieldId: string
+  progress: number
+  party?: number[]
+}
+
+export const CHAPTERS: Record<string, Chapter> = {
   'Intro': {
     fieldId: 'start0',
     progress: 0,

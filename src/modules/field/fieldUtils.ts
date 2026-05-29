@@ -94,7 +94,6 @@ export const saveGame = (scene: Scene) => {
     },
     party,
   }
-  console.log('Saving game', saveData)
   window.localStorage.setItem('saveData', JSON.stringify(saveData))
 }
 

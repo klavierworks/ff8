@@ -12,6 +12,9 @@ type WalkMeshProps = {
   walkmesh: FieldData['walkmesh']
 }
 
+const createWalkmeshController = (scene: Object3D): WalkmeshMovementController =>
+  new WalkmeshMovementController(scene.getObjectByName('walkmesh') as Object3D)
+
 const WalkMesh = ({ walkmesh }: WalkMeshProps) => {
   const walkMeshGeometry = useMemo(() => {
     const geometries = walkmesh.map((triangle) => {
@@ -51,7 +54,7 @@ const WalkMesh = ({ walkmesh }: WalkMeshProps) => {
   useFrame(({ scene }) => {
     if (!useGlobalStore.getState().walkmeshController) {
       useGlobalStore.setState({
-        walkmeshController: new WalkmeshMovementController(scene.getObjectByName('walkmesh') as Object3D),
+        walkmeshController: createWalkmeshController(scene),
       })
     }
   })

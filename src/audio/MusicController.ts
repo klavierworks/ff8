@@ -5,6 +5,38 @@ import { framesToMs } from '../timing'
 
 const BASE_VOLUME = 0.4
 
+export type PreloadMusicOptions = {
+  // Seconds into the track at which playback starts and where the looped
+  // playhead returns at end-of-track. Used to skip an MP3 intro that the
+  // AKAO/SGT sequencer would normally hide (e.g. "Ride On" has a ~20s intro
+  // before the main theme begins). 0 disables intro-skip.
+  loopStart?: number
+}
+
+const loopStartByHowl = new WeakMap<Howl, number>()
+
+const applyLoopStart = (howl: Howl, loopStart: number) => {
+  if (loopStart <= 0) {
+    return
+  }
+  loopStartByHowl.set(howl, loopStart)
+  // Howler's native loop wraps to position 0; reseek to loopStart on `end`
+  // so the loop covers only the in-game theme, not the MP3 intro.
+  howl.on('end', () => {
+    howl.seek(loopStart)
+  })
+}
+
+// Apply the intro-skip seek *before* play() — seeking after play() interrupts
+// a simultaneous fade in crossMusic and causes audible ramp glitches.
+const seekToLoopStartIfNeeded = (howl: Howl) => {
+  const loopStart = loopStartByHowl.get(howl)
+  if (loopStart === undefined) {
+    return
+  }
+  howl.seek(loopStart)
+}
+
 const MusicController = () => {
   let preloadedAudio: Howl | undefined = undefined
   let preloadedSrc: string | undefined = undefined
@@ -19,14 +51,17 @@ const MusicController = () => {
     battleMusicId: 0,
   }))
 
-  const preloadMusic = (url: string) => {
-    preloadedAudio = new Howl({
+  const preloadMusic = (url: string, options?: PreloadMusicOptions) => {
+    const loopStart = options?.loopStart ?? 0
+    const howl = new Howl({
       autoplay: false,
       loop: true,
       preload: true,
       src: [url],
       volume: BASE_VOLUME,
     })
+    applyLoopStart(howl, loopStart)
+    preloadedAudio = howl
     preloadedSrc = url
   }
 
@@ -49,6 +84,7 @@ const MusicController = () => {
     channel0 = preloadedAudio
     channel0Src = preloadedSrc
 
+    seekToLoopStartIfNeeded(channel0)
     channel0.play()
 
     preloadedAudio = undefined
@@ -82,6 +118,7 @@ const MusicController = () => {
 
     const incoming = preloadedAudio
     incoming.volume(0)
+    seekToLoopStartIfNeeded(incoming)
     incoming.play()
     incoming.fade(0, targetVolume, fadeMs)
 
@@ -107,6 +144,7 @@ const MusicController = () => {
     channel1 = preloadedAudio
     channel1Src = preloadedSrc
 
+    seekToLoopStartIfNeeded(channel1!)
     channel1!.play()
 
     preloadedAudio = undefined
