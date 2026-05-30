@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Texture } from 'three'
 
+import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../constants/constants'
 import { sendToDebugger } from '../../../Debugger/debugUtils'
 import { getLayerIdFromTile, TILE_BLENDS_TO_THREEJS, TILE_PADDING, TILE_SIZE, TILES_PER_COLUMN } from './tileUtils'
 import useTilesTexture from './useTilesTexture'
@@ -25,6 +26,7 @@ const initialiseLayer = (tile: Tile, width: number, height: number, layerRenderI
     blendType,
     canvas,
     id: getLayerIdFromTile(tile),
+    isScreenLocked: false,
     layerID: tile.layerID,
     parameter: tile.parameter === 255 ? -1 : tile.parameter,
     renderID: layerRenderID,
@@ -70,45 +72,11 @@ const drawTile = (tile: Tile, canvas: HTMLCanvasElement, texture: Texture) => {
   }
 }
 
-const tileBackground = (layer: Layer, layout: { highX: number; highY: number; lowX: number; lowY: number }) => {
-  const { canvas } = layer
-  const context = canvas.getContext('2d')
-  if (!context) {
-    return
-  }
-
-  const width = layout.highX - layout.lowX
-  const height = layout.highY - layout.lowY
-  const drawnArea = context.getImageData(layout.lowX, layout.lowY, width, height)
-
-  const newCanvas = document.createElement('canvas')
-  newCanvas.width = width
-  newCanvas.height = height
-  const newContext = newCanvas.getContext('2d')
-  if (!newContext) {
-    return
-  }
-
-  newContext.putImageData(drawnArea, 0, 0)
-
-  return newCanvas
-}
-
-const useLayeredTiles = (tiles: Tile[], filename: string, width: number, height: number, hasTiledRear: boolean) => {
+const useLayeredTiles = (tiles: Tile[], filename: string, width: number, height: number) => {
   const tilesTexture = useTilesTexture(filename)
 
   const layers = useMemo(() => {
     const result: Record<string, Layer> = {}
-
-    const canvasLayouts: Record<
-      string,
-      {
-        highX: number
-        highY: number
-        lowX: number
-        lowY: number
-      }
-    > = {}
 
     tiles.forEach((tile) => {
       const layerId = getLayerIdFromTile(tile)
@@ -130,26 +98,30 @@ const useLayeredTiles = (tiles: Tile[], filename: string, width: number, height:
         console.error('Failed to draw tile')
         return
       }
+    })
 
-      const { posX, posY } = drawResult
-
-      if (!canvasLayouts[layerId]) {
-        canvasLayouts[layerId] = {
-          highX: 0,
-          highY: 0,
-          lowX: Infinity,
-          lowY: Infinity,
-        }
+    const extentByLayerID: Record<number, { maxX: number; maxY: number; minX: number; minY: number }> = {}
+    tiles.forEach((tile) => {
+      const current = extentByLayerID[tile.layerID] ?? {
+        maxX: -Infinity,
+        maxY: -Infinity,
+        minX: Infinity,
+        minY: Infinity,
       }
-
-      const currentLayout = canvasLayouts[layerId]
-
-      canvasLayouts[layerId] = {
-        highX: Math.max(currentLayout.highX, posX + TILE_SIZE),
-        highY: Math.max(currentLayout.highY, posY + TILE_SIZE),
-        lowX: Math.min(currentLayout.lowX, posX),
-        lowY: Math.min(currentLayout.lowY, posY),
+      extentByLayerID[tile.layerID] = {
+        maxX: Math.max(current.maxX, tile.X + TILE_SIZE),
+        maxY: Math.max(current.maxY, tile.Y + TILE_SIZE),
+        minX: Math.min(current.minX, tile.X),
+        minY: Math.min(current.minY, tile.Y),
       }
+    })
+
+    Object.values(result).forEach((layer) => {
+      const extent = extentByLayerID[layer.layerID]
+      if (!extent) {
+        return
+      }
+      layer.isScreenLocked = extent.maxX - extent.minX <= SCREEN_WIDTH && extent.maxY - extent.minY <= SCREEN_HEIGHT
     })
 
     const sortedLayers = Object.values(result).sort((a, b) => {
@@ -162,14 +134,6 @@ const useLayeredTiles = (tiles: Tile[], filename: string, width: number, height:
       return a.parameter - b.parameter
     })
 
-    const backgroundLayer = sortedLayers.at(-1)
-    if (hasTiledRear && backgroundLayer) {
-      const layout = canvasLayouts[backgroundLayer.id]
-      const tiledCanvas = tileBackground(backgroundLayer, layout)
-      if (tiledCanvas) {
-        backgroundLayer.canvas = tiledCanvas
-      }
-    }
     sortedLayers.forEach((layer, index) => {
       const { canvas, ...rest } = layer
       canvas.toBlob((blob) => {
@@ -177,7 +141,7 @@ const useLayeredTiles = (tiles: Tile[], filename: string, width: number, height:
       })
     })
     return sortedLayers
-  }, [hasTiledRear, height, tiles, tilesTexture, width])
+  }, [height, tiles, tilesTexture, width])
 
   return layers
 }

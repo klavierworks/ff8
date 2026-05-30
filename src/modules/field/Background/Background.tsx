@@ -21,13 +21,9 @@ const Background = ({ data }: BackgroundProps) => {
     height = verticalRange
   }
 
-  const hasTiledRear = data.unknown[5] > 0
+  const layers = useLayeredTiles(tiles, backgroundDetails.sprite, width, height)
 
-  const layers = useLayeredTiles(tiles, backgroundDetails.sprite, width, height, hasTiledRear)
-
-  return layers.map((layer, index) => (
-    <Layer isTiled={index === layers.length - 1 && hasTiledRear} key={layer.id} layer={layer} />
-  ))
+  return layers.map((layer) => <Layer key={layer.id} layer={layer} />)
 }
 
 export default Background

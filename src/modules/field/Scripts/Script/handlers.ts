@@ -327,7 +327,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       },
     })
   },
-  BGSHADE: ({ script, STACK }) => {
+  BGSHADE: async ({ script, STACK }) => {
     const endBlue = STACK.pop() as number
     const endGreen = STACK.pop() as number
     const endRed = STACK.pop() as number
@@ -335,6 +335,9 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const startGreen = STACK.pop() as number
     const startRed = STACK.pop() as number
     const duration = STACK.pop() as number
+
+    const progress = new LerpValue(0)
+    const animation = progress.start(1, framesToMs(duration))
 
     useGlobalStore.setState((state) => ({
       layerTints: {
@@ -348,14 +351,39 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
           holdIn: 0,
           holdOut: 0,
           isLooping: false,
+          progress,
           startBlue,
           startGreen,
           startRed,
         },
       },
     }))
+
+    await animation
   },
-  BGSHADEOFF: dummiedCommand,
+  BGSHADEOFF: ({ script }) => {
+    const progress = new LerpValue(1)
+
+    useGlobalStore.setState((state) => ({
+      layerTints: {
+        ...state.layerTints,
+        [script.backgroundParamId]: {
+          durationIn: 0,
+          durationOut: 0,
+          endBlue: 0,
+          endGreen: 0,
+          endRed: 0,
+          holdIn: 0,
+          holdOut: 0,
+          isLooping: false,
+          progress,
+          startBlue: 0,
+          startGreen: 0,
+          startRed: 0,
+        },
+      },
+    }))
+  },
   BGSHADESTOP: () => {},
   BLINKEYES: unusedCommand,
 
@@ -1742,6 +1770,9 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const durationOut = STACK.pop() as number
     const durationIn = STACK.pop() as number
 
+    const progress = new LerpValue(0)
+    progress.start(1, framesToMs(durationIn), 0, true)
+
     useGlobalStore.setState((state) => ({
       layerTints: {
         ...state.layerTints,
@@ -1754,6 +1785,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
           holdIn,
           holdOut,
           isLooping: true,
+          progress,
           startBlue,
           startGreen,
           startRed,

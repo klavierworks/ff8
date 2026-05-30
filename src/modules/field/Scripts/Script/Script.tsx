@@ -1,5 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Group, Vector3 } from 'three'
 
 import useGlobalStore from '../../../../store'
@@ -78,6 +78,19 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
   const isDrawPoint = useScriptStateStore((state) => state.isDrawPoint)
   const isUnused = useScriptStateStore((state) => state.isUnused)
   const partyMemberId = useScriptStateStore((state) => state.partyMemberId)
+
+  const [hasBeenPlaced, setHasBeenPlaced] = useState(movementController.getState().hasBeenPlaced)
+  useEffect(() => {
+    setHasBeenPlaced(movementController.getState().hasBeenPlaced)
+    return movementController.subscribe((state, previousState) => {
+      if (state.hasBeenPlaced !== previousState.hasBeenPlaced) {
+        setHasBeenPlaced(state.hasBeenPlaced)
+      }
+    })
+  }, [movementController])
+
+  const requiresPlacement = script.type === 'model' && !isDrawPoint
+  const isEntityVisible = (requiresPlacement ? isVisible && hasBeenPlaced : isVisible) || isDrawPoint
 
   const isTransitioningMap = useGlobalStore((state) => !!state.pendingFieldId)
 
@@ -209,7 +222,7 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
         scriptController,
         useScriptStateStore,
       }}
-      visible={isVisible || isDrawPoint}
+      visible={isEntityVisible}
     >
       <group name={`party--${partyMemberId}`} userData={{ test: 'test' }}>
         {script.type === 'location' && (

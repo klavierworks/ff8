@@ -5,7 +5,9 @@ import { Scene, Vector3 } from 'three'
 import useGlobalStore from '../../../../../store'
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
-import { getPartyMemberModelComponent, getPlayerEntity } from './modelUtils'
+import { buildCongaSeedHistory } from './followerUtils'
+import { getPlayerEntity } from './modelUtils'
+import { SPEED } from './useControls'
 
 type UseFollowerProps = {
   isActive: boolean
@@ -15,17 +17,60 @@ type UseFollowerProps = {
 }
 
 const DISTANCE = 40
+
 const useFollower = ({ isActive, movementController, partyMemberId, rotationController }: UseFollowerProps) => {
+  const seedCongaHistory = useCallback((scene: Scene, party: number[], delta: number) => {
+    const leaderEntity = getPlayerEntity(scene)
+    if (!leaderEntity) {
+      return
+    }
+
+    const leaderMovementController = leaderEntity.userData.movementController as ReturnType<
+      typeof createMovementController
+    >
+    const leaderRotationController = leaderEntity.userData.rotationController as ReturnType<
+      typeof createRotationController
+    >
+    if (!leaderMovementController?.getState().hasBeenPlaced) {
+      return
+    }
+
+    const walkmeshController = useGlobalStore.getState().walkmeshController
+    if (!walkmeshController) {
+      return
+    }
+
+    const leaderPosition = leaderMovementController.getPosition()
+    const leaderAngle = leaderRotationController.getState().angle.get()
+    const behindDirection = leaderRotationController.getCurrentDirection().negate()
+    const leaderTriangle = leaderMovementController.getState().position.walkmeshTriangle ?? undefined
+    const maxFollowerOffset = Math.max(0, party.length - 1)
+
+    const seed = buildCongaSeedHistory(
+      new Vector3(leaderPosition.x, leaderPosition.y, leaderPosition.z),
+      leaderAngle,
+      behindDirection,
+      walkmeshController,
+      maxFollowerOffset * DISTANCE + 1,
+      SPEED.WALKING * delta,
+      leaderTriangle,
+    )
+
+    useGlobalStore.setState((state) => {
+      if (state.congaWaypointHistory.length > 0) {
+        return state
+      }
+      return { congaWaypointHistory: seed }
+    })
+  }, [])
+
   const moveToWaypoint = useCallback(
-    (scene: Scene) => {
+    (scene: Scene, delta: number) => {
       if (!isActive || !movementController || !rotationController) {
         return
       }
 
       const { congaWaypointHistory, isUserControllable, party } = useGlobalStore.getState()
-
-      const offset = party.findIndex((id) => id === partyMemberId)
-      const history = congaWaypointHistory.at(-1 * offset * DISTANCE - 1)
 
       if (!isUserControllable) {
         if (congaWaypointHistory.length > 0) {
@@ -36,39 +81,24 @@ const useFollower = ({ isActive, movementController, partyMemberId, rotationCont
         return
       }
 
-      if (!history && !movementController.getState().hasBeenPlaced) {
-        const leaderEntity = getPlayerEntity(scene)
-        const thisMemberEntity = getPartyMemberModelComponent(scene, offset)
-        if (!leaderEntity || !thisMemberEntity) {
-          return
-        }
-
-        const leaderMovementController = leaderEntity.userData.movementController as ReturnType<
-          typeof createMovementController
-        >
-        const leaderRotationController = leaderEntity.userData.rotationController as ReturnType<
-          typeof createRotationController
-        >
-        const leaderPosition = leaderMovementController.getPosition()
-
-        const walkmeshController = useGlobalStore.getState().walkmeshController!
-        const position = walkmeshController.getNextPositionOnWalkmesh(
-          new Vector3().copy(leaderPosition),
-          leaderRotationController.getCurrentDirection().negate(),
-          0.03,
-        )
-        movementController.setPosition(position)
-
-        rotationController.turnToFaceAngle(leaderRotationController.getState().angle.get(), 0)
-
+      if (congaWaypointHistory.length === 0) {
+        seedCongaHistory(scene, party, delta)
         return
       }
 
+      const offset = party.findIndex((id) => id === partyMemberId)
+      const history = congaWaypointHistory.at(-1 * offset * DISTANCE - 1)
       if (!history) {
         return
       }
 
       const { angle, position, speed } = history
+
+      if (!movementController.getState().hasBeenPlaced) {
+        movementController.setPosition(position)
+        rotationController.turnToFaceAngle(angle, 0)
+        return
+      }
 
       if (position.equals(movementController.getPosition()) && angle === rotationController.getState().angle.get()) {
         return
@@ -80,11 +110,11 @@ const useFollower = ({ isActive, movementController, partyMemberId, rotationCont
         userControlledSpeed: speed,
       })
     },
-    [isActive, movementController, partyMemberId, rotationController],
+    [isActive, movementController, partyMemberId, rotationController, seedCongaHistory],
   )
 
-  useFrame((state) => {
-    moveToWaypoint(state.scene)
+  useFrame((state, delta) => {
+    moveToWaypoint(state.scene, delta)
   })
 }
 

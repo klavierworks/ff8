@@ -102,6 +102,7 @@ interface GlobalState {
       holdIn: number
       holdOut: number
       isLooping: boolean
+      progress: LerpValue
       startBlue: number
       startGreen: number
       startRed: number

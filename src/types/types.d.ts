@@ -87,6 +87,7 @@ declare global {
     blendType: Blending
     canvas: HTMLCanvasElement
     id: string
+    isScreenLocked: boolean
     layerID: number
     parameter: number
     renderID: number

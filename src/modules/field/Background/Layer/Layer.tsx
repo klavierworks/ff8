@@ -2,15 +2,14 @@ import { Plane } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { MutableRefObject, useRef, useState } from 'react'
 import {
-  ClampToEdgeWrapping,
   Line3,
   Mesh,
   NearestFilter,
+  NoBlending,
   PerspectiveCamera,
-  RepeatWrapping,
   Sprite,
+  SpriteMaterial,
   SRGBColorSpace,
-  Vector2,
   Vector3,
 } from 'three'
 
@@ -20,7 +19,6 @@ import { getCameraDirections } from '../../Camera/cameraUtils'
 import useCameraScroll from '../../useScrollTransition'
 
 type LayerProps = {
-  isTiled: boolean
   layer: Layer
 }
 
@@ -36,13 +34,15 @@ function getVisibleDimensionsAtDistance(
   return { height, width }
 }
 
+const SHADE_NEUTRAL = 128
+const _panNdc = new Vector3()
 const CAMERA_WORLD_DIRECTION = new Vector3()
 const CAMERA_WORLD_POSITION = new Vector3()
 const _scaledDirection = new Vector3()
 const _layerLocalPosition = new Vector3()
 const _scaledRight = new Vector3()
 const _scaledUp = new Vector3()
-const Layer = ({ isTiled, layer }: LayerProps) => {
+const Layer = ({ layer }: LayerProps) => {
   const layerRef = useRef<Mesh | Sprite>(null)
 
   const [line] = useState<Line3>(new Line3(new Vector3(), new Vector3()))
@@ -64,19 +64,36 @@ const Layer = ({ isTiled, layer }: LayerProps) => {
       initialTargetPosition: Vector3
     }
 
-    const { backgroundAnimations, backgroundLayerVisibility } = useGlobalStore.getState()
+    const { backgroundAnimations, backgroundLayerVisibility, layerTints } = useGlobalStore.getState()
 
-    const currentParameterState = backgroundAnimations[parameter]
+    const animation = backgroundAnimations[parameter]
+    const currentParameterState = animation !== undefined ? Math.round(animation.get()) : 0
 
-    let isLayerVisible = true
+    const tint = layerTints[parameter]
+    let shadeRed = SHADE_NEUTRAL
+    let shadeGreen = SHADE_NEUTRAL
+    let shadeBlue = SHADE_NEUTRAL
+    if (tint) {
+      const shade = tint.progress.get()
+      shadeRed = tint.startRed + (tint.endRed - tint.startRed) * shade
+      shadeGreen = tint.startGreen + (tint.endGreen - tint.startGreen) * shade
+      shadeBlue = tint.startBlue + (tint.endBlue - tint.startBlue) * shade
+    }
 
-    if (parameter !== -1 && backgroundLayerVisibility[parameter] !== true) {
+    let isLayerVisible = parameter === -1 || currentParameterState === state
+
+    if (backgroundLayerVisibility[parameter] === false) {
       isLayerVisible = false
-    } else if (currentParameterState !== undefined && Math.round(currentParameterState?.get()) !== state) {
+    }
+
+    if (shadeRed === 0 && shadeGreen === 0 && shadeBlue === 0) {
       isLayerVisible = false
     }
 
     layerRef.current.visible = isLayerVisible
+
+    const material = layerRef.current.material as SpriteMaterial
+    material.color.setRGB(shadeRed / SHADE_NEUTRAL, shadeGreen / SHADE_NEUTRAL, shadeBlue / SHADE_NEUTRAL)
 
     if (!initialPosition || !initialTargetPosition || !isLayerVisible) {
       return
@@ -107,8 +124,18 @@ const Layer = ({ isTiled, layer }: LayerProps) => {
     const heightScale = layer.canvas.height / layer.canvas.width
     const height = width * heightScale
 
-    const tiling = isTiled ? 5 : 1
-    layerRef.current.scale.set(width * tiling, height * tiling, 1)
+    layerRef.current.scale.set(width, height, 1)
+
+    if (layer.isScreenLocked) {
+      _panNdc.copy(layerRef.current.position).project(camera)
+      const directions = getCameraDirections(camera)
+      layerRef.current.position.add(
+        _scaledRight.copy(directions.rightVector).multiplyScalar((-_panNdc.x * result.width) / 2),
+      )
+      layerRef.current.position.add(
+        _scaledUp.copy(directions.upVector).multiplyScalar((-_panNdc.y * result.height) / 2),
+      )
+    }
 
     const widthUnits = result.width / SCREEN_WIDTH
     const heightUnits = result.height / SCREEN_HEIGHT
@@ -153,7 +180,13 @@ const Layer = ({ isTiled, layer }: LayerProps) => {
         ref={layerRef as MutableRefObject<Mesh>}
         renderOrder={20 - layer.layerID}
       >
-        <meshBasicMaterial alphaTest={0.1} blending={layer.blendType} color={0xffffff} transparent={true}>
+        <meshBasicMaterial
+          alphaTest={0.1}
+          blending={layer.blendType}
+          color={0xffffff}
+          depthWrite={layer.blendType === NoBlending}
+          transparent={true}
+        >
           <canvasTexture
             attach="map"
             colorSpace={SRGBColorSpace}
@@ -161,9 +194,6 @@ const Layer = ({ isTiled, layer }: LayerProps) => {
             magFilter={NearestFilter}
             minFilter={NearestFilter}
             premultiplyAlpha
-            repeat={isTiled ? new Vector2(5, 5) : new Vector2(1, 1)}
-            wrapS={isTiled ? RepeatWrapping : ClampToEdgeWrapping}
-            wrapT={isTiled ? RepeatWrapping : ClampToEdgeWrapping}
           />
         </meshBasicMaterial>
       </Plane>
@@ -177,7 +207,13 @@ const Layer = ({ isTiled, layer }: LayerProps) => {
       renderOrder={20 - layer.layerID}
       scale={[layer.canvas.width, layer.canvas.height, 1]}
     >
-      <spriteMaterial alphaTest={0.1} blending={layer.blendType} color={0xffffff} transparent={true}>
+      <spriteMaterial
+        alphaTest={0.1}
+        blending={layer.blendType}
+        color={0xffffff}
+        depthWrite={layer.blendType === NoBlending}
+        transparent={true}
+      >
         <canvasTexture
           attach="map"
           colorSpace={SRGBColorSpace}
@@ -185,9 +221,6 @@ const Layer = ({ isTiled, layer }: LayerProps) => {
           magFilter={NearestFilter}
           minFilter={NearestFilter}
           premultiplyAlpha
-          repeat={isTiled ? new Vector2(5, 5) : new Vector2(1, 1)}
-          wrapS={isTiled ? RepeatWrapping : ClampToEdgeWrapping}
-          wrapT={isTiled ? RepeatWrapping : ClampToEdgeWrapping}
         />
       </spriteMaterial>
     </sprite>
