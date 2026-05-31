@@ -7,23 +7,11 @@ type BackgroundProps = {
 }
 
 const Background = ({ data }: BackgroundProps) => {
-  const { backgroundDetails, limits, tiles } = data
+  const { backgroundDetails, tiles } = data
 
-  let width = Math.round(backgroundDetails.width / 16) * 16
-  const horizontalRange = Math.abs(limits.cameraRange.left) + Math.abs(limits.cameraRange.right)
-  if (width < horizontalRange) {
-    width = horizontalRange
-  }
+  const { layers, texture } = useLayeredTiles(tiles, backgroundDetails.sprite)
 
-  let height = Math.ceil(backgroundDetails.height / 16) * 16
-  const verticalRange = Math.abs(limits.cameraRange.top) + Math.abs(limits.cameraRange.bottom)
-  if (height < verticalRange) {
-    height = verticalRange
-  }
-
-  const layers = useLayeredTiles(tiles, backgroundDetails.sprite, width, height)
-
-  return layers.map((layer) => <Layer key={layer.id} layer={layer} />)
+  return layers.map((layer) => <Layer key={layer.id} layer={layer} texture={texture} />)
 }
 
 export default Background

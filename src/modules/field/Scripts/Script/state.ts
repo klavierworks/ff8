@@ -3,7 +3,6 @@ import type { Howl } from 'howler'
 import { Vector3 } from 'three'
 import { create, StoreApi, UseBoundStore } from 'zustand'
 
-import { sendToDebugger } from '../../../../Debugger/debugUtils'
 import { Script } from '../types'
 
 export type ScriptState = {
@@ -99,27 +98,6 @@ const createScriptState = (script: Script) => {
 
     winSize: {},
   }))
-
-  creator.subscribe((state, prevState) => {
-    if (!prevState) {
-      return
-    }
-    const changedState = Object.keys(state).reduce((acc, key) => {
-      // @ts-expect-error Error
-      if (state[key] !== prevState[key]) {
-        // @ts-expect-error Error
-        acc[key] = state[key]
-      }
-      return acc
-    }, {} as Partial<ScriptState>)
-    sendToDebugger(
-      'script-state',
-      JSON.stringify({
-        id: script.groupId,
-        state: changedState,
-      }),
-    )
-  })
 
   return creator
 }

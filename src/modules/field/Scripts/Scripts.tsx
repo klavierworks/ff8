@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
 
-import { sendToDebugger } from '../../../Debugger/debugUtils'
 import useGlobalStore from '../../../store'
 import { FieldData } from '../Field'
 import Script from './Script/Script'
@@ -33,54 +32,22 @@ const Scripts = ({ doors, models, scripts, sounds }: ScriptsProps) => {
 
   const [scriptsMounted, setScriptsMounted] = useState<number>(0)
   const handleScriptSetupCompleted = useCallback(() => {
-    setScriptsMounted((prev) => {
-      sendToDebugger(
-        'setup-state',
-        JSON.stringify({
-          state: 'scripts-mounted',
-          value: prev + 1,
-        }),
-      )
-      return prev + 1
-    })
+    setScriptsMounted((prev) => prev + 1)
   }, [])
 
   const [runningScripts, setRunningScripts] = useState<number>(0)
   const onStarted = useCallback(() => {
-    setRunningScripts((prev) => {
-      sendToDebugger(
-        'setup-state',
-        JSON.stringify({
-          state: 'running-scripts',
-          value: prev + 1,
-        }),
-      )
-      return prev + 1
-    })
+    setRunningScripts((prev) => prev + 1)
   }, [])
 
   const [hasMountedMainScripts, setHasMountedMainScripts] = useState<boolean>(false)
 
   const handleMainScriptMounted = useCallback(() => {
     setHasMountedMainScripts(true)
-    sendToDebugger(
-      'setup-state',
-      JSON.stringify({
-        state: 'main-script-mounted',
-        value: true,
-      }),
-    )
   }, [])
 
   const handleStartedMain = useCallback(() => {
     const { fadeSpring, fieldId } = useGlobalStore.getState()
-    sendToDebugger(
-      'setup-state',
-      JSON.stringify({
-        state: 'main-script-started',
-        value: true,
-      }),
-    )
     if (fieldId === 'bghoke_2') {
       fadeSpring.start(1, 10)
     }

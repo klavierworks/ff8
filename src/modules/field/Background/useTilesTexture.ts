@@ -1,6 +1,6 @@
 import { useLoader } from '@react-three/fiber'
 import { useMemo } from 'react'
-import { ClampToEdgeWrapping, NearestFilter, RGBAFormat, TextureLoader } from 'three'
+import { ClampToEdgeWrapping, NearestFilter, RGBAFormat, SRGBColorSpace, TextureLoader } from 'three'
 
 const useTilesTexture = (filename: string) => {
   const tilesTexture = useLoader(TextureLoader, `/output/sprites/${filename}`)
@@ -12,6 +12,7 @@ const useTilesTexture = (filename: string) => {
     tilesTexture.wrapT = ClampToEdgeWrapping
     tilesTexture.magFilter = NearestFilter
     tilesTexture.minFilter = NearestFilter
+    tilesTexture.colorSpace = SRGBColorSpace
 
     return tilesTexture
   }, [tilesTexture])

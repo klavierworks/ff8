@@ -1,5 +1,5 @@
 import { useAnimations } from '@react-three/drei'
-import { Blending, SkinnedMesh } from 'three'
+import { Blending, BufferGeometry, SkinnedMesh } from 'three'
 
 import { FieldData } from '../modules/field/Field'
 
@@ -85,14 +85,19 @@ declare global {
 
   type Layer = {
     blendType: Blending
-    canvas: HTMLCanvasElement
+    geometry: BufferGeometry
     id: string
     isScreenLocked: boolean
     layerID: number
     parameter: number
     renderID: number
+    shouldWrapX: boolean
+    shouldWrapY: boolean
     state: number
-    z: number
+    tileDepths: Float32Array
+    tilePositions: Float32Array
+    wrapPeriodX: number
+    wrapPeriodY: number
   }
 
   type Message = {

@@ -1,70 +1,36 @@
-import { Plane } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import { MutableRefObject, useRef, useState } from 'react'
-import {
-  Line3,
-  Mesh,
-  NearestFilter,
-  NoBlending,
-  PerspectiveCamera,
-  Sprite,
-  SpriteMaterial,
-  SRGBColorSpace,
-  Vector3,
-} from 'three'
+import { useRef } from 'react'
+import { DoubleSide, Mesh, MeshBasicMaterial, NoBlending, PerspectiveCamera, Texture, Vector3 } from 'three'
 
-import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../../constants/constants'
 import useGlobalStore from '../../../../store'
-import { getCameraDirections } from '../../Camera/cameraUtils'
 import useCameraScroll from '../../useScrollTransition'
+import { writeLayerPositions } from '../buildTileGroups'
 
 type LayerProps = {
   layer: Layer
-}
-
-function getVisibleDimensionsAtDistance(
-  camera: PerspectiveCamera,
-  distance: number,
-): { height: number; width: number } {
-  const vFOV = (camera.fov * Math.PI) / 180
-  const height = 2 * Math.tan(vFOV / 2) * Math.abs(distance)
-
-  const width = height * camera.aspect
-
-  return { height, width }
+  texture: Texture
 }
 
 const SHADE_NEUTRAL = 128
-const _panNdc = new Vector3()
-const CAMERA_WORLD_DIRECTION = new Vector3()
-const CAMERA_WORLD_POSITION = new Vector3()
-const _scaledDirection = new Vector3()
-const _layerLocalPosition = new Vector3()
-const _scaledRight = new Vector3()
-const _scaledUp = new Vector3()
-const Layer = ({ layer }: LayerProps) => {
-  const layerRef = useRef<Mesh | Sprite>(null)
+const _cameraPosition = new Vector3()
 
-  const [line] = useState<Line3>(new Line3(new Vector3(), new Vector3()))
-  const [point] = useState<Vector3>(new Vector3())
+const Layer = ({ layer, texture }: LayerProps) => {
+  const meshRef = useRef<Mesh>(null)
+  const lastWrite = useRef({ centerX: NaN, centerY: NaN, fovHalfTan: 0, length: 0, offsetX: NaN, offsetY: NaN })
 
-  const { parameter, state } = layer
+  const { parameter, renderID, state } = layer
 
   const camera = useThree(({ scene }) => scene.getObjectByName('sceneCamera') as PerspectiveCamera)
-
-  const layerScroll = useCameraScroll('layer', layer.renderID)
+  const layerScroll = useCameraScroll('layer', renderID)
 
   useFrame(() => {
-    if (!layerRef.current) {
+    const mesh = meshRef.current
+    if (!mesh) {
       return
     }
 
-    const { initialPosition, initialTargetPosition } = camera.userData as {
-      initialPosition: Vector3
-      initialTargetPosition: Vector3
-    }
-
-    const { backgroundAnimations, backgroundLayerVisibility, layerTints } = useGlobalStore.getState()
+    const { backgroundAnimations, backgroundLayerVisibility, layerScrollAdjustments, layerTints } =
+      useGlobalStore.getState()
 
     const animation = backgroundAnimations[parameter]
     const currentParameterState = animation !== undefined ? Math.round(animation.get()) : 0
@@ -81,149 +47,92 @@ const Layer = ({ layer }: LayerProps) => {
     }
 
     let isLayerVisible = parameter === -1 || currentParameterState === state
-
     if (backgroundLayerVisibility[parameter] === false) {
       isLayerVisible = false
     }
-
     if (shadeRed === 0 && shadeGreen === 0 && shadeBlue === 0) {
       isLayerVisible = false
     }
 
-    layerRef.current.visible = isLayerVisible
+    mesh.visible = isLayerVisible
 
-    const material = layerRef.current.material as SpriteMaterial
+    const material = mesh.material as MeshBasicMaterial
     material.color.setRGB(shadeRed / SHADE_NEUTRAL, shadeGreen / SHADE_NEUTRAL, shadeBlue / SHADE_NEUTRAL)
 
-    if (!initialPosition || !initialTargetPosition || !isLayerVisible) {
+    if (!isLayerVisible) {
       return
     }
 
-    line.start.copy(initialPosition)
-    line.end.copy(initialTargetPosition)
-    const length = line.distance()
+    const { initialPosition, initialTargetPosition } = camera.userData as {
+      initialPosition: Vector3
+      initialTargetPosition: Vector3
+    }
+    if (!initialPosition || !initialTargetPosition) {
+      return
+    }
 
-    const direction = camera.getWorldDirection(CAMERA_WORLD_DIRECTION)
-    line.start.copy(camera.getWorldPosition(CAMERA_WORLD_POSITION))
-    line.end.copy(line.start).add(_scaledDirection.copy(direction).multiplyScalar(length))
+    mesh.position.copy(camera.getWorldPosition(_cameraPosition))
+    mesh.quaternion.copy(camera.quaternion)
 
-    layerRef.current.quaternion.copy(camera.quaternion)
+    const cameraLength = initialPosition.distanceTo(initialTargetPosition)
+    const fovHalfTan = Math.tan((camera.fov * Math.PI) / 360)
 
-    line.at(layer.z / 1000, point)
+    const view = camera.view
+    const centerX = view && view.enabled ? view.offsetX : 0
+    const centerY = view && view.enabled ? view.offsetY : 0
 
-    layerRef.current.position.copy(point)
-
-    const layerPosition = _layerLocalPosition.copy(layerRef.current.position)
-    camera.worldToLocal(layerPosition)
-    const zDistance = Math.abs(layerPosition.z)
-    const result = getVisibleDimensionsAtDistance(camera, zDistance)
-
-    const widthScale = layer.canvas.width / SCREEN_WIDTH
-    const width = result.width * widthScale
-
-    const heightScale = layer.canvas.height / layer.canvas.width
-    const height = width * heightScale
-
-    layerRef.current.scale.set(width, height, 1)
+    let offsetX = 0
+    let offsetY = 0
+    const controlledScroll = layerScrollAdjustments[renderID]
+    if (controlledScroll) {
+      offsetX += controlledScroll.xOffset
+      offsetY += controlledScroll.yOffset
+    }
+    if (layerScroll.current.positioning === 'camera') {
+      offsetX -= layerScroll.current.x
+      offsetY -= layerScroll.current.y
+    } else {
+      offsetX += layerScroll.current.x
+      offsetY += layerScroll.current.y
+    }
 
     if (layer.isScreenLocked) {
-      _panNdc.copy(layerRef.current.position).project(camera)
-      const directions = getCameraDirections(camera)
-      layerRef.current.position.add(
-        _scaledRight.copy(directions.rightVector).multiplyScalar((-_panNdc.x * result.width) / 2),
-      )
-      layerRef.current.position.add(
-        _scaledUp.copy(directions.upVector).multiplyScalar((-_panNdc.y * result.height) / 2),
-      )
+      offsetX += centerX
+      offsetY += centerY
     }
 
-    const widthUnits = result.width / SCREEN_WIDTH
-    const heightUnits = result.height / SCREEN_HEIGHT
-
-    let ratioAdjustedX = 0
-    let ratioAdjustedY = 0
-
-    const { layerScrollAdjustments } = useGlobalStore.getState()
-    const controlledScroll = layerScrollAdjustments[layer.renderID]
-    if (controlledScroll) {
-      const { xOffset, yOffset } = controlledScroll
-      ratioAdjustedX = xOffset
-      ratioAdjustedY = -yOffset
+    const previous = lastWrite.current
+    if (
+      previous.length === cameraLength &&
+      previous.fovHalfTan === fovHalfTan &&
+      previous.offsetX === offsetX &&
+      previous.offsetY === offsetY &&
+      previous.centerX === centerX &&
+      previous.centerY === centerY
+    ) {
+      return
     }
 
-    if (layerScroll.current.positioning === 'camera') {
-      ratioAdjustedX -= layerScroll.current.x
-      ratioAdjustedY -= layerScroll.current.y
-    } else {
-      ratioAdjustedX += layerScroll.current.x
-      ratioAdjustedY += layerScroll.current.y
-    }
-
-    if (ratioAdjustedX !== 0 || ratioAdjustedY !== 0) {
-      const directions = getCameraDirections(camera)
-      layerRef.current.position.add(
-        _scaledRight.copy(directions.rightVector).multiplyScalar((ratioAdjustedX * widthUnits) / 8),
-      )
-      layerRef.current.position.add(
-        _scaledUp.copy(directions.upVector).multiplyScalar((ratioAdjustedY * heightUnits) / 8),
-      )
-    }
+    writeLayerPositions(layer, cameraLength, fovHalfTan, offsetX, offsetY, centerX, centerY)
+    previous.length = cameraLength
+    previous.fovHalfTan = fovHalfTan
+    previous.offsetX = offsetX
+    previous.offsetY = offsetY
+    previous.centerX = centerX
+    previous.centerY = centerY
   })
 
-  const isDebugMode = useGlobalStore((state) => state.isDebugMode)
-
-  if (isDebugMode) {
-    return (
-      <Plane
-        args={[1, 1, 1]}
-        position={[0, 0, 0]}
-        ref={layerRef as MutableRefObject<Mesh>}
-        renderOrder={20 - layer.layerID}
-      >
-        <meshBasicMaterial
-          alphaTest={0.1}
-          blending={layer.blendType}
-          color={0xffffff}
-          depthWrite={layer.blendType === NoBlending}
-          transparent={true}
-        >
-          <canvasTexture
-            attach="map"
-            colorSpace={SRGBColorSpace}
-            image={layer.canvas}
-            magFilter={NearestFilter}
-            minFilter={NearestFilter}
-            premultiplyAlpha
-          />
-        </meshBasicMaterial>
-      </Plane>
-    )
-  }
-
   return (
-    <sprite
-      position={[0, 0, 0]}
-      ref={layerRef as MutableRefObject<Sprite>}
-      renderOrder={20 - layer.layerID}
-      scale={[layer.canvas.width, layer.canvas.height, 1]}
-    >
-      <spriteMaterial
+    <mesh frustumCulled={false} geometry={layer.geometry} ref={meshRef} renderOrder={20 - layer.layerID}>
+      <meshBasicMaterial
         alphaTest={0.1}
         blending={layer.blendType}
-        color={0xffffff}
         depthWrite={layer.blendType === NoBlending}
+        map={texture}
+        side={DoubleSide}
         transparent={true}
-      >
-        <canvasTexture
-          attach="map"
-          colorSpace={SRGBColorSpace}
-          image={layer.canvas}
-          magFilter={NearestFilter}
-          minFilter={NearestFilter}
-          premultiplyAlpha
-        />
-      </spriteMaterial>
-    </sprite>
+      />
+    </mesh>
   )
 }
 

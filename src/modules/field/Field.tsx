@@ -5,7 +5,6 @@ import type data from '../../../public/output/escouse2.json'
 
 import { AREA_NAMES } from '../../constants/areaNames'
 import MAP_NAMES from '../../constants/maps'
-import { sendToDebugger } from '../../Debugger/debugUtils'
 import useGlobalStore from '../../store'
 import { getInitialEntrance } from '../../utils'
 import Background from './Background/Background'
@@ -102,7 +101,6 @@ const FieldLoader = (props: FieldLoaderProps) => {
         MEMORY[87] = 1
       }
 
-      sendToDebugger('reset')
       setData(null)
       gl.clear()
 

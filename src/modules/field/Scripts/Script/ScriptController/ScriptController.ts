@@ -1,11 +1,9 @@
 import { Scene } from 'three'
-import { generateUUID } from 'three/src/math/MathUtils.js'
 import { create } from 'zustand'
 
 import type { Script, ScriptMethod } from '../../types'
 import type { OPCODE_HANDLERS } from '../handlers'
 
-import { sendToDebugger } from '../../../../../Debugger/debugUtils'
 import { createAnimationController } from '../AnimationController/AnimationController'
 import createHeadRotationController from '../HeadRotationController/HeadRotationController'
 import createMovementController from '../MovementController/MovementController'
@@ -137,15 +135,6 @@ const createScriptController = ({
       cleanQueue.splice(insertAtIndex, 0, newItem)
     }
 
-    sendToDebugger(
-      'queue',
-      JSON.stringify({
-        id: script.groupId,
-        opcode: `QUEUE: ADD ${newItem.uniqueId} ${newItem.method.methodId}`,
-        uuid: generateUUID(),
-      }),
-    )
-
     const updatedQueueItem = [cleanActiveItem, ...cleanQueue].filter(Boolean)
 
     setState({ queue: updatedQueueItem })
@@ -158,15 +147,6 @@ const createScriptController = ({
     setState({
       queue: newQueue,
     })
-
-    sendToDebugger(
-      'queue',
-      JSON.stringify({
-        id: script.groupId,
-        opcode: `QUEUE: ${uniqueId} complete`,
-        uuid: generateUUID(),
-      }),
-    )
 
     const event = new CustomEvent('scriptEnd', {
       detail: uniqueId,
@@ -188,44 +168,33 @@ const createScriptController = ({
   }
 
   const tick = async () => {
-    const { queue: __queue } = getState()
-    const queueSnapshot = structuredClone(__queue)
+    const { queue } = getState()
 
-    if (queueSnapshot.length === 0) {
+    const currentQueueItem = queue[0]
+    if (!currentQueueItem) {
       return
     }
 
-    const queueItem = queueSnapshot[0]
-
-    const { activeOpcodeIndex, isAwaiting, method, uniqueId } = queueItem
+    const { activeOpcodeIndex, isAwaiting, method, uniqueId } = currentQueueItem
 
     if (isAwaiting) {
       return
     }
 
-    if (!queueItem.hasStarted) {
+    if (!currentQueueItem.hasStarted) {
       document.dispatchEvent(new CustomEvent('scriptStart', { detail: uniqueId }))
     }
 
     updateQueueItem({
-      ...queueItem,
+      ...currentQueueItem,
       hasStarted: true,
       isAwaiting: true,
     })
 
     const activeOpcode = method.opcodes[activeOpcodeIndex]
 
-    sendToDebugger(
-      'command',
-      JSON.stringify({
-        id: script.groupId,
-        opcode: `${activeOpcode.name} with param ${activeOpcode.param}. Index: ${activeOpcodeIndex}, method: ${method.methodId}`,
-        uuid: generateUUID(),
-      }),
-    )
-
     if (activeOpcode.name.startsWith('LABEL')) {
-      handleTickCleanup(queueItem.activeOpcodeIndex + 1, uniqueId)
+      handleTickCleanup(currentQueueItem.activeOpcodeIndex + 1, uniqueId)
       return
     }
 
@@ -259,14 +228,6 @@ const createScriptController = ({
       const nextIndex = await Promise.race([promise])
 
       handleTickCleanup(nextIndex, uniqueId)
-      sendToDebugger(
-        'command',
-        JSON.stringify({
-          id: script.groupId,
-          opcode: `Completed: ${activeOpcode.name}`,
-          uuid: generateUUID(),
-        }),
-      )
 
       resolve()
     })

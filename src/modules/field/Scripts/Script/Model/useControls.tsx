@@ -15,6 +15,8 @@ export const SPEED = {
   WALKING: 0.08,
 }
 
+const COLLIDABLE_REFRESH_FRAMES = 30
+
 type useControlsProps = {
   characterHeight: number
   isActive: boolean
@@ -112,6 +114,23 @@ const useControls = ({ characterHeight, isActive, movementController, rotationCo
   const [forwardDirection] = useState(new Vector3(0, -1, 0))
   const [upDirection] = useState(new Vector3(0, 0, 1))
   const [POSITION_VECTOR] = useState(new Vector3())
+
+  const collidableCandidates = useRef<Object3D[]>([])
+  const collidableRefreshCounter = useRef(0)
+  const getCollidableBlockages = useCallback((scene: Scene) => {
+    collidableRefreshCounter.current -= 1
+    if (collidableRefreshCounter.current <= 0 || collidableCandidates.current.length === 0) {
+      collidableRefreshCounter.current = COLLIDABLE_REFRESH_FRAMES
+      const candidates: Object3D[] = []
+      scene.traverse((object) => {
+        if ('isSolid' in object.userData) {
+          candidates.push(object)
+        }
+      })
+      collidableCandidates.current = candidates
+    }
+    return collidableCandidates.current.filter((object) => object.parent !== null && object.userData.isSolid)
+  }, [])
   const handleFrame = useCallback(
     async (camera: PerspectiveCamera, scene: Scene, delta: number) => {
       if (!isActive || !isUserControllable || !hasPlacedCharacter || isTransitioningMap) {
@@ -168,12 +187,7 @@ const useControls = ({ characterHeight, isActive, movementController, rotationCo
         return
       }
 
-      const blockages: Object3D[] = []
-      scene.traverse((object) => {
-        if (object.userData.isSolid) {
-          blockages.push(object)
-        }
-      })
+      const blockages = getCollidableBlockages(scene)
 
       const isPermitted = checkForIntersections(player, newPosition, blockages, camera)
       if (!isPermitted) {
@@ -200,6 +214,7 @@ const useControls = ({ characterHeight, isActive, movementController, rotationCo
       upDirection,
       forwardDirection,
       POSITION_VECTOR,
+      getCollidableBlockages,
     ],
   )
 

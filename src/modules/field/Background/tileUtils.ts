@@ -13,5 +13,5 @@ export const TILE_BLENDS_TO_THREEJS = {
 }
 
 export const getLayerIdFromTile = (tile: Tile) => {
-  return `${tile.layerID}-${tile.Z}-${tile.blendType}-${tile.parameter}-${tile.state}`
+  return `${tile.layerID}-${tile.blendType}-${tile.parameter}-${tile.state}`
 }

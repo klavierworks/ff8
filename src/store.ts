@@ -4,7 +4,6 @@ import type { Object3D, Vector3 } from 'three'
 import { create } from 'zustand'
 
 import MAP_NAMES from './constants/maps'
-import { sendToDebugger } from './Debugger/debugUtils'
 import LerpValue from './LerpValue'
 import { FieldData } from './modules/field/Field'
 import createSFXController from './modules/field/Scripts/Script/SFXController/SFXController'
@@ -227,17 +226,5 @@ const INITIAL_STATE: GlobalState = {
 }
 
 const useGlobalStore = create<GlobalState>()(() => ({ ...INITIAL_STATE }))
-
-useGlobalStore.subscribe((state) => {
-  const {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    fieldData,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    systemSfxController,
-    ...safeState
-  } = state
-
-  sendToDebugger('state', JSON.stringify(safeState))
-})
 
 export default useGlobalStore
