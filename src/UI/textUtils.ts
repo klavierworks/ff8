@@ -85,6 +85,7 @@ export const createModifier = (tag: string) => {
       duration: parseInt(tag.substring(4)),
       type: 'wait',
     }
+    return result
   }
 
   console.log('unknownModifier', tag, result)
@@ -151,7 +152,7 @@ export const formatNameTags = (string: string) => {
   })
 
   const result = findAndReplaceVarPatterns(formattedString, (match) => {
-    const index = parseInt(match.slice(-1))
+    const index = parseInt(match.replace(/\D/g, ''))
     return MESSAGE_VARS[index]
   })
 

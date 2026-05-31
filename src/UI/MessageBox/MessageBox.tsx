@@ -8,7 +8,7 @@ import { CONTROLS_MAP } from '../../constants/controls.ts'
 import { saveGame } from '../../modules/field/fieldUtils.ts'
 import { closeMessage } from '../../modules/field/Scripts/Script/utils.ts'
 import useGlobalStore from '../../store.ts'
-import { framesToMs } from '../../timing.ts'
+import { framesToMs, TARGET_FPS } from '../../timing.ts'
 import { FontColor, Modifier, Placement } from '../textTypes.ts'
 import { formatNameTags } from '../textUtils.ts'
 import {
@@ -33,7 +33,8 @@ type MessageBoxProps = {
 }
 
 const OPEN_SPEED = 3
-const TEXT_SPEED = 200
+const FONT_SPEED_UNIT = 4096 * 2
+const DEFAULT_MESSAGE_SPEED = FONT_SPEED_UNIT
 const BLINK_DELAY = 240
 
 const MessageBox = ({ isCloseableFocus, isSavePoint, message, worldScene }: MessageBoxProps) => {
@@ -152,6 +153,12 @@ const MessageBox = ({ isCloseableFocus, isSavePoint, message, worldScene }: Mess
         setCurrentPage((prev) => prev + 1)
       }
 
+      if (event.code === CONTROLS_MAP.cancel && askOptions && askOptions.cancel !== undefined) {
+        useGlobalStore.getState().systemSfxController.play(9, 0, 127, 128)
+        setCurrentIndex(askOptions.cancel)
+        setCurrentPage((prev) => prev + 1)
+      }
+
       if (event.code === 'ArrowUp') {
         useGlobalStore.getState().systemSfxController.play(1, 0, 127, 128)
         invalidate()
@@ -207,6 +214,10 @@ const MessageBox = ({ isCloseableFocus, isSavePoint, message, worldScene }: Mess
     color: 4096,
     mode: 0,
   }
+
+  const messageSpeed =
+    useGlobalStore((state) => state.messageSpeeds[message.placement.channel ?? 0]) ?? DEFAULT_MESSAGE_SPEED
+  const glyphsPerSecond = messageSpeed === 0 ? Number.MAX_SAFE_INTEGER : (messageSpeed / FONT_SPEED_UNIT) * TARGET_FPS
 
   const scaleRef = useRef(0)
   const textProgressRef = useRef(0)
@@ -323,10 +334,10 @@ const MessageBox = ({ isCloseableFocus, isSavePoint, message, worldScene }: Mess
         setHasDisplayedAllText(true)
       }
 
-      textProgressRef.current += delta * TEXT_SPEED
+      textProgressRef.current += delta * glyphsPerSecond
       return hasDisplayedAllTextRef.current
     },
-    [fontTextures, handleWait, messageStyle.color, placements],
+    [fontTextures, glyphsPerSecond, handleWait, messageStyle.color, placements],
   )
 
   const drawCursor = useCallback(

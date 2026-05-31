@@ -2081,8 +2081,15 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     })
   },
   SETMESSPEED: ({ STACK }) => {
-    STACK.pop() as number
-    STACK.pop() as number
+    const speed = STACK.pop() as number
+    const channel = STACK.pop() as number
+
+    useGlobalStore.setState((state) => ({
+      messageSpeeds: {
+        ...state.messageSpeeds,
+        [channel]: speed,
+      },
+    }))
   },
   SETMODEL: ({ currentOpcode, setState }) => {
     const modelId = currentOpcode.param

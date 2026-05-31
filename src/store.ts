@@ -108,6 +108,7 @@ interface GlobalState {
     }
   >
   lockedTriangles: number[]
+  messageSpeeds: Record<number, number>
   messageStyles: Record<
     number,
     {
@@ -208,6 +209,7 @@ const INITIAL_STATE: GlobalState = {
 
   layerTints: {},
   lockedTriangles: [],
+  messageSpeeds: {},
   messageStyles: {},
 
   module: 'menu',
