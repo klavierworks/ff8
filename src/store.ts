@@ -22,13 +22,6 @@ interface GlobalState {
   backgroundMusic: Howl | undefined
   backgroundMusicSrc: string | undefined
 
-  backgroundScrollRatios: Record<
-    number,
-    {
-      x: number
-      y: number
-    }
-  >
   cameraFocusHeight: number
   cameraFocusObject: Object3D | undefined
   cameraFocusSpring: LerpValue | undefined
@@ -82,9 +75,9 @@ interface GlobalState {
     number,
     {
       xOffset: number
-      xScrollSpeed: number
+      xRatio: number
       yOffset: number
-      yScrollSpeed: number
+      yRatio: number
     }
   >
 
@@ -152,7 +145,6 @@ const INITIAL_STATE: GlobalState = {
 
   backgroundMusic: undefined,
   backgroundMusicSrc: undefined,
-  backgroundScrollRatios: {},
   cameraFocusHeight: 0,
   cameraFocusObject: undefined,
 

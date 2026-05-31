@@ -33,8 +33,8 @@ type MessageBoxProps = {
 }
 
 const OPEN_SPEED = 3
-const FONT_SPEED_UNIT = 4096 * 2
-const DEFAULT_MESSAGE_SPEED = FONT_SPEED_UNIT
+const FONT_SPEED_UNIT = 4096
+const SPEED_MULTIPLIER = 2
 const BLINK_DELAY = 240
 
 const MessageBox = ({ isCloseableFocus, isSavePoint, message, worldScene }: MessageBoxProps) => {
@@ -215,9 +215,9 @@ const MessageBox = ({ isCloseableFocus, isSavePoint, message, worldScene }: Mess
     mode: 0,
   }
 
-  const messageSpeed =
-    useGlobalStore((state) => state.messageSpeeds[message.placement.channel ?? 0]) ?? DEFAULT_MESSAGE_SPEED
-  const glyphsPerSecond = messageSpeed === 0 ? Number.MAX_SAFE_INTEGER : (messageSpeed / FONT_SPEED_UNIT) * TARGET_FPS
+  const messageSpeed = useGlobalStore((state) => state.messageSpeeds[message.placement.channel ?? 0]) ?? FONT_SPEED_UNIT
+  const glyphsPerSecond =
+    messageSpeed === 0 ? Number.MAX_SAFE_INTEGER : (messageSpeed / FONT_SPEED_UNIT) * TARGET_FPS * SPEED_MULTIPLIER
 
   const scaleRef = useRef(0)
   const textProgressRef = useRef(0)

@@ -108,9 +108,11 @@ const constructScrollTransition = (
   newY: number,
   duration: number,
   positioning: ScrollPositionMode,
+  ease: ScrollEase,
 ) => {
   const transition: CameraScrollTransition = {
     duration,
+    ease,
     endX: newX,
     endY: newY,
     isInProgress: true,
@@ -118,25 +120,18 @@ const constructScrollTransition = (
     startX: currentTransition?.endX ?? 0,
     startY: currentTransition?.endY ?? 0,
   }
-  console.log(
-    'Constructed scroll transition:',
-    'from',
-    transition.startX,
-    transition.startY,
-    ' to ',
-    transition.endX,
-    transition.endY,
-    ' over ',
-    duration,
-    'ms, positioning:',
-    positioning,
-  )
   return transition
 }
 
-export const setCameraScroll = (x: number, y: number, duration: number, positioning: ScrollPositionMode) => {
+export const setCameraScroll = (
+  x: number,
+  y: number,
+  duration: number,
+  positioning: ScrollPositionMode,
+  ease: ScrollEase = 'linear',
+) => {
   const currentTransition = useGlobalStore.getState().cameraScrollOffset
-  const transition = constructScrollTransition(currentTransition, x, y, duration, positioning)
+  const transition = constructScrollTransition(currentTransition, x, y, duration, positioning, ease)
 
   useGlobalStore.setState({ cameraScrollOffset: transition })
 }
@@ -148,13 +143,14 @@ export const setLayerScroll = (
   duration: number,
   positioning: ScrollPositionMode,
   shouldCameraRemainFocusedOnLayer = false,
+  ease: ScrollEase = 'linear',
 ) => {
   if (shouldCameraRemainFocusedOnLayer) {
-    setCameraScroll(-x / 2, y / 2, duration, 'camera')
+    setCameraScroll(-x, y, duration, 'camera', ease)
   }
 
   const currentTransition = useGlobalStore.getState().layerScrollOffsets[layerIndex!]
-  const transition = constructScrollTransition(currentTransition, x / 2, y / 2, duration, positioning)
+  const transition = constructScrollTransition(currentTransition, x, y, duration, positioning, ease)
 
   useGlobalStore.setState({
     layerScrollOffsets: {

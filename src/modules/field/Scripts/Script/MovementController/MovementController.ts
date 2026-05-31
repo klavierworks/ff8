@@ -271,6 +271,11 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
     }
   }
 
+  const getMovementPosition = () => {
+    const { current } = getState().position
+    return { x: current.x, y: current.y, z: current.z }
+  }
+
   const stop = () => {
     setState({
       offset: {
@@ -582,6 +587,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
   return {
     disableFootsteps,
     enableFootsteps,
+    getMovementPosition,
     getMovementSpeed,
     getPosition,
     getState,

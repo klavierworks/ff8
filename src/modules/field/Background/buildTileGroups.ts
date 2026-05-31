@@ -158,11 +158,13 @@ export const writeLayerPositions = (
   offsetY: number,
   centerX: number,
   centerY: number,
+  shouldWrapX: boolean,
+  shouldWrapY: boolean,
 ) => {
   const positionAttribute = layer.geometry.getAttribute('position')
   const positions = positionAttribute.array as Float32Array
 
-  const { shouldWrapX, shouldWrapY, tileDepths, tilePositions, wrapPeriodX, wrapPeriodY } = layer
+  const { tileDepths, tilePositions, wrapPeriodX, wrapPeriodY } = layer
   const unitsPerPixelPerDepth = (2 * fovHalfTan) / SCREEN_HEIGHT
 
   for (let i = 0; i < tileDepths.length; i += 1) {

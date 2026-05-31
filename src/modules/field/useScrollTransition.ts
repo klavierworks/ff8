@@ -2,6 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useCallback, useRef } from 'react'
 import { MathUtils } from 'three'
 
+import { cosineEaseInOut } from '../../LerpValue'
 import useGlobalStore from '../../store'
 import { framesToSeconds } from '../../timing'
 
@@ -60,18 +61,19 @@ const useScrollTransition = (type: 'camera' | 'layer', layerID?: number) => {
       transitionState.current.startTime = state.clock.elapsedTime
     }
 
-    const { duration, endX, endY, positioning, startX, startY } = transitionState.current.currentTransition
+    const { duration, ease, endX, endY, positioning, startX, startY } = transitionState.current.currentTransition
     const elapsed = state.clock.elapsedTime - transitionState.current.startTime
     const progress = duration === 0 ? 1 : Math.min(elapsed / framesToSeconds(duration), 1)
+    const easedProgress = ease === 'cosine' ? cosineEaseInOut(progress) : progress
 
     const isSimpleLerp =
       (positioning === 'camera' && type === 'camera') || (positioning === 'level' && type === 'layer')
     if (isSimpleLerp) {
-      currentValue.current.x = MathUtils.lerp(startX, endX, progress)
-      currentValue.current.y = MathUtils.lerp(startY, endY, progress)
+      currentValue.current.x = MathUtils.lerp(startX, endX, easedProgress)
+      currentValue.current.y = MathUtils.lerp(startY, endY, easedProgress)
     } else {
-      currentValue.current.x = MathUtils.lerp(transitionState.current.initialX, -endX, progress)
-      currentValue.current.y = MathUtils.lerp(transitionState.current.initialY, -endY, progress)
+      currentValue.current.x = MathUtils.lerp(transitionState.current.initialX, -endX, easedProgress)
+      currentValue.current.y = MathUtils.lerp(transitionState.current.initialY, -endY, easedProgress)
     }
 
     currentValue.current.positioning = currentTransition.positioning

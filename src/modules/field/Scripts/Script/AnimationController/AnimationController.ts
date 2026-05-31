@@ -23,8 +23,6 @@ type AnimationItem = {
 
   priority: number
   shouldHoldLastFrame: boolean
-
-  speed: number
   startTime: number
 }
 
@@ -103,13 +101,14 @@ export const createAnimationController = (id: number | string) => {
     action.enabled = true
 
     if (!currentRunState) {
+      const initialTime = direction === -1 ? endTime : startTime
       currentRunState = {
-        direction: direction,
+        direction,
         hasCompletedALoop: false,
         isComplete: false,
-        time: startTime,
+        time: initialTime,
       }
-      applyAnimationAtTime(mesh, action.getClip(), startTime)
+      applyAnimationAtTime(mesh, action.getClip(), initialTime)
     }
 
     if (startTime === endTime || action.getClip().duration === 0) {
@@ -167,7 +166,6 @@ export const createAnimationController = (id: number | string) => {
       needsRealtimeZAdjustment?: boolean
       priority?: number
       shouldHoldLastFrame?: boolean
-      speed?: number
       startFrame?: number
     },
   ) => {
@@ -183,14 +181,14 @@ export const createAnimationController = (id: number | string) => {
 
     const action = mixer.clipAction(clip)
 
-    const startTime = options?.startFrame !== undefined ? framesToSeconds(options.startFrame) : 0
-    const endTime = options?.endFrame !== undefined ? framesToSeconds(options.endFrame) : action.getClip().duration
+    const startTime = options?.startFrame !== undefined ? framesToSeconds(options.startFrame - 1) : 0
+    const endTime = options?.endFrame !== undefined ? framesToSeconds(options.endFrame - 1) : action.getClip().duration
 
     const uniqueId = `${id}-${clipId}--${Date.now()}`
     const animation: AnimationItem = {
       action,
       clipId,
-      direction: 1,
+      direction: options?.direction ?? 1,
       endTime,
       hasBeenZAdjusted: false,
       id: uniqueId,
@@ -200,7 +198,6 @@ export const createAnimationController = (id: number | string) => {
       needsRealtimeZAdjustment: options?.needsRealtimeZAdjustment ?? true,
       priority: options?.priority ?? 5,
       shouldHoldLastFrame: options?.shouldHoldLastFrame ?? false,
-      speed: options?.speed ?? 1,
       startTime,
     }
 
@@ -254,6 +251,21 @@ export const createAnimationController = (id: number | string) => {
       return true
     }
     return false
+  }
+
+  const getMovementAnimationPhase = () => {
+    if (!currentRunState) {
+      return undefined
+    }
+    const { activeAnimation } = getState()
+    if (!activeAnimation || !activeAnimation.isFromMovement) {
+      return undefined
+    }
+    const span = activeAnimation.endTime - activeAnimation.startTime
+    if (span <= 0) {
+      return undefined
+    }
+    return (currentRunState.time - activeAnimation.startTime) / span
   }
 
   const setIdleAnimations = (standingId: number, walkingId: number, runningId: number) => {
@@ -396,6 +408,7 @@ export const createAnimationController = (id: number | string) => {
 
   return {
     getIsSafeToMoveOn,
+    getMovementAnimationPhase,
     getSavedAnimation,
     getSavedAnimationId,
     getState,

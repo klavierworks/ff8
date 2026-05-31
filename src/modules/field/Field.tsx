@@ -134,7 +134,6 @@ const FieldLoader = (props: FieldLoaderProps) => {
         backgroundLayerSpeeds: {},
 
         backgroundLayerVisibility: {},
-        backgroundScrollRatios: {},
         cameraFocusObject: undefined,
 
         cameraFocusSpring: undefined,

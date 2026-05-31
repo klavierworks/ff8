@@ -23,6 +23,7 @@ declare global {
   }
   type CameraScrollTransition = {
     duration: number
+    ease?: ScrollEase
     endX: number
     endY: number
     isInProgress: boolean
@@ -145,6 +146,8 @@ declare global {
     scriptLabel: number
     timestamps: number[]
   }
+
+  type ScrollEase = 'cosine' | 'linear'
 
   type ScrollPositionMode = 'camera' | 'level'
 

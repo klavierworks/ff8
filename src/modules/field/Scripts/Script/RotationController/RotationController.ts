@@ -116,10 +116,11 @@ const createRotationController = (
   }
 
   const turnToFaceVector = async (target: Vector3, speed: TurnSpeed) => {
-    if (target.equals(movementController.getPosition())) {
+    const origin = movementController.getMovementPosition()
+    if (target.equals(origin)) {
       return
     }
-    const targetDirection = getDirectionToVector(target, movementController.getPosition())
+    const targetDirection = getDirectionToVector(target, origin)
     await turnToFaceDirection(targetDirection, speed)
   }
 

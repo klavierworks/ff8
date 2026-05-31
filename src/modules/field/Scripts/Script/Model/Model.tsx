@@ -138,7 +138,7 @@ const Model = ({
   const talkMethod = script.methods.find((method) => method.methodId === 'talk')
   const pushMethod = script.methods.find((method) => method.methodId === 'push')
 
-  useFootsteps({ movementController })
+  useFootsteps({ animationController, movementController })
 
   const [characterDimensions] = useState<Vector3>(new Vector3())
 

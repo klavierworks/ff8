@@ -12,6 +12,7 @@ type LayerProps = {
 }
 
 const SHADE_NEUTRAL = 128
+const SCROLL_RATIO_FULL = 256
 const _cameraPosition = new Vector3()
 
 const Layer = ({ layer, texture }: LayerProps) => {
@@ -29,7 +30,7 @@ const Layer = ({ layer, texture }: LayerProps) => {
       return
     }
 
-    const { backgroundAnimations, backgroundLayerVisibility, layerScrollAdjustments, layerTints } =
+    const { backgroundAnimations, backgroundLayerVisibility, layerScrollAdjustments, layerScrollOffsets, layerTints } =
       useGlobalStore.getState()
 
     const animation = backgroundAnimations[parameter]
@@ -83,11 +84,25 @@ const Layer = ({ layer, texture }: LayerProps) => {
 
     let offsetX = 0
     let offsetY = 0
+    let xRatio = SCROLL_RATIO_FULL
+    let yRatio = SCROLL_RATIO_FULL
     const controlledScroll = layerScrollAdjustments[renderID]
     if (controlledScroll) {
       offsetX += controlledScroll.xOffset
       offsetY += controlledScroll.yOffset
+      xRatio = controlledScroll.xRatio
+      yRatio = controlledScroll.yRatio
     }
+
+    const isScriptScrolled = controlledScroll !== undefined || layerScrollOffsets[renderID] !== undefined
+    const shouldWrapX = layer.shouldWrapX && isScriptScrolled
+    const shouldWrapY = layer.shouldWrapY && isScriptScrolled
+
+    if (layer.isScreenLocked && !isScriptScrolled) {
+      xRatio = 0
+      yRatio = 0
+    }
+
     if (layerScroll.current.positioning === 'camera') {
       offsetX -= layerScroll.current.x
       offsetY -= layerScroll.current.y
@@ -96,10 +111,8 @@ const Layer = ({ layer, texture }: LayerProps) => {
       offsetY += layerScroll.current.y
     }
 
-    if (layer.isScreenLocked) {
-      offsetX += centerX
-      offsetY += centerY
-    }
+    offsetX += centerX * (1 - xRatio / SCROLL_RATIO_FULL)
+    offsetY += centerY * (1 - yRatio / SCROLL_RATIO_FULL)
 
     const previous = lastWrite.current
     if (
@@ -113,7 +126,7 @@ const Layer = ({ layer, texture }: LayerProps) => {
       return
     }
 
-    writeLayerPositions(layer, cameraLength, fovHalfTan, offsetX, offsetY, centerX, centerY)
+    writeLayerPositions(layer, cameraLength, fovHalfTan, offsetX, offsetY, centerX, centerY, shouldWrapX, shouldWrapY)
     previous.length = cameraLength
     previous.fovHalfTan = fovHalfTan
     previous.offsetX = offsetX

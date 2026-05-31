@@ -214,7 +214,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     animationController.setAnimationSpeed(STACK.pop() as number)
   },
   ANIMESTOP: ({ animationController }) => {
-    animationController.pauseAnimation(true)
+    animationController.playMovementAnimation('standing')
   },
   ANIMESYNC: async ({ animationController }) => {
     while (!animationController.getIsSafeToMoveOn()) {
@@ -528,7 +528,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const y = STACK.pop() as number
     const x = STACK.pop() as number
 
-    setCameraScroll(x, y, duration, 'camera')
+    setCameraScroll(x, y, duration, 'camera', 'cosine')
   },
   CSCROLL2: ({ STACK }) => {
     const duration = STACK.pop() as number
@@ -537,7 +537,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
 
     const layerID = STACK.pop() as number
 
-    setLayerScroll(layerID, x, y, duration, 'camera', true)
+    setLayerScroll(layerID, x, y, duration, 'camera', true, 'cosine')
   },
   // This is never used in a working map (only broken field bg2f_1a)
   CSCROLL3: async ({ STACK }) => {
@@ -550,8 +550,8 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     // Pop layer ID from stack
     const layerID = STACK.pop() as number
 
-    setLayerScroll(layerID, startX, startY, 0, 'camera')
-    setLayerScroll(layerID, endX, endY, duration, 'camera')
+    setLayerScroll(layerID, startX, startY, 0, 'camera', false, 'cosine')
+    setLayerScroll(layerID, endX, endY, duration, 'camera', false, 'cosine')
   },
   CSCROLLA: ({ scene, STACK }) => {
     const duration = STACK.pop() as number
@@ -1220,8 +1220,8 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     // Pop layer ID from stack
     const layerID = STACK.pop() as number
 
-    setLayerScroll(layerID, -startX, -startY, 0, 'level')
-    setLayerScroll(layerID, -endX, -endY, duration, 'level')
+    setLayerScroll(layerID, startX, startY, 0, 'level')
+    setLayerScroll(layerID, endX, endY, duration, 'level')
   },
   LSCROLLA: ({ scene, STACK }) => {
     const duration = STACK.pop() as number
@@ -1927,45 +1927,37 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   },
 
   SCROLLMODE2: ({ STACK }) => {
-    const lastFive = STACK.splice(-5)
-    const layerIndex = lastFive[0] // layer id
-    const xOffset = lastFive[1] // I reckon offset
-    const yOffset = lastFive[2] // I reckon offset
-    const xScrollSpeed = lastFive[3] // a scroll ratio in a direction
-    const yScrollSpeed = lastFive[4] // a scroll ratio in a direction
+    const yRatio = STACK.pop() as number
+    const xRatio = STACK.pop() as number
+    const yOffset = STACK.pop() as number
+    const xOffset = STACK.pop() as number
+    const layerIndex = STACK.pop() as number
 
-    const controlledScroll = useGlobalStore.getState().layerScrollAdjustments[layerIndex] ?? {
-      xOffset: 0,
-      xScrollSpeed: 0,
-      yOffset: 0,
-      yScrollSpeed: 0,
-    }
-
-    controlledScroll.xOffset = xOffset
-    controlledScroll.yOffset = yOffset
-    controlledScroll.xScrollSpeed = xScrollSpeed
-    controlledScroll.yScrollSpeed = yScrollSpeed
-
-    useGlobalStore.setState({
+    useGlobalStore.setState((state) => ({
       layerScrollAdjustments: {
-        ...useGlobalStore.getState().layerScrollAdjustments,
-        [layerIndex]: controlledScroll,
+        ...state.layerScrollAdjustments,
+        [layerIndex]: { xOffset, xRatio, yOffset, yRatio },
       },
-    })
+    }))
   },
   SCROLLRATIO2: ({ STACK }) => {
-    const y = STACK.pop() as number
-    const x = STACK.pop() as number
-    const layer = STACK.pop() as number
+    const yRatio = STACK.pop() as number
+    const xRatio = STACK.pop() as number
+    const layerIndex = STACK.pop() as number
 
-    useGlobalStore.setState({
-      backgroundScrollRatios: {
-        ...useGlobalStore.getState().backgroundScrollRatios,
-        [layer]: {
-          x,
-          y,
+    useGlobalStore.setState((state) => {
+      const existing = state.layerScrollAdjustments[layerIndex]
+      return {
+        layerScrollAdjustments: {
+          ...state.layerScrollAdjustments,
+          [layerIndex]: {
+            xOffset: existing?.xOffset ?? 0,
+            xRatio,
+            yOffset: existing?.yOffset ?? 0,
+            yRatio,
+          },
         },
-      },
+      }
     })
   },
   SCROLLSYNC: async () => {
