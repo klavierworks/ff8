@@ -2,6 +2,17 @@ import { BufferGeometry, Mesh, Object3D, Triangle, Vector3 } from 'three'
 
 import useGlobalStore from '../../../store'
 
+// ─── Walkmesh wall-slide steering (ports sub_479C60 / sub_47A3E0) ───
+const MAX_SLIDE_ITERATIONS = 16
+const MAX_TRAVERSE_CROSSINGS = 8
+const FLANK_PROBE_ANGLE = Math.PI / 4 // 45° = 32/256 of a revolution
+const STEER_NUDGE_ANGLE = Math.PI / 16 // 11.25° = 8/256 of a revolution
+
+const _heading = new Vector3()
+const _flank = new Vector3()
+const _probe = new Vector3()
+const _up = new Vector3(0, 0, 1)
+
 interface PathNode {
   entryPoint?: Vector3
   f: number
@@ -18,6 +29,7 @@ interface TriangleNode {
 }
 
 class WalkmeshMovementController {
+  private edgeNeighbors = new Map<number, [number, number, number]>()
   private triangleCache = new Map<number, Triangle>()
   private triangleCenters = new Map<number, Vector3>()
   private triangleGraph = new Map<number, TriangleNode>()
@@ -26,6 +38,7 @@ class WalkmeshMovementController {
   constructor(walkmesh: Object3D) {
     this.walkmesh = walkmesh
     this.buildTriangleCache()
+    this.buildEdgeNeighbors()
     this.buildTriangleGraph()
     this.buildTriangleCenters()
   }
@@ -118,42 +131,73 @@ class WalkmeshMovementController {
     moveDirection: Vector3,
     moveDistance: number,
     currentTriangleId?: number,
+    isAllowedToCrossBlockedTriangles = false,
   ): Vector3 {
-    const normalizedDirection = moveDirection.clone().normalize()
-    normalizedDirection.z = 0
-
-    if (currentTriangleId === undefined) {
-      const foundTriangleId = this.getTriangleForPosition(currentPosition)!
-      currentTriangleId = foundTriangleId
-    }
-
-    const targetPosition = currentPosition.clone().add(normalizedDirection.clone().multiplyScalar(moveDistance))
-
-    const adjacentTriangles = this.getAdjacentTriangles(currentTriangleId)
-
-    const permittedTriangles = [currentTriangleId, ...adjacentTriangles]
-
-    const targetTriangleId = this.getTriangleForPosition(targetPosition, permittedTriangles, false)
-
-    if (targetTriangleId !== null) {
-      const adjustedPosition = this.getPositionOnTriangle(targetPosition, targetTriangleId)
-      return adjustedPosition || targetPosition
-    }
-
-    const hitEdge = this.findHitEdge(currentPosition, targetPosition, currentTriangleId, adjacentTriangles)
-
-    if (!hitEdge) {
+    const triangleId =
+      currentTriangleId ??
+      this.getTriangleForPosition(currentPosition, undefined, isAllowedToCrossBlockedTriangles) ??
+      undefined
+    if (triangleId === undefined) {
       return currentPosition.clone()
     }
 
-    return this.slideAlongEdge(
-      currentPosition,
-      normalizedDirection,
-      moveDistance,
-      hitEdge,
-      currentTriangleId,
-      adjacentTriangles,
-    )
+    _heading.copy(moveDirection)
+    _heading.z = 0
+    if (_heading.lengthSq() < 1e-12) {
+      return currentPosition.clone()
+    }
+    _heading.normalize()
+
+    const fromX = currentPosition.x
+    const fromY = currentPosition.y
+
+    // Ports sub_479C60's convergent slide: if the path dead-ahead is clear, go
+    // straight; otherwise rotate the heading by ±11.25° toward whichever ±45°
+    // flank is open and re-probe, converging on the wall tangent. Steering only
+    // engages once the way ahead is blocked, so a clear run (e.g. the train on
+    // its rails) is never nudged off course.
+    for (let iteration = 0; iteration < MAX_SLIDE_ITERATIONS; iteration++) {
+      if (
+        !this.traverseToTarget(
+          triangleId,
+          fromX + _heading.x * moveDistance,
+          fromY + _heading.y * moveDistance,
+          isAllowedToCrossBlockedTriangles,
+        ).isBlocked
+      ) {
+        break
+      }
+
+      _flank.copy(_heading).applyAxisAngle(_up, FLANK_PROBE_ANGLE)
+      const isLeftBlocked = this.traverseToTarget(
+        triangleId,
+        fromX + _flank.x * moveDistance,
+        fromY + _flank.y * moveDistance,
+        isAllowedToCrossBlockedTriangles,
+      ).isBlocked
+      _flank.copy(_heading).applyAxisAngle(_up, -FLANK_PROBE_ANGLE)
+      const isRightBlocked = this.traverseToTarget(
+        triangleId,
+        fromX + _flank.x * moveDistance,
+        fromY + _flank.y * moveDistance,
+        isAllowedToCrossBlockedTriangles,
+      ).isBlocked
+
+      // Boxed in on both flanks (dead-end / head-on into a wall): stop — the
+      // commit below no-ops because the heading is still blocked.
+      if (isLeftBlocked && isRightBlocked) {
+        break
+      }
+      _heading.applyAxisAngle(_up, isRightBlocked ? STEER_NUDGE_ANGLE : -STEER_NUDGE_ANGLE)
+    }
+
+    const finalX = fromX + _heading.x * moveDistance
+    const finalY = fromY + _heading.y * moveDistance
+    const destination = this.traverseToTarget(triangleId, finalX, finalY, isAllowedToCrossBlockedTriangles)
+    if (destination.isBlocked) {
+      return currentPosition.clone()
+    }
+    return new Vector3(finalX, finalY, destination.z)
   }
 
   public getPositionOnTriangle(position: Vector3, triangleId: number): null | Vector3 {
@@ -401,6 +445,38 @@ class WalkmeshMovementController {
     return adjacent.slice(0, 2)
   }
 
+  private buildEdgeNeighbors() {
+    const vertexKey = (vertex: Vector3) =>
+      `${Math.round(vertex.x * 4096)},${Math.round(vertex.y * 4096)},${Math.round(vertex.z * 4096)}`
+    const edgeKey = (first: string, second: string) => (first < second ? `${first}|${second}` : `${second}|${first}`)
+
+    const edgeOwners = new Map<string, Array<{ edgeIndex: number; triangleId: number }>>()
+
+    for (const [triangleId, triangle] of this.triangleCache.entries()) {
+      this.edgeNeighbors.set(triangleId, [-1, -1, -1])
+
+      const keys = [vertexKey(triangle.a), vertexKey(triangle.b), vertexKey(triangle.c)]
+      for (let edgeIndex = 0; edgeIndex < 3; edgeIndex++) {
+        const key = edgeKey(keys[edgeIndex], keys[(edgeIndex + 1) % 3])
+        const owners = edgeOwners.get(key)
+        if (owners) {
+          owners.push({ edgeIndex, triangleId })
+        } else {
+          edgeOwners.set(key, [{ edgeIndex, triangleId }])
+        }
+      }
+    }
+
+    for (const owners of edgeOwners.values()) {
+      if (owners.length !== 2) {
+        continue
+      }
+      const [first, second] = owners
+      this.edgeNeighbors.get(first.triangleId)![first.edgeIndex] = second.triangleId
+      this.edgeNeighbors.get(second.triangleId)![second.edgeIndex] = first.triangleId
+    }
+  }
+
   private buildTriangleCache() {
     this.walkmesh.traverse((child) => {
       if (child instanceof Mesh && child.geometry instanceof BufferGeometry) {
@@ -455,134 +531,6 @@ class WalkmeshMovementController {
         triangle,
       })
     }
-  }
-
-  private doesMovementCrossEdge(current: Vector3, target: Vector3, edgeStart: Vector3, edgeEnd: Vector3): boolean {
-    const x1 = current.x,
-      y1 = current.y
-    const x2 = target.x,
-      y2 = target.y
-    const x3 = edgeStart.x,
-      y3 = edgeStart.y
-    const x4 = edgeEnd.x,
-      y4 = edgeEnd.y
-
-    const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
-    if (Math.abs(denom) < 0.0001) {
-      return false
-    }
-
-    const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom
-    const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom
-
-    return t >= 0 && t <= 1 && u >= 0 && u <= 1
-  }
-
-  private findHitEdge(
-    currentPosition: Vector3,
-    targetPosition: Vector3,
-    currentTriangleId: number,
-    adjacentTriangles: number[],
-  ): null | { direction: Vector3; end: Vector3; start: Vector3 } {
-    const currentTriangle = this.triangleCache.get(currentTriangleId)
-    if (!currentTriangle) {
-      return null
-    }
-
-    const edges: [Vector3, Vector3][] = [
-      [currentTriangle.a, currentTriangle.b],
-      [currentTriangle.b, currentTriangle.c],
-      [currentTriangle.c, currentTriangle.a],
-    ]
-
-    const blockedTriangles = useGlobalStore.getState().lockedTriangles
-    let closestBlockingEdge: null | { direction: Vector3; distance: number; end: Vector3; start: Vector3 } = null
-
-    for (const [edgeStart, edgeEnd] of edges) {
-      let isBlockingEdge = false
-
-      let hasAdjacentOnThisEdge = false
-
-      for (const adjacentId of adjacentTriangles) {
-        const adjacentTriangle = this.triangleCache.get(adjacentId)
-        if (!adjacentTriangle) {
-          continue
-        }
-
-        if (this.isEdgeShared(edgeStart, edgeEnd, adjacentTriangle)) {
-          hasAdjacentOnThisEdge = true
-
-          if (blockedTriangles.includes(adjacentId)) {
-            isBlockingEdge = true
-            break
-          }
-        }
-      }
-
-      if (!hasAdjacentOnThisEdge) {
-        isBlockingEdge = true
-      }
-
-      if (isBlockingEdge) {
-        const crossesEdge = this.doesMovementCrossEdge(currentPosition, targetPosition, edgeStart, edgeEnd)
-        const isNearEdge = this.isTargetOutsideNearEdge(targetPosition, edgeStart, edgeEnd, currentTriangle)
-
-        if (crossesEdge || isNearEdge) {
-          const edgeDistance = this.getDistanceToEdge(targetPosition, edgeStart, edgeEnd)
-
-          if (!closestBlockingEdge || edgeDistance < closestBlockingEdge.distance) {
-            const edgeDirection = new Vector3().subVectors(edgeEnd, edgeStart).normalize()
-            edgeDirection.z = 0
-
-            closestBlockingEdge = {
-              direction: edgeDirection,
-              distance: edgeDistance,
-              end: edgeEnd,
-              start: edgeStart,
-            }
-          }
-        }
-      }
-    }
-
-    if (closestBlockingEdge) {
-      return {
-        direction: closestBlockingEdge.direction,
-        end: closestBlockingEdge.end,
-        start: closestBlockingEdge.start,
-      }
-    }
-
-    return null
-  }
-
-  private findMaxSlideDistance(
-    currentPosition: Vector3,
-    slideDirection: Vector3,
-    maxDistance: number,
-    permittedTriangles: number[],
-  ): number {
-    let low = 0
-    let high = maxDistance
-    let bestDistance = 0
-
-    const precision = Math.max(maxDistance * 0.01, 1e-6)
-
-    while (high - low > precision) {
-      const mid = (low + high) / 2
-      const testPosition = currentPosition.clone().add(slideDirection.clone().multiplyScalar(mid))
-
-      const triangleId = this.getTriangleForPosition(testPosition, permittedTriangles, false)
-
-      if (triangleId !== null) {
-        bestDistance = mid
-        low = mid
-      } else {
-        high = mid
-      }
-    }
-
-    return bestDistance
   }
 
   private findTrianglePath(
@@ -662,24 +610,6 @@ class WalkmeshMovementController {
     return null
   }
 
-  private getClosestPointOnSegment(point: Vector3, segStart: Vector3, segEnd: Vector3): Vector3 {
-    const segVector = new Vector3().subVectors(segEnd, segStart)
-    const pointVector = new Vector3().subVectors(point, segStart)
-
-    const segLengthSq = segVector.lengthSq()
-    if (segLengthSq === 0) {
-      return segStart.clone()
-    }
-
-    const t = Math.max(0, Math.min(1, pointVector.dot(segVector) / segLengthSq))
-
-    return segStart.clone().add(segVector.multiplyScalar(t))
-  }
-
-  private getDistanceToEdge(point: Vector3, edgeStart: Vector3, edgeEnd: Vector3): number {
-    const closest = this.getClosestPointOnSegment(point, edgeStart, edgeEnd)
-    return point.distanceTo(closest)
-  }
   private getSharedEdge(t1: Triangle, t2: Triangle): [Vector3, Vector3] | null {
     const tolerance = 0.001
     const t1Edges: [Vector3, Vector3][] = [
@@ -750,20 +680,6 @@ class WalkmeshMovementController {
     return true
   }
 
-  private isEdgeShared(edgeStart: Vector3, edgeEnd: Vector3, triangle: Triangle): boolean {
-    const tolerance = 0.001
-    const triangleVerts = [triangle.a, triangle.b, triangle.c]
-
-    let matchCount = 0
-    for (const vert of triangleVerts) {
-      if (vert.distanceTo(edgeStart) < tolerance || vert.distanceTo(edgeEnd) < tolerance) {
-        matchCount++
-      }
-    }
-
-    return matchCount >= 2
-  }
-
   private isPointInTriangle(point: Vector3, triangle: Triangle, tolerance = 0.001): boolean {
     const minX = Math.min(triangle.a.x, triangle.b.x, triangle.c.x)
     const maxX = Math.max(triangle.a.x, triangle.b.x, triangle.c.x)
@@ -799,37 +715,6 @@ class WalkmeshMovementController {
     return u >= -tolerance && v >= -tolerance && u + v <= 1 + tolerance
   }
 
-  private isTargetOutsideNearEdge(target: Vector3, edgeStart: Vector3, edgeEnd: Vector3, triangle: Triangle): boolean {
-    if (this.isPointInTriangle(target, triangle)) {
-      return false
-    }
-
-    const tolerance = 0.001
-    let thirdVertex: null | Vector3 = null
-
-    for (const vert of [triangle.a, triangle.b, triangle.c]) {
-      if (vert.distanceTo(edgeStart) > tolerance && vert.distanceTo(edgeEnd) > tolerance) {
-        thirdVertex = vert
-        break
-      }
-    }
-
-    if (!thirdVertex) {
-      return false
-    }
-
-    const edgeNormal = new Vector3().subVectors(edgeEnd, edgeStart).normalize()
-    const toThird = new Vector3().subVectors(thirdVertex, edgeStart)
-    const cross = new Vector3().crossVectors(edgeNormal, toThird)
-    const thirdSide = cross.z
-
-    const toTarget = new Vector3().subVectors(target, edgeStart)
-    const crossTarget = new Vector3().crossVectors(edgeNormal, toTarget)
-    const targetSide = crossTarget.z
-
-    return Math.sign(targetSide) !== Math.sign(thirdSide)
-  }
-
   private isTriangleLocked(triangleId: number): boolean {
     const { lockedTriangles } = useGlobalStore.getState()
     return lockedTriangles.includes(triangleId)
@@ -859,52 +744,6 @@ class WalkmeshMovementController {
     return optimized
   }
 
-  private slideAlongEdge(
-    currentPosition: Vector3,
-    moveDirection: Vector3,
-    moveDistance: number,
-    edge: { direction: Vector3; end: Vector3; start: Vector3 },
-    currentTriangleId: number,
-    adjacentTriangles: number[],
-  ): Vector3 {
-    const dotProduct = moveDirection.dot(edge.direction)
-
-    if (Math.abs(dotProduct) < 0.001) {
-      return currentPosition.clone()
-    }
-
-    const slideDirection = dotProduct > 0 ? edge.direction.clone() : edge.direction.clone().negate()
-
-    const slidePosition = currentPosition.clone().add(slideDirection.multiplyScalar(moveDistance))
-
-    const permittedTriangles = [currentTriangleId, ...adjacentTriangles]
-    const slideTriangleId = this.getTriangleForPosition(slidePosition, permittedTriangles, false)
-
-    if (slideTriangleId !== null) {
-      const adjustedPosition = this.getPositionOnTriangle(slidePosition, slideTriangleId)
-      return adjustedPosition || slidePosition
-    }
-
-    const maxSlideDistance = this.findMaxSlideDistance(
-      currentPosition,
-      slideDirection,
-      moveDistance,
-      permittedTriangles,
-    )
-
-    if (maxSlideDistance > 0) {
-      const validSlidePosition = currentPosition.clone().add(slideDirection.multiplyScalar(maxSlideDistance))
-
-      const validTriangleId = this.getTriangleForPosition(validSlidePosition, permittedTriangles, false)
-
-      if (validTriangleId !== null) {
-        const adjustedPosition = this.getPositionOnTriangle(validSlidePosition, validTriangleId)
-        return adjustedPosition || validSlidePosition
-      }
-    }
-
-    return currentPosition.clone()
-  }
   private smoothPath(trianglePath: number[], start: Vector3, end: Vector3): Vector3[] {
     if (trianglePath.length === 0) {
       return []
@@ -940,6 +779,54 @@ class WalkmeshMovementController {
     path.push(end.clone())
 
     return this.optimizePath(path, trianglePath)
+  }
+
+  // Ports sub_47A3E0: walk from the current triangle toward an XY target, hopping
+  // across each edge the target lies beyond into that edge's neighbour. A crossed
+  // edge with no walkable neighbour is a wall (blocked). Stays edge-local, so it
+  // never teleports onto a different surface that merely overlaps in XY (bridges).
+  private traverseToTarget(
+    fromTriangleId: number,
+    toX: number,
+    toY: number,
+    isAllowedToCrossBlockedTriangles = false,
+  ): { isBlocked: boolean; triangleId: number; z: number } {
+    let triangleId = fromTriangleId
+
+    for (let crossing = 0; crossing < MAX_TRAVERSE_CROSSINGS; crossing++) {
+      const triangle = this.triangleCache.get(triangleId)
+      if (!triangle) {
+        return { isBlocked: true, triangleId: fromTriangleId, z: 0 }
+      }
+
+      const vertices = [triangle.a, triangle.b, triangle.c]
+      let crossedEdge = -1
+      for (let edgeIndex = 0; edgeIndex < 3; edgeIndex++) {
+        const start = vertices[edgeIndex]
+        const end = vertices[(edgeIndex + 1) % 3]
+        const third = vertices[(edgeIndex + 2) % 3]
+        const edgeX = end.x - start.x
+        const edgeY = end.y - start.y
+        const targetSide = edgeX * (toY - start.y) - edgeY * (toX - start.x)
+        const insideSide = edgeX * (third.y - start.y) - edgeY * (third.x - start.x)
+        if (targetSide * insideSide < 0) {
+          crossedEdge = edgeIndex
+          break
+        }
+      }
+
+      if (crossedEdge === -1) {
+        return { isBlocked: false, triangleId, z: this.getTriangleZAtPosition(_probe.set(toX, toY, 0), triangle) }
+      }
+
+      const neighbor = this.edgeNeighbors.get(triangleId)?.[crossedEdge] ?? -1
+      if (neighbor < 0 || (!isAllowedToCrossBlockedTriangles && this.isTriangleLocked(neighbor))) {
+        return { isBlocked: true, triangleId, z: this.getTriangleZAtPosition(_probe.set(toX, toY, 0), triangle) }
+      }
+      triangleId = neighbor
+    }
+
+    return { isBlocked: true, triangleId, z: 0 }
   }
   private trianglesIntersect(triangle1: Triangle, triangle2: Triangle): boolean {
     const vertices1 = [triangle1.a, triangle1.b, triangle1.c]

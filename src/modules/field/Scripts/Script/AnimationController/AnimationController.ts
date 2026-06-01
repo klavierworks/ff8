@@ -386,7 +386,9 @@ export const createAnimationController = (id: number | string) => {
     if (isMoving && currentRunState?.isComplete && getState().activeAnimation?.shouldHoldLastFrame) {
       clearAnimation()
     }
-    if (!isSafeToApplyMovementAnimation()) {
+
+    const isAnimatedMove = isMoving && movementController.getState().position.isAnimationEnabled
+    if (!isAnimatedMove && !isSafeToApplyMovementAnimation()) {
       return
     }
 

@@ -24,6 +24,9 @@ type QueueItem = {
 
 type WaitMode = 'end' | 'start'
 
+// Engine per-entity opcode budget per tick (sub_529FF0's `v19 = 16`).
+const MAX_OPCODES_PER_TICK = 16
+
 const createScriptController = ({
   animationController,
   handlers,
@@ -167,102 +170,118 @@ const createScriptController = ({
     })
   }
 
-  const tick = async () => {
-    const { queue } = getState()
-
-    const currentQueueItem = queue[0]
-    if (!currentQueueItem) {
+  const setQueueItemFields = (uniqueId: string, fields: Partial<QueueItem>) => {
+    const item = getState().queue.find((queued) => queued.uniqueId === uniqueId)
+    if (!item) {
       return
     }
-
-    const { activeOpcodeIndex, isAwaiting, method, uniqueId } = currentQueueItem
-
-    if (isAwaiting) {
-      return
-    }
-
-    if (!currentQueueItem.hasStarted) {
-      document.dispatchEvent(new CustomEvent('scriptStart', { detail: uniqueId }))
-    }
-
-    updateQueueItem({
-      ...currentQueueItem,
-      hasStarted: true,
-      isAwaiting: true,
-    })
-
-    const activeOpcode = method.opcodes[activeOpcodeIndex]
-
-    if (activeOpcode.name.startsWith('LABEL')) {
-      handleTickCleanup(currentQueueItem.activeOpcodeIndex + 1, uniqueId)
-      return
-    }
-
-    if (activeOpcode.name === 'HALT') {
-      handleTickCleanup(-2, uniqueId)
-      return
-    }
-
-    const opcodeHandler = handlers[activeOpcode.name]
-    const currentState = useScriptStateStore.getState()
-
-    const promise = opcodeHandler({
-      animationController,
-      currentOpcode: activeOpcode,
-      currentOpcodeIndex: activeOpcodeIndex,
-      currentState,
-      headController,
-      movementController,
-      opcodes: method.opcodes,
-      rotationController,
-      scene,
-      script,
-      setState: useScriptStateStore.setState,
-      sfxController,
-      STACK,
-      TEMP_STACK,
-    })
-
-    // eslint-disable-next-line no-async-promise-executor
-    new Promise<void>(async (resolve) => {
-      const nextIndex = await Promise.race([promise])
-
-      handleTickCleanup(nextIndex, uniqueId)
-
-      resolve()
-    })
+    updateQueueItem({ ...item, ...fields })
   }
 
-  const handleTickCleanup = (nextIndex: number | void, uniqueId: string) => {
-    const updatedQueueItem = getState().queue.find((item) => item.uniqueId === uniqueId)
-
-    if (!updatedQueueItem) {
-      return
-    }
-
+  const resolveNextIndex = (item: QueueItem, nextIndex: number | void): 'remove' | number => {
     if (nextIndex === -2) {
-      removeQueueItem(uniqueId)
-      return
+      return 'remove'
     }
-
-    if (nextIndex === -1 && !updatedQueueItem.isLooping) {
-      removeQueueItem(uniqueId)
-      return
-    }
-
     if (nextIndex === -1) {
-      updatedQueueItem.activeOpcodeIndex = 0
+      return item.isLooping ? 0 : 'remove'
     }
+    const resolved = nextIndex ?? item.activeOpcodeIndex + 1
+    if (resolved >= item.method.opcodes.length) {
+      return 'remove'
+    }
+    return resolved
+  }
 
-    updatedQueueItem.activeOpcodeIndex = nextIndex ?? updatedQueueItem.activeOpcodeIndex + 1
-    updatedQueueItem.isAwaiting = false
+  // Drains opcodes for the active queue item until it blocks (an async opcode
+  // such as MOVE/WAIT awaits), is preempted, or a run of synchronous opcodes
+  // hits the per-tick budget. Mirrors the engine's per-entity loop (sub_529FF0):
+  // up to 16 opcodes per tick, only yielding on an in-progress opcode. So the
+  // tick a MOVE finishes, the following MSPEED + next MOVE run in the same tick
+  // and multi-segment movement stays continuous instead of stuttering between
+  // segments (which is what one-opcode-per-frame produced).
+  const runOpcodes = async (uniqueId: string) => {
+    setQueueItemFields(uniqueId, { isAwaiting: true })
 
-    if (updatedQueueItem.activeOpcodeIndex >= updatedQueueItem.method.opcodes.length) {
-      removeQueueItem(uniqueId)
+    let synchronousOpcodes = 0
+    for (;;) {
+      const item = getState().queue.find((queued) => queued.uniqueId === uniqueId)
+      if (!item || getState().queue[0]?.uniqueId !== uniqueId) {
+        if (item) {
+          setQueueItemFields(uniqueId, { isAwaiting: false })
+        }
+        return
+      }
+
+      if (!item.hasStarted) {
+        document.dispatchEvent(new CustomEvent('scriptStart', { detail: uniqueId }))
+        setQueueItemFields(uniqueId, { hasStarted: true })
+      }
+
+      const activeOpcode = item.method.opcodes[item.activeOpcodeIndex]
+
+      if (activeOpcode.name.startsWith('LABEL')) {
+        setQueueItemFields(uniqueId, { activeOpcodeIndex: item.activeOpcodeIndex + 1 })
+        continue
+      }
+      if (activeOpcode.name === 'HALT') {
+        removeQueueItem(uniqueId)
+        return
+      }
+
+      let nextIndex: number | void
+      let isBlocking = false
+      try {
+        const result = handlers[activeOpcode.name]({
+          animationController,
+          currentOpcode: activeOpcode,
+          currentOpcodeIndex: item.activeOpcodeIndex,
+          currentState: useScriptStateStore.getState(),
+          headController,
+          movementController,
+          opcodes: item.method.opcodes,
+          rotationController,
+          scene,
+          script,
+          setState: useScriptStateStore.setState,
+          sfxController,
+          STACK,
+          TEMP_STACK,
+        })
+        isBlocking = result instanceof Promise
+        nextIndex = await result
+      } catch (error) {
+        console.error(`Error running opcode ${activeOpcode.name}:`, error)
+        nextIndex = undefined
+      }
+
+      const latest = getState().queue.find((queued) => queued.uniqueId === uniqueId)
+      if (!latest) {
+        return
+      }
+      const resolved = resolveNextIndex(latest, nextIndex)
+      if (resolved === 'remove') {
+        removeQueueItem(uniqueId)
+        return
+      }
+      setQueueItemFields(uniqueId, { activeOpcodeIndex: resolved })
+
+      // Blocking opcodes already yielded a frame by awaiting, so reset the
+      // budget; only an unbroken run of synchronous opcodes yields the tick.
+      if (isBlocking) {
+        synchronousOpcodes = 0
+      } else if (++synchronousOpcodes >= MAX_OPCODES_PER_TICK) {
+        setQueueItemFields(uniqueId, { isAwaiting: false })
+        return
+      }
+    }
+  }
+
+  const tick = () => {
+    const currentQueueItem = getState().queue[0]
+    if (!currentQueueItem || currentQueueItem.isAwaiting) {
       return
     }
-
-    updateQueueItem(updatedQueueItem)
+    void runOpcodes(currentQueueItem.uniqueId)
   }
 
   const isTalkingToPlayer = () => getState().queue[0]?.method.methodId === 'talk'

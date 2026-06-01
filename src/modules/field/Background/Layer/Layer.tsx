@@ -13,6 +13,7 @@ type LayerProps = {
 
 const SHADE_NEUTRAL = 128
 const SCROLL_RATIO_FULL = 256
+const SEED_LAYER_ID = 0
 const _cameraPosition = new Vector3()
 
 const Layer = ({ layer, texture }: LayerProps) => {
@@ -23,6 +24,7 @@ const Layer = ({ layer, texture }: LayerProps) => {
 
   const camera = useThree(({ scene }) => scene.getObjectByName('sceneCamera') as PerspectiveCamera)
   const layerScroll = useCameraScroll('layer', renderID)
+  const seedScroll = useCameraScroll('layer', SEED_LAYER_ID)
 
   useFrame(() => {
     const mesh = meshRef.current
@@ -84,23 +86,26 @@ const Layer = ({ layer, texture }: LayerProps) => {
 
     let offsetX = 0
     let offsetY = 0
-    let xRatio = SCROLL_RATIO_FULL
-    let yRatio = SCROLL_RATIO_FULL
     const controlledScroll = layerScrollAdjustments[renderID]
-    if (controlledScroll) {
-      offsetX += controlledScroll.xOffset
-      offsetY += controlledScroll.yOffset
-      xRatio = controlledScroll.xRatio
-      yRatio = controlledScroll.yRatio
-    }
 
     const isScriptScrolled = controlledScroll !== undefined || layerScrollOffsets[renderID] !== undefined
     const shouldWrapX = layer.shouldWrapX && isScriptScrolled
     const shouldWrapY = layer.shouldWrapY && isScriptScrolled
 
+    let cameraRatio = SCROLL_RATIO_FULL
     if (layer.isScreenLocked && !isScriptScrolled) {
-      xRatio = 0
-      yRatio = 0
+      cameraRatio = 0
+    }
+    offsetX += centerX * (1 - cameraRatio / SCROLL_RATIO_FULL)
+    offsetY += centerY * (1 - cameraRatio / SCROLL_RATIO_FULL)
+
+    if (controlledScroll) {
+      offsetX += controlledScroll.xOffset + seedScroll.current.x * (1 - controlledScroll.xRatio / SCROLL_RATIO_FULL)
+      offsetY += controlledScroll.yOffset + seedScroll.current.y * (1 - controlledScroll.yRatio / SCROLL_RATIO_FULL)
+    }
+
+    if (layer.parameter === 4) {
+      console.log({ offsetX, offsetY, controlledScrollX: controlledScroll?.xOffset, controlledScrollY: controlledScroll?.yOffset, controlledScrollXR: controlledScroll?.xRatio, controlledScrollYR: controlledScroll?.yRatio, seedScroll: seedScroll.current })
     }
 
     if (layerScroll.current.positioning === 'camera') {
@@ -110,9 +115,6 @@ const Layer = ({ layer, texture }: LayerProps) => {
       offsetX += layerScroll.current.x
       offsetY += layerScroll.current.y
     }
-
-    offsetX += centerX * (1 - xRatio / SCROLL_RATIO_FULL)
-    offsetY += centerY * (1 - yRatio / SCROLL_RATIO_FULL)
 
     const previous = lastWrite.current
     if (

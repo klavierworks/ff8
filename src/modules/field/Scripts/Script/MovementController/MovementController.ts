@@ -392,7 +392,13 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       const speedPerSecond = movementSpeed * NATIVE_SPEED_TO_TS_PER_FRAME * TARGET_FPS
       const maxDistance = speedPerSecond * delta
 
-      const remainingDistance = currentPosition.distanceTo(positionGoal)
+      // Walkmesh moves arrive on planar (XY) distance — Z is owned by the floor,
+      // so a script target Z that differs from the walkmesh would otherwise make
+      // the 3D distance never drop below a step and the move never complete
+      // (ports sub_479970, which tests dx²+dy² only). Free moves stay 3D.
+      const remainingDistance = position.isAllowedToLeaveWalkmesh
+        ? currentPosition.distanceTo(positionGoal)
+        : Math.hypot(positionGoal.x - currentPosition.x, positionGoal.y - currentPosition.y)
 
       const isTouchingTarget = targetObject ? isTouching(id, targetObject, scene) : false
       if (isTouchingTarget) {
@@ -412,7 +418,12 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       }
 
       if (remainingDistance <= maxDistance || duration === 0) {
-        currentPosition.copy(positionGoal)
+        if (position.isAllowedToLeaveWalkmesh) {
+          currentPosition.copy(positionGoal)
+        } else {
+          currentPosition.x = positionGoal.x
+          currentPosition.y = positionGoal.y
+        }
         setState({
           position: {
             ...getState().position,
@@ -436,6 +447,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
           direction,
           maxDistance,
           getState().position.walkmeshTriangle ?? undefined,
+          position.isAllowedToCrossBlockedTriangles,
         )
         currentPosition.copy(newPosition)
         const triangle = walkmeshController.getTriangleForPosition(currentPosition, undefined, true)
