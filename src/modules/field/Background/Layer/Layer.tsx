@@ -104,10 +104,6 @@ const Layer = ({ layer, texture }: LayerProps) => {
       offsetY += controlledScroll.yOffset + seedScroll.current.y * (1 - controlledScroll.yRatio / SCROLL_RATIO_FULL)
     }
 
-    if (layer.parameter === 4) {
-      console.log({ offsetX, offsetY, controlledScrollX: controlledScroll?.xOffset, controlledScrollY: controlledScroll?.yOffset, controlledScrollXR: controlledScroll?.xRatio, controlledScrollYR: controlledScroll?.yRatio, seedScroll: seedScroll.current })
-    }
-
     if (layerScroll.current.positioning === 'camera') {
       offsetX -= layerScroll.current.x
       offsetY -= layerScroll.current.y

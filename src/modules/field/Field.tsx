@@ -117,6 +117,10 @@ const FieldLoader = (props: FieldLoaderProps) => {
         MEMORY[261] = 0
       }
 
+      const { backgroundAnimations, layerTints } = useGlobalStore.getState()
+      Object.values(backgroundAnimations).forEach((animation) => animation.stop())
+      Object.values(layerTints).forEach((tint) => tint.progress.stop())
+
       useGlobalStore.setState({
         ...(data
           ? {
@@ -164,6 +168,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
 
         layerScrollAdjustments: {},
         layerScrollOffsets: {},
+        layerTints: {},
 
         lockedTriangles: [],
 

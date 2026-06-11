@@ -418,7 +418,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       }
 
       if (remainingDistance <= maxDistance || duration === 0) {
-        if (position.isAllowedToLeaveWalkmesh) {
+        if (position.isAllowedToLeaveWalkmesh || duration === 0) {
           currentPosition.copy(positionGoal)
         } else {
           currentPosition.x = positionGoal.x

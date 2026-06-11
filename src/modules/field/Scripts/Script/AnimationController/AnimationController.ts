@@ -26,9 +26,21 @@ type AnimationItem = {
   startTime: number
 }
 
+type PlayAnimationOptions = {
+  direction?: number
+  endFrame?: number
+  isFromLadder?: boolean
+  isFromMovement?: boolean
+  isLooping?: boolean
+  needsRealtimeZAdjustment?: boolean
+  priority?: number
+  shouldHoldLastFrame?: boolean
+  startFrame?: number
+}
+
 type RunState = {
   direction: number
-  hasCompletedALoop: boolean
+  isAtLoopBoundary: boolean
   isComplete: boolean
   time: number
 }
@@ -57,6 +69,7 @@ export const createAnimationController = (id: number | string) => {
   }))
 
   let currentRunState: RunState | undefined = undefined
+  let lastPlayRequest: undefined | { clipId: number; options?: PlayAnimationOptions } = undefined
 
   const clearAnimation = () => {
     const mixer = getState().mixer
@@ -104,7 +117,7 @@ export const createAnimationController = (id: number | string) => {
       const initialTime = direction === -1 ? endTime : startTime
       currentRunState = {
         direction,
-        hasCompletedALoop: false,
+        isAtLoopBoundary: false,
         isComplete: false,
         time: initialTime,
       }
@@ -126,18 +139,19 @@ export const createAnimationController = (id: number | string) => {
     }
 
     const animationSpeed = getState().animationSpeed
+    currentRunState.isAtLoopBoundary = false
 
     // "Normal" animation speed is 16.
     currentRunState.time += currentRunState.direction * delta * (animationSpeed / 16)
 
     if (currentRunState.time >= endTime && activeAnimation.isLooping && direction === 1) {
       currentRunState.time = startTime
-      currentRunState.hasCompletedALoop = true
+      currentRunState.isAtLoopBoundary = true
     }
 
     if (currentRunState.time <= startTime && activeAnimation.isLooping && direction === -1) {
       currentRunState.time = endTime
-      currentRunState.hasCompletedALoop = true
+      currentRunState.isAtLoopBoundary = true
     }
 
     if (currentRunState.time >= endTime && !activeAnimation.isLooping && direction === 1) {
@@ -155,20 +169,9 @@ export const createAnimationController = (id: number | string) => {
     mixer.update(delta)
   }
 
-  const playAnimation = (
-    clipId: number,
-    options?: {
-      direction?: number
-      endFrame?: number
-      isFromLadder?: boolean
-      isFromMovement?: boolean
-      isLooping?: boolean
-      needsRealtimeZAdjustment?: boolean
-      priority?: number
-      shouldHoldLastFrame?: boolean
-      startFrame?: number
-    },
-  ) => {
+  const playAnimation = (clipId: number, options?: PlayAnimationOptions) => {
+    lastPlayRequest = { clipId, options }
+
     const clip = getState().clips[clipId]
     if (!clip) {
       if (!options || !options.isFromMovement) {
@@ -225,12 +228,21 @@ export const createAnimationController = (id: number | string) => {
   }
 
   const initialize = (mixer: AnimationMixer, clips: AnimationClip[], mesh: Object3D) => {
+    const state = getState()
+    if (state.mixer === mixer && state.clips === clips && state.mesh === mesh) {
+      return
+    }
+
     setState({
       clips,
       mesh,
       mixer,
     })
     mixer.update(0)
+
+    if (lastPlayRequest) {
+      playAnimation(lastPlayRequest.clipId, lastPlayRequest.options)
+    }
   }
 
   const pauseAnimation = (shouldPause: boolean) => {
@@ -247,7 +259,7 @@ export const createAnimationController = (id: number | string) => {
     if (activeAnimation && currentRunState?.isComplete) {
       return true
     }
-    if (activeAnimation.isLooping && currentRunState?.hasCompletedALoop) {
+    if (activeAnimation.isLooping && currentRunState?.isAtLoopBoundary) {
       return true
     }
     return false
@@ -382,12 +394,12 @@ export const createAnimationController = (id: number | string) => {
 
   const movementAnimationTick = (movementController: ReturnType<typeof createMovementController>) => {
     const isMoving = movementController.isMoving()
+    const isAnimatedMove = isMoving && movementController.getState().position.isAnimationEnabled
 
-    if (isMoving && currentRunState?.isComplete && getState().activeAnimation?.shouldHoldLastFrame) {
+    if (isAnimatedMove && currentRunState?.isComplete && getState().activeAnimation?.shouldHoldLastFrame) {
       clearAnimation()
     }
 
-    const isAnimatedMove = isMoving && movementController.getState().position.isAnimationEnabled
     if (!isAnimatedMove && !isSafeToApplyMovementAnimation()) {
       return
     }
