@@ -1,0 +1,51 @@
+mod stage;
+mod stages;
+mod utils;
+
+use anyhow::Result;
+use stage::{Context, Stage};
+use std::path::PathBuf;
+
+fn main() -> Result<()> {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let repo_root = manifest_dir
+        .parent()
+        .expect("extractor must live in <repo>/extractor");
+    let data_root = repo_root.join("public/data");
+    let context = Context {
+        compressed_dir: data_root.join("SOURCE"),
+        uncompressed_dir: data_root.join("UNCOMPRESSED"),
+        converted_dir: data_root.join("converted"),
+    };
+
+    let stages: Vec<Box<dyn Stage>> = vec![
+        Box::new(stages::DecompressFs),
+        Box::new(stages::ParseKernel),
+        Box::new(stages::ParseWorldmap),
+        Box::new(stages::ParseField),
+        Box::new(stages::ParseFieldModels),
+        Box::new(stages::CombineFieldModels),
+    ];
+
+    let filters: Vec<String> = std::env::args().skip(1).collect();
+    let selected: Vec<&dyn Stage> = stages
+        .iter()
+        .map(|stage| &**stage)
+        .filter(|stage| {
+            filters.is_empty() || filters.iter().any(|filter| stage.name().contains(filter))
+        })
+        .collect();
+
+    for (index, stage) in selected.iter().enumerate() {
+        println!(
+            "=== stage {}/{}: {} ===",
+            index + 1,
+            selected.len(),
+            stage.name()
+        );
+        stage.run(&context)?;
+    }
+
+    println!("Done.");
+    Ok(())
+}

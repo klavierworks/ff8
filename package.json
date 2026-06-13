@@ -6,6 +6,7 @@
   "scripts": {
     "prepare": "npm run generate-exits",
     "dev": "vite",
+    "extract": "cargo run --release --manifest-path extractor/Cargo.toml",
     "generate-exits": "npx tsx scripts/generateExits.ts",
     "build": "tsc && npm run prepare && vite build",
     "deploy": "npm run build && netlify deploy --prod",
