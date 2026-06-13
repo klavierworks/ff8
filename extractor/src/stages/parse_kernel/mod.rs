@@ -1,10 +1,13 @@
-mod ff8_text;
+mod flags;
 mod kernel;
+mod reader;
+mod sections;
 
 use crate::stage::{Context, Stage};
+use crate::utils::ff8_text::TextCodec;
 use anyhow::{Context as _, Result};
-use ff8_text::TextCodec;
-use kernel::{read_section_pointers, section_range, TextSection, TEXT_SECTIONS};
+use kernel::{read_section_pointers, section_range, TextSection, DATA_SECTIONS, TEXT_SECTIONS};
+use sections::Text;
 use std::fs;
 use std::path::Path;
 
@@ -29,7 +32,26 @@ impl Stage for ParseKernel {
             let (start, end) = section_range(&pointers, section.index, kernel.len());
             let strings = decode_section(&codec, &kernel[start..end]);
             write_ts_file(&out_dir, section, &strings)?;
-            println!("  {}: {} strings", section.stem, strings.len());
+        }
+
+        let text = Text::new(&kernel, &pointers, &codec);
+        for data in DATA_SECTIONS {
+            let (start, end) = section_range(&pointers, data.index, kernel.len());
+            let value = sections::parse(
+                data.stem,
+                &kernel[start..end],
+                data.record_size,
+                data.text,
+                &text,
+            );
+            let count = value.as_array().map(|array| array.len());
+            let destination = out_dir.join(format!("{}.json", data.stem));
+            fs::write(&destination, serde_json::to_vec_pretty(&value)?)
+                .with_context(|| format!("writing {}", destination.display()))?;
+            match count {
+                Some(records) => println!("  {}: {records} records", data.stem),
+                None => println!("  {}: struct", data.stem),
+            }
         }
         Ok(())
     }

@@ -21,6 +21,7 @@ fn main() -> Result<()> {
     let stages: Vec<Box<dyn Stage>> = vec![
         Box::new(stages::DecompressFs),
         Box::new(stages::ParseKernel),
+        Box::new(stages::ParseMenu),
         Box::new(stages::ParseWorldmap),
         Box::new(stages::ParseField),
         Box::new(stages::ParseFieldModels),

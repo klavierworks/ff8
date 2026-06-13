@@ -14,7 +14,7 @@ pub struct TextCodec {
 
 impl TextCodec {
     pub fn load() -> Result<Self> {
-        let mut table = parse_sysfnt(include_str!("../../../resources/sysfnt.txt"));
+        let mut table = parse_sysfnt(include_str!("../../resources/sysfnt.txt"));
         if table.len() != TABLE_SIZE {
             anyhow::bail!(
                 "sysfnt.txt yielded {} entries, expected {}",
@@ -24,7 +24,7 @@ impl TextCodec {
         }
         unwrap_compressed_digraphs(&mut table);
         let data: serde_json::Value =
-            serde_json::from_str(include_str!("../../../resources/sysfnt_data.json"))
+            serde_json::from_str(include_str!("../../resources/sysfnt_data.json"))
                 .context("parsing sysfnt_data.json")?;
         Ok(Self {
             table,
