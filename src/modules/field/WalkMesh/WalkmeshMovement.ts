@@ -1,4 +1,4 @@
-import { BufferGeometry, Mesh, Object3D, Triangle, Vector3 } from 'three'
+import { BufferGeometry, Mesh, Object3D, Plane, Triangle, Vector3 } from 'three'
 
 import useGlobalStore from '../../../store'
 
@@ -30,6 +30,7 @@ interface TriangleNode {
 
 class WalkmeshMovementController {
   private edgeNeighbors = new Map<number, [number, number, number]>()
+  private planeScratch = new Plane()
   private triangleCache = new Map<number, Triangle>()
   private triangleCenters = new Map<number, Vector3>()
   private triangleGraph = new Map<number, TriangleNode>()
@@ -198,6 +199,19 @@ class WalkmeshMovementController {
       return currentPosition.clone()
     }
     return new Vector3(finalX, finalY, destination.z)
+  }
+
+  public getPlaneHeightOnTriangle(x: number, y: number, triangleId: number): null | number {
+    const triangle = this.triangleCache.get(triangleId)
+    if (!triangle) {
+      return null
+    }
+    triangle.getPlane(this.planeScratch)
+    const { constant, normal } = this.planeScratch
+    if (normal.z === 0) {
+      return null
+    }
+    return -(normal.x * x + normal.y * y + constant) / normal.z
   }
 
   public getPositionOnTriangle(position: Vector3, triangleId: number): null | Vector3 {

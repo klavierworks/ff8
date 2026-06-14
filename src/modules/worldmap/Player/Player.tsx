@@ -1,7 +1,7 @@
 import { useGLTF } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Box3, Group, Vector3 } from 'three'
+import { Suspense, useCallback, useEffect, useMemo, useRef } from 'react'
+import { Group, Vector3 } from 'three'
 
 import { loadAssetUrl } from '../../../loadAssetUrl'
 import useGlobalStore from '../../../store'
@@ -80,8 +80,6 @@ const OnFootPlayer = ({ landings }: PlayerProps) => {
   const { animations } = useGLTF(loadAssetUrl(CHARAONE_LOADERS, ON_FOOT_CHARAONE_KEY))
   useCharacterAnimation(animations, animGroupRef, speedRef)
 
-  const [meshYOffset, setMeshYOffset] = useState(0)
-
   const setOuterGroupRef = useCallback((group: Group | null) => {
     groupRef.current = group
     if (group) {
@@ -91,17 +89,6 @@ const OnFootPlayer = ({ landings }: PlayerProps) => {
 
   const setMeshGroupRef = useCallback((group: Group | null) => {
     animGroupRef.current = group
-    if (!group) {
-      return
-    }
-    group.updateMatrixWorld(true)
-    const bounds = new Box3().setFromObject(group)
-    if (bounds.isEmpty()) {
-      return
-    }
-    const worldPosition = new Vector3()
-    group.getWorldPosition(worldPosition)
-    setMeshYOffset(worldPosition.y - bounds.min.y)
   }, [])
 
   useEffect(() => {
@@ -141,12 +128,7 @@ const OnFootPlayer = ({ landings }: PlayerProps) => {
   return (
     <group ref={setOuterGroupRef}>
       <Suspense fallback={null}>
-        <group
-          position={[0, meshYOffset, 0]}
-          ref={setMeshGroupRef}
-          rotation={[MODEL_PITCH_X, 0, 0]}
-          scale={PLAYER_SCALE}
-        >
+        <group ref={setMeshGroupRef} rotation={[MODEL_PITCH_X, 0, 0]} scale={PLAYER_SCALE}>
           <CharaModel sectionIndex={ON_FOOT_CHARAONE_SECTION} />
         </group>
       </Suspense>

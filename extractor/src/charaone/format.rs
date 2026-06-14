@@ -49,12 +49,11 @@ fn decode_rotation(low_byte: u8, high_byte_mask: u8, high_byte: u8, shift: u32) 
     combined
 }
 
-// Root bone location from a frame's coordinate offset (head-bone translation).
 pub fn root_location(coordinate_offset: &[u16; 3]) -> [f64; 3] {
     [
         scale_offset(coordinate_offset[1]),
         -scale_offset(coordinate_offset[0]),
-        0.0,
+        scale_offset(coordinate_offset[2]),
     ]
 }
 

@@ -29,10 +29,12 @@ pub fn build(parsed: ParsedModel, variant: Variant) -> BuiltModel {
     let meshes = construct_meshes(&parsed, variant);
 
     let source_animations = &parsed.model_data.animations;
+    let rest_root_location = root_location(&source_animations[0].frames[0].coordinate_offset);
     let rest_animation = construct_animation(
         parsed.name.as_str(),
         &source_animations[0],
         &bones,
+        None,
         None,
         variant,
     );
@@ -45,6 +47,7 @@ pub fn build(parsed: ParsedModel, variant: Variant) -> BuiltModel {
                 animation,
                 &bones,
                 Some(&rest_transforms),
+                Some(rest_root_location),
                 variant,
             )
         })
@@ -290,6 +293,7 @@ fn construct_animation(
     animation: &Animation,
     bones: &[ConstructedBone],
     rest_transforms: Option<&[RestTransform]>,
+    rest_root_location: Option<[f64; 3]>,
     variant: Variant,
 ) -> OutAnimation {
     let keyframes = animation
@@ -316,7 +320,13 @@ fn construct_animation(
                     };
                     let rotation = quat_to_euler_yxz(local);
                     let location = if bone_index == 0 {
-                        Some(root_location(&frame.coordinate_offset))
+                        let mut location = root_location(&frame.coordinate_offset);
+                        if let Some(base) = rest_root_location {
+                            for axis in 0..3 {
+                                location[axis] -= base[axis];
+                            }
+                        }
+                        Some(location)
                     } else {
                         None
                     };

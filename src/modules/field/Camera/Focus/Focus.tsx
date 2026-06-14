@@ -57,7 +57,6 @@ const Focus = () => {
     }
 
     const startFocusPosition = focusObject.getWorldPosition(START_FOCUS_VECTOR)
-    startFocusPosition.z += focusObject.userData.focusZPosition
 
     if (!targetFocusObject || currentFocusObject === targetFocusObject || !cameraFocusSpring) {
       focusRef.current.position.copy(startFocusPosition)
@@ -67,7 +66,6 @@ const Focus = () => {
     const springValue = cameraFocusSpring.get()
 
     const endFocusPosition = targetFocusObject.getWorldPosition(END_FOCUS_VECTOR)
-    endFocusPosition.z += targetFocusObject.userData.focusZPosition
 
     focusRef.current.position.lerpVectors(startFocusPosition, endFocusPosition, springValue)
   })
