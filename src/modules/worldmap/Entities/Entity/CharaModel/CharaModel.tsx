@@ -3,7 +3,15 @@ import { useMemo } from 'react'
 import { DoubleSide, Mesh, Object3D } from 'three'
 import { clone as cloneSkinnedScene } from 'three/examples/jsm/utils/SkeletonUtils.js'
 
-const CHARAONE_DIR = '/worldmap/wmset/charaone'
+import { loadAssetUrl } from '../../../../../loadAssetUrl'
+
+const CHARAONE_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldmap/charaone/*.glb', {
+  import: 'default',
+  query: '?url',
+})
+
+const charaoneKey = (sectionIndex: number) =>
+  `/extractor/data/converted/worldmap/charaone/world_${sectionIndex.toString().padStart(3, '0')}.glb`
 
 const forceDoubleSide = (root: Object3D) => {
   root.traverse((child) => {
@@ -26,8 +34,7 @@ type CharaModelProps = {
 }
 
 const CharaModel = ({ sectionIndex }: CharaModelProps) => {
-  const filename = `world_${sectionIndex.toString().padStart(3, '0')}.gltf`
-  const { scene } = useGLTF(`${CHARAONE_DIR}/${filename}`)
+  const { scene } = useGLTF(loadAssetUrl(CHARAONE_LOADERS, charaoneKey(sectionIndex)))
   const cloned = useMemo(() => {
     const next = cloneSkinnedScene(scene)
     forceDoubleSide(next)

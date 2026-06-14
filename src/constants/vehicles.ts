@@ -37,5 +37,3 @@ export const VEHICLE_IDS = {
   // music id 89 ("Ride On"), engine sound id 500002.
   RAGNAROK: 50,
 } as const
-
-export type VehicleId = (typeof VEHICLE_IDS)[keyof typeof VEHICLE_IDS]

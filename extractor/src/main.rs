@@ -1,3 +1,4 @@
+mod charaone;
 mod stage;
 mod stages;
 mod utils;
@@ -21,8 +22,10 @@ fn main() -> Result<()> {
         Box::new(stages::ParseMenu),
         Box::new(stages::ParseWorldmap),
         Box::new(stages::ParseField),
+        Box::new(stages::IndexGateways),
         Box::new(stages::ParseFieldModels),
         Box::new(stages::CombineFieldModels),
+        Box::new(stages::ParseWorldmapModels),
         Box::new(stages::EmitTypes),
     ];
 

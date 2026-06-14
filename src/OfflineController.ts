@@ -89,4 +89,3 @@ const OfflineController = () => {
 }
 
 export const offlineController = OfflineController()
-export default OfflineController

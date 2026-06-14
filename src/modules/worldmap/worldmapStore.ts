@@ -2,10 +2,6 @@ import { create } from 'zustand'
 
 import { VEHICLE_ON_FOOT } from './Player/FlyingRagnarok/flightConstants'
 
-export type WorldmapCameraState = {
-  yawRadians: number
-}
-
 export type WorldmapControlsState = {
   cameraPitch: number
   cameraYaw: number
@@ -15,6 +11,10 @@ export type WorldmapControlsState = {
   isWalkingSlow: boolean
   moveX: number
   moveY: number
+}
+
+type WorldmapCameraState = {
+  yawRadians: number
 }
 
 // Drives the vehicle-transition state machine. The active states the port
@@ -38,7 +38,7 @@ export type RagnarokLandingSpot = {
   worldZ: number
 }
 
-export type WorldmapState = {
+type WorldmapState = {
   camera: WorldmapCameraState
   cameraModeIndex: number
   controls: WorldmapControlsState

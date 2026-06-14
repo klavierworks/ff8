@@ -5,7 +5,7 @@ import { framesToMs } from '../timing'
 
 const BASE_VOLUME = 0.4
 
-export type PreloadMusicOptions = {
+type PreloadMusicOptions = {
   // Seconds into the track at which playback starts and where the looped
   // playhead returns at end-of-track. Used to skip an MP3 intro that the
   // AKAO/SGT sequencer would normally hide (e.g. "Ride On" has a ~20s intro

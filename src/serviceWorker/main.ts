@@ -4,7 +4,7 @@ import { getState, updateState } from './state'
 
 const CUSTOM_MANIFEST_URL = '/custom-manifest.json'
 
-export const loadManifest = async () => {
+const loadManifest = async () => {
   const response = await fetch(CUSTOM_MANIFEST_URL)
   if (!response.ok) {
     throw new Error(`Failed to load manifest: ${response.status}`)

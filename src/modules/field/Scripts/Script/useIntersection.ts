@@ -8,7 +8,7 @@ import createMovementController from './MovementController/MovementController'
 
 export type Side = 'LEFT' | 'RIGHT' | undefined
 
-export const DEFAULT_TRIGGER_RADIUS = 0.02
+const DEFAULT_TRIGGER_RADIUS = 0.02
 
 const getPointSideOfLine = (lineStart: VectorLike, lineEnd: VectorLike, point: VectorLike): Side => {
   const crossZ =

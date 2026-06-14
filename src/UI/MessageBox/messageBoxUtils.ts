@@ -2,17 +2,17 @@ import { Modifier, Placement } from '../textTypes.ts'
 import { createModifier } from '../textUtils.ts'
 import { fontLayout, fontWidths } from './fontLayout.ts'
 
-export const SOURCE_TILE_WIDTH = 96
-export const SOURCE_TILE_HEIGHT = 96
+const SOURCE_TILE_WIDTH = 96
+const SOURCE_TILE_HEIGHT = 96
 export const OUTPUT_TILE_WIDTH = SOURCE_TILE_WIDTH / 4
 export const OUTPUT_TILE_HEIGHT = SOURCE_TILE_HEIGHT / 4
-export const SAFE_BOUNDS = 8
-export const OUTPUT_LINE_HEIGHT = OUTPUT_TILE_HEIGHT * 1.4
-export const OPTION_MARGIN = OUTPUT_TILE_WIDTH * 1.5
+const SAFE_BOUNDS = 8
+const OUTPUT_LINE_HEIGHT = OUTPUT_TILE_HEIGHT * 1.4
+const OPTION_MARGIN = OUTPUT_TILE_WIDTH * 1.5
 export const LEFT_MARGIN = OUTPUT_TILE_WIDTH / 2
-export const TOP_MARGIN = OUTPUT_TILE_HEIGHT / 2
+const TOP_MARGIN = OUTPUT_TILE_HEIGHT / 2
 
-export const LETTER_SPACING = 3
+const LETTER_SPACING = 3
 
 export const getCharacterWidth = ({ columnIndex, rowIndex }: { columnIndex: number; rowIndex: number }): number => {
   const characterWidth = fontWidths[rowIndex][columnIndex]
@@ -20,7 +20,7 @@ export const getCharacterWidth = ({ columnIndex, rowIndex }: { columnIndex: numb
   return OUTPUT_TILE_WIDTH * (characterWidth / 16)
 }
 
-export const getFontPosition = (char: string): null | { columnIndex: number; rowIndex: number } => {
+const getFontPosition = (char: string): null | { columnIndex: number; rowIndex: number } => {
   const rowIndex = fontLayout.findIndex((layoutRow) => layoutRow.includes(char))
   if (rowIndex < 0) {
     console.error(`Character not found in font layout: ${char}`)
@@ -31,7 +31,7 @@ export const getFontPosition = (char: string): null | { columnIndex: number; row
   return { columnIndex, rowIndex }
 }
 
-export const parseTextWithModifiers = (
+const parseTextWithModifiers = (
   text: string,
   startX: number,
   startY: number,

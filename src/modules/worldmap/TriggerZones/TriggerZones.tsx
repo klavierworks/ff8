@@ -1,5 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { Object3D } from 'three'
 
 import useGlobalStore from '../../../store'
@@ -10,7 +10,7 @@ import { TILE_ROOT_USER_DATA_KEY, TileRootUserData } from '../tileRootUserData'
 import { PlayerLocationScript } from '../useSections'
 import { buildWorldPosition } from '../worldPosition'
 import { isPointInWarpTriangle, scanTileWarpTriangles, WarpTriangle } from './tileWarpScan'
-import { loadWm2FieldTable, Wm2FieldEntry } from './wm2fieldTable'
+import { getWm2FieldTable } from './wm2fieldTable'
 
 type TriggerZonesProps = {
   playerLocationScripts: readonly PlayerLocationScript[]
@@ -64,19 +64,7 @@ const TriggerZones = ({ playerLocationScripts }: TriggerZonesProps) => {
   const isInitializedRef = useRef(false)
   const lastInsideRef = useRef(false)
 
-  const [wm2field, setWm2Field] = useState<readonly Wm2FieldEntry[] | undefined>(undefined)
-
-  useEffect(() => {
-    let isStale = false
-    loadWm2FieldTable().then((table) => {
-      if (!isStale) {
-        setWm2Field(table)
-      }
-    })
-    return () => {
-      isStale = true
-    }
-  }, [])
+  const wm2field = getWm2FieldTable()
 
   useFrame(() => {
     scene.traverse((object) => {
@@ -98,9 +86,6 @@ const TriggerZones = ({ playerLocationScripts }: TriggerZonesProps) => {
       warpsBySegmentRef.current.set(tileRootData.canonicalSegmentIndex, triangles)
     })
 
-    if (!wm2field) {
-      return
-    }
     if (useGlobalStore.getState().pendingFieldId) {
       return
     }

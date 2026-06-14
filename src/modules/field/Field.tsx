@@ -66,7 +66,7 @@ const Field = ({ data }: FieldProps) => {
             <Camera data={data} />
             <Scripts doors={data.doors} models={data.models} scripts={data.scripts} sounds={data.sounds} />
             <Background data={data} />
-            <Gateways fieldId={data.id} />
+            <Gateways gateways={data.gateways} />
           </>
         )}
       </group>

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export type HeldKeysRef = { current: Set<string> }
+type HeldKeysRef = { current: Set<string> }
 
 type UseHeldKeysProps = {
   onChange: (heldKeys: Set<string>, downCode: null | string) => void

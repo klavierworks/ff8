@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Box3, Group, Vector3 } from 'three'
 
+import { loadAssetUrl } from '../../../loadAssetUrl'
 import useGlobalStore from '../../../store'
 import { PSX_ANGLE_TO_RAD, WORLDMAP_SCALE } from '../constants'
 import CharaModel from '../Entities/Entity/CharaModel/CharaModel'
@@ -15,7 +16,11 @@ import useCharacterAnimation from './useCharacterAnimation'
 import useMovement from './useMovement'
 
 const ON_FOOT_CHARAONE_SECTION = 0
-const CHARAONE_PATH = `/worldmap/wmset/charaone/world_${ON_FOOT_CHARAONE_SECTION.toString().padStart(3, '0')}.gltf`
+const CHARAONE_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldmap/charaone/*.glb', {
+  import: 'default',
+  query: '?url',
+})
+const ON_FOOT_CHARAONE_KEY = `/extractor/data/converted/worldmap/charaone/world_${ON_FOOT_CHARAONE_SECTION.toString().padStart(3, '0')}.glb`
 
 const MODEL_PITCH_X = -Math.PI / 2
 
@@ -72,7 +77,7 @@ const OnFootPlayer = ({ landings }: PlayerProps) => {
   const speedRef = useRef(0)
   useMovement(speedRef)
 
-  const { animations } = useGLTF(CHARAONE_PATH)
+  const { animations } = useGLTF(loadAssetUrl(CHARAONE_LOADERS, ON_FOOT_CHARAONE_KEY))
   useCharacterAnimation(animations, animGroupRef, speedRef)
 
   const [meshYOffset, setMeshYOffset] = useState(0)

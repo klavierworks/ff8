@@ -27,6 +27,13 @@ impl Stage for EmitTypes {
 
         let mut count = 0;
         count += emit_field(converted, &types_dir)?;
+        count += emit_named(
+            converted,
+            &types_dir,
+            "field",
+            "gateways_index.json",
+            "FieldGatewayIndex",
+        )?;
         count += emit_dir_of_json(converted, &types_dir, "kernel", &["json"])?;
         count += emit_named(converted, &types_dir, "menu", "groups.json", "MenuGroups")?;
         count += emit_named(
@@ -35,6 +42,13 @@ impl Stage for EmitTypes {
             "worldmap",
             "sections.json",
             "WorldmapSections",
+        )?;
+        count += emit_named(
+            converted,
+            &types_dir,
+            "worldmap",
+            "wm2field.json",
+            "Wm2Field",
         )?;
 
         println!("  emitted {count} type files -> {}", types_dir.display());

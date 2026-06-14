@@ -1,4 +1,4 @@
-use super::reader::Reader;
+use crate::utils::reader::Reader;
 
 const SECTION_COUNT: usize = 48;
 

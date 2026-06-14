@@ -1,15 +1,15 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback } from 'react'
 
 import MAP_NAMES from '../../../constants/maps.ts'
-import generatedGateways from '../../../gateways.ts'
 import useGlobalStore from '../../../store.ts'
+import { FieldData } from '../Field.tsx'
 import Gateway from './Gateway/Gateway.tsx'
 
 type GatewaysProps = {
-  fieldId: string
+  gateways: FieldData['gateways']
 }
 
-const Gateways = ({ fieldId }: GatewaysProps) => {
+const Gateways = ({ gateways }: GatewaysProps) => {
   const isTransitioningMap = useGlobalStore((state) => !!state.pendingFieldId)
 
   const handleTransition = useCallback(
@@ -26,18 +26,14 @@ const Gateways = ({ fieldId }: GatewaysProps) => {
     [isTransitioningMap],
   )
 
-  const gateways = useMemo(() => {
-    return generatedGateways.filter((gateway) => gateway.source === fieldId) as unknown as Gateway[]
-  }, [fieldId])
-
   if (isTransitioningMap) {
     return null
   }
 
   return (
     <>
-      {gateways.map((gateway) => (
-        <Gateway gateway={gateway} key={gateway.id} onIntersect={handleTransition} />
+      {gateways.map((gateway, index) => (
+        <Gateway gateway={gateway} key={`${gateway.target}-${index}`} onIntersect={handleTransition} />
       ))}
     </>
   )

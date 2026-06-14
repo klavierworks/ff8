@@ -14,7 +14,7 @@ const ENGINE_SCREEN_HEIGHT_PIXELS = 224
 const widthPercent = (pixels: number) => (pixels / ENGINE_SCREEN_WIDTH_PIXELS) * 100
 const heightPercent = (pixels: number) => (pixels / ENGINE_SCREEN_HEIGHT_PIXELS) * 100
 
-export const MINIMAP_PLANET_DIAMETER_PIXELS = 48
+const MINIMAP_PLANET_DIAMETER_PIXELS = 48
 export const MINIMAP_PLANET_DIAMETER_PERCENT = widthPercent(MINIMAP_PLANET_DIAMETER_PIXELS)
 export const MINIMAP_PLANET_CENTER_LEFT_PERCENT = widthPercent(260)
 export const MINIMAP_PLANET_CENTER_TOP_PERCENT = heightPercent(180)

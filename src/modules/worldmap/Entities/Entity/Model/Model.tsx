@@ -3,7 +3,17 @@ import { useMemo } from 'react'
 import { DoubleSide, Material, Mesh, MeshBasicMaterial, Texture, TextureLoader } from 'three'
 import { OBJLoader } from 'three/examples/jsm/Addons.js'
 
-const MODELS_DIR = '/worldmap/wmset/models'
+import { loadAssetUrl } from '../../../../../loadAssetUrl'
+
+const MODELS_DIR = '/extractor/data/converted/worldmap/models'
+const OBJ_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldmap/models/*.obj', {
+  import: 'default',
+  query: '?url',
+})
+const TEXTURE_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldmap/models/*.png', {
+  import: 'default',
+  query: '?url',
+})
 
 const createBasicMaterial = (source: Material, texture: Texture): MeshBasicMaterial => {
   const basic = new MeshBasicMaterial()
@@ -22,8 +32,8 @@ type ModelProps = {
 }
 
 const Model = ({ index }: ModelProps) => {
-  const obj = useLoader(OBJLoader, `${MODELS_DIR}/model_${index}.obj`)
-  const texture = useLoader(TextureLoader, `${MODELS_DIR}/model_${index}.png`)
+  const obj = useLoader(OBJLoader, loadAssetUrl(OBJ_LOADERS, `${MODELS_DIR}/model_${index}.obj`))
+  const texture = useLoader(TextureLoader, loadAssetUrl(TEXTURE_LOADERS, `${MODELS_DIR}/model_${index}.png`))
   const cloned = useMemo(() => {
     const group = obj.clone(true)
     group.traverse((child) => {

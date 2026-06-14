@@ -1,5 +1,5 @@
-use super::reader::Reader;
-use super::tim::{write_rgba_png, Tim};
+use crate::utils::reader::Reader;
+use crate::utils::tim::{write_rgba_png, Tim};
 use anyhow::{bail, Context, Result};
 use std::collections::HashMap;
 use std::path::Path;

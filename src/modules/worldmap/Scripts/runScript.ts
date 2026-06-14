@@ -2,13 +2,13 @@ import { WorldPosition } from '../types'
 import { OPCODE_HANDLERS } from './handlers'
 import { OPCODE_NAMES, WORLDMAP_OPCODES } from './opcodes'
 
-export type ScriptResult = {
+export type WorldmapScript = readonly (readonly number[])[]
+
+type ScriptResult = {
   didExecuteBody: boolean
   output: number | undefined
   returnCode: 0 | 1 | 3
 }
-
-export type WorldmapScript = readonly [number, number, number][]
 
 const GOTO_BYTES_PER_OPCODE = 4
 

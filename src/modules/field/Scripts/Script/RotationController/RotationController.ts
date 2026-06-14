@@ -18,7 +18,7 @@ import {
 //   - a fixed frame count (e.g. 0 = instant snap, 30 = 1 second @ 30Hz)
 //   - a per-frame rate object, from which the frame count is derived from the
 //     angle delta — so a 180° turn takes twice as long as a 90° turn.
-export type TurnSpeed = 'fast' | 'gentle' | number | { ratePerFrame: number }
+type TurnSpeed = 'fast' | 'gentle' | number | { ratePerFrame: number }
 
 const GENTLE_RATE_PER_FRAME = { ratePerFrame: 4 }
 const FAST_RATE = { ratePerFrame: 8 }

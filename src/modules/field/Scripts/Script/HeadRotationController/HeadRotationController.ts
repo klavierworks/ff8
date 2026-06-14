@@ -7,7 +7,7 @@ import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
 import { getShortestRouteToAngle, radiansToUnit, signedAngleBetweenVectors } from '../RotationController/rotationUtils'
 
-export type TurnSpeed = number
+type TurnSpeed = number
 
 const HEAD_EULER_ORDER = 'XYZ'
 

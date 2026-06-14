@@ -1,6 +1,12 @@
+import type { WorldmapSections } from '@data/types/worldmap/WorldmapSections'
+
 import { Color } from 'three'
 
-export type ResolvedSkyColors = {
+export type RgbTuple = [number, number, number]
+
+export type SkyZone = WorldmapSections['section_32_sky_color_zones']['zones'][number]
+
+type ResolvedSkyColors = {
   horizon: Color
   lightColor1: Color
   lightColor2: Color
@@ -8,23 +14,9 @@ export type ResolvedSkyColors = {
   zenith: Color
 }
 
-export type RgbTuple = [number, number, number]
+type SkyZoneColor = SkyZone['fog_color_1']
 
-export type SkyZone = {
-  atmosphere: readonly number[]
-  fog_color_1: SkyZoneColor
-  fog_color_2: SkyZoneColor
-  fog_color_3: SkyZoneColor
-  light_color_1: SkyZoneColor
-  light_color_2: SkyZoneColor
-  transition_range: number
-  x: number
-  y: number
-}
-
-export type SkyZoneColor = readonly [number, number, number]
-
-export type SkyZoneMatch = {
+type SkyZoneMatch = {
   blend: number
   index: number
 }

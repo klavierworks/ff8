@@ -1,6 +1,6 @@
 import { framesToMs } from './timing'
 
-export type EasingFunction = (t: number) => number
+type EasingFunction = (t: number) => number
 
 export const cosineEaseInOut: EasingFunction = (t) => (1 - Math.cos(Math.PI * t)) / 2
 

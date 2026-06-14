@@ -11,7 +11,7 @@ export const setDialogText = (text: readonly string[]) => {
   dialogText = text
 }
 
-export const getDialogLine = (id: number): string => dialogText[id] ?? `[missing dialog ${id}]`
+const getDialogLine = (id: number): string => dialogText[id] ?? `[missing dialog ${id}]`
 
 export const getSlotState = (slot: number): number => slotStates.get(slot) ?? DIALOG_STATE_PENDING
 

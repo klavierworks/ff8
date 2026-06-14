@@ -2,6 +2,7 @@ import { useAnimations, useGLTF } from '@react-three/drei'
 import { useEffect, useMemo, useRef } from 'react'
 import { Group, LoopOnce, Object3D } from 'three'
 
+import { loadAssetUrl, preloadAssetUrl } from '../../../../../loadAssetUrl'
 import { WORLDMAP_SCALE } from '../../../constants'
 import useWorldmapStore, {
   WORLD_MAP_STATE_FREE_ROAM,
@@ -10,7 +11,11 @@ import useWorldmapStore, {
 } from '../../../worldmapStore'
 import { VEHICLE_RAGNAROK } from '../flightConstants'
 
-const RAGNAROK_GLTF_PATH = '/worldmap/wmset/charaone/world_001.gltf'
+const CHARAONE_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldmap/charaone/*.glb', {
+  import: 'default',
+  query: '?url',
+})
+const RAGNAROK_GLB_KEY = '/extractor/data/converted/worldmap/charaone/world_001.glb'
 
 // charaone-family base scale: matches the worldmap-entity convention
 // (`Entity.tsx` uses `WORLDMAP_SCALE * 100`) so the Ragnarok mesh sits in the
@@ -54,7 +59,7 @@ const buildRagnarokRoot = (sourceScene: Object3D): Group => {
 }
 
 const Ship = () => {
-  const { animations, scene } = useGLTF(RAGNAROK_GLTF_PATH)
+  const { animations, scene } = useGLTF(loadAssetUrl(CHARAONE_LOADERS, RAGNAROK_GLB_KEY))
   const root = useMemo(() => buildRagnarokRoot(scene), [scene])
   const groupRef = useRef<Group>(null)
   const { actions } = useAnimations(animations, groupRef)
@@ -112,6 +117,6 @@ const Ship = () => {
   )
 }
 
-useGLTF.preload(RAGNAROK_GLTF_PATH)
+preloadAssetUrl(CHARAONE_LOADERS, RAGNAROK_GLB_KEY, useGLTF.preload)
 
 export default Ship

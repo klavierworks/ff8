@@ -24,7 +24,7 @@ const isWarpVertex = (flags: BufferAttribute | InterleavedBufferAttribute, verte
   return (flags.getX(vertexIndex) & WARP_FLAG_BIT) !== 0
 }
 
-export type ScanTileWarpTrianglesOptions = {
+type ScanTileWarpTrianglesOptions = {
   psxOffsetX: number
   psxOffsetZ: number
 }

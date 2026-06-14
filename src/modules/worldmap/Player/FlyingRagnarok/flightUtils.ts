@@ -44,7 +44,7 @@ const RAGNAROK_CAMERA_TILT_MAX_PSX = 4096
 // bytes the original integrator reads. `isBraking` overrides accel so that
 // holding both keys produces the brake/reverse direction (matching dpad-down
 // vs cross in the original).
-export type RagnarokInputAxes = {
+type RagnarokInputAxes = {
   altitudeAxis: number
   throttleAxis: number
   yawAxis: number
@@ -139,7 +139,7 @@ export const stepRagnarokCameraTilt = (currentTiltPsx: number, altitudeAxis: num
 
 // Yaw 0 faces +Z, increasing yaw rotates toward +X — matching the rest of the
 // worldmap where `Math.atan2(vx, vz)` yields the field direction.
-export type FlightVelocity = { x: number; y: number; z: number }
+type FlightVelocity = { x: number; y: number; z: number }
 
 export const horizontalVelocity = (yawRadians: number, speed: number, output: FlightVelocity): FlightVelocity => {
   output.x = Math.sin(yawRadians) * speed

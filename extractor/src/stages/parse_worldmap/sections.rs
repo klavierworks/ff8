@@ -1,5 +1,5 @@
 use super::char_table;
-use super::reader::{to_hex, Reader};
+use crate::utils::reader::{to_hex, Reader};
 use serde::Serialize;
 
 type Scripts = Vec<Vec<[i32; 3]>>;

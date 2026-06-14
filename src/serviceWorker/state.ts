@@ -7,7 +7,7 @@ const STATE = structuredClone(SERVICE_WORKER_STATE)
 
 export const getState = () => STATE
 
-export const announceStateUpdate = async () => {
+const announceStateUpdate = async () => {
   const clients = await sw.clients.matchAll()
   clients.forEach((client) => client.postMessage(STATE))
 }

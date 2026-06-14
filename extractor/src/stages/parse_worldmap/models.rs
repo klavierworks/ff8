@@ -1,5 +1,5 @@
-use super::reader::Reader;
-use super::tim::Tim;
+use crate::utils::reader::Reader;
+use crate::utils::tim::Tim;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;

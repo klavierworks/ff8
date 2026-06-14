@@ -39,11 +39,11 @@ export const getWorldStateVariable = (memory: Record<number, number>) => memory[
 export const isDDistrictPrisonAboveGround = (memory: Record<number, number>): boolean =>
   (memory[SAVEMAP_PRISON_FLAG_BYTE] & SAVEMAP_PRISON_ABOVE_GROUND_MASK) !== 0
 
-export type BakedPosition = { col: number; row: number }
+type BakedPosition = { col: number; row: number }
 
-export type TileOffset = [number, number, number]
+type TileOffset = [number, number, number]
 
-export type VisibleTile = (
+type VisibleTile = (
   | { kind: 'segment'; offset: TileOffset; segmentIndex: number }
   | { kind: 'variant'; offset: TileOffset; variantIndex: number }
 ) & {
@@ -61,7 +61,7 @@ export const getVariantBakedPosition = (variantIndex: number): BakedPosition => 
   row: VARIANT_STAGING_ROW + Math.floor(variantIndex / WORLD_GRID_COLS),
 })
 
-export const getTileOffset = (targetCol: number, targetRow: number, baked: BakedPosition): TileOffset => [
+const getTileOffset = (targetCol: number, targetRow: number, baked: BakedPosition): TileOffset => [
   (targetCol - baked.col) * SEGMENT_WORLD_SIZE,
   0,
   (targetRow - baked.row) * SEGMENT_WORLD_SIZE,

@@ -1,17 +1,21 @@
 mod combine_field_models;
 mod decompress_fs;
 mod emit_types;
+mod index_gateways;
 mod parse_field;
 mod parse_field_models;
 mod parse_kernel;
 mod parse_menu;
 mod parse_worldmap;
+mod parse_worldmap_models;
 
 pub use combine_field_models::CombineFieldModels;
 pub use decompress_fs::DecompressFs;
 pub use emit_types::EmitTypes;
+pub use index_gateways::IndexGateways;
 pub use parse_field::ParseField;
 pub use parse_field_models::ParseFieldModels;
 pub use parse_kernel::ParseKernel;
 pub use parse_menu::ParseMenu;
 pub use parse_worldmap::ParseWorldmap;
+pub use parse_worldmap_models::ParseWorldmapModels;

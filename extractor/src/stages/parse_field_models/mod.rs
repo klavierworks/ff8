@@ -1,3 +1,4 @@
+use crate::charaone::{build_field_models, emit};
 use crate::stage::{Context, Stage};
 use crate::utils::field_archive::{discover, read_named_entry};
 use crate::utils::fs_archive::{parse_file_list, parse_index, read_entry};
@@ -12,22 +13,31 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 
-const ADDON_DIR: &str =
-    "/Users/andrew/Library/Application Support/Blender/4.3/scripts/addons/charaone_extractor";
-const DRIVER: &str = include_str!("charaone_driver.py");
+const BRIDGE: &str = include_str!("../../../resources/charaone_gltf_bridge.py");
 
 // How many blender processes export in parallel. Each works an independent slice of the
-// fields into its own scratch folder, so they never touch the same files; merge_shards
-// folds the slices into one complete/ + gltf_index.json afterwards.
+// constructed models into its own scratch folder, so they never touch the same files;
+// merge_shards folds the slices into one complete/ + gltf_index.json afterwards.
 const SHARDS: usize = 4;
 
-#[derive(Serialize, Clone)]
-struct ManifestEntry {
-    field: String,
-    one: String,
+pub struct ParseFieldModels;
+
+// One model awaiting glTF export. parse/format/construct already ran in Rust; the bridge only
+// needs to read the constructed json and write the glTF.
+#[derive(Clone)]
+struct ModelJob {
+    map: String,
+    model: String,
+    json: String,
 }
 
-pub struct ParseFieldModels;
+#[derive(Serialize)]
+struct FieldEntry<'a> {
+    map: &'a str,
+    model: &'a str,
+    json: &'a str,
+    out_dir: &'a str,
+}
 
 impl Stage for ParseFieldModels {
     fn name(&self) -> &'static str {
@@ -38,29 +48,58 @@ impl Stage for ParseFieldModels {
         let mapdata = context.uncompressed_dir.join("field/mapdata");
         let main_chr = context.uncompressed_dir.join("field/model/main_chr.fs");
         let out_dir = context.converted_dir.join("field/models");
-        // Scratch (mch + chara.one inputs, per-shard manifests, blender logs) lives outside
-        // converted so nothing transient leaks into the published data tree.
-        let staging = std::env::temp_dir().join("ff8_charaone_stage");
+        // Scratch (mch inputs, constructed json + textures, per-shard manifests, blender logs)
+        // lives outside converted so nothing transient leaks into the published data tree.
+        let staging = std::env::temp_dir().join("ff8_charaone_field");
 
         reset_dir(&staging)?;
         reset_dir(&out_dir)?;
 
-        let mch_count = stage_main_chr(&main_chr, &staging)?;
-        let manifest = stage_chara_ones(&mapdata, &staging)?;
+        let mch_dir = staging.join("mch");
+        fs::create_dir_all(&mch_dir)?;
+        let mch_count = stage_main_chr(&main_chr, &mch_dir)?;
 
-        let driver_path = staging.join("charaone_driver.py");
-        fs::write(&driver_path, DRIVER)?;
+        let constructed_dir = staging.join("constructed");
+        let archives = discover(&mapdata)?;
+        let mut jobs: Vec<ModelJob> = Vec::new();
+        for fs_path in &archives {
+            let Some(field) = fs_path.file_stem().and_then(|stem| stem.to_str()) else {
+                continue;
+            };
+            let Some(chara_one) = read_named_entry(fs_path, "chara.one")? else {
+                continue;
+            };
+            let models = build_field_models(&chara_one, &mch_dir);
+            if models.is_empty() {
+                continue;
+            }
+            let field_dir = constructed_dir.join(field);
+            fs::create_dir_all(&field_dir)?;
+            for built in &models {
+                emit(built, &field_dir)?;
+                jobs.push(ModelJob {
+                    map: field.to_string(),
+                    model: built.model.name.clone(),
+                    json: field_dir
+                        .join(format!("{}.json", built.model.name))
+                        .to_string_lossy()
+                        .into_owned(),
+                });
+            }
+        }
 
-        let shards = chunk_manifest(&manifest, SHARDS);
-        let total_models = estimate_total_models(&manifest);
+        let total = jobs.len();
+        let bridge_path = staging.join("charaone_gltf_bridge.py");
+        fs::write(&bridge_path, BRIDGE)?;
+        let shards = chunk(&jobs, SHARDS);
         println!(
-            "  staged {mch_count} mch + {} fields with chara.one (~{total_models} models); exporting across {} blender shards (logs: {})",
-            manifest.len(),
+            "  staged {mch_count} mch + built {total} (field, model) constructed models across {} fields; exporting via {} blender shards (logs: {})",
+            archives.len(),
             shards.len(),
             staging.join("logs").display(),
         );
 
-        run_shards(&shards, &staging, &driver_path, &out_dir, total_models)?;
+        run_shards(&shards, &staging, &bridge_path, &out_dir, total)?;
 
         let exported = count_index_entries(&out_dir).unwrap_or(0);
         println!(
@@ -78,7 +117,7 @@ fn reset_dir(dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn stage_main_chr(main_chr_fs: &Path, staging: &Path) -> Result<usize> {
+fn stage_main_chr(main_chr_fs: &Path, mch_dir: &Path) -> Result<usize> {
     let fi = fs::read(main_chr_fs.with_extension("fi"))?;
     let fl = fs::read(main_chr_fs.with_extension("fl"))?;
     let fs_bytes = fs::read(main_chr_fs)?;
@@ -90,41 +129,18 @@ fn stage_main_chr(main_chr_fs: &Path, staging: &Path) -> Result<usize> {
         let basename = full_name.rsplit('\\').next().unwrap_or(full_name);
         let data = read_entry(&fs_bytes, entry)
             .with_context(|| format!("main_chr: reading {full_name}"))?;
-        fs::write(staging.join(basename), data)?;
+        fs::write(mch_dir.join(basename), data)?;
         count += 1;
     }
     Ok(count)
 }
 
-fn stage_chara_ones(mapdata: &Path, staging: &Path) -> Result<Vec<ManifestEntry>> {
-    let archives = discover(mapdata)?;
-    let mut manifest = Vec::new();
-    for fs_path in &archives {
-        let Some(name) = fs_path.file_stem().and_then(|stem| stem.to_str()) else {
-            continue;
-        };
-        let Some(chara_one) = read_named_entry(fs_path, "chara.one")? else {
-            continue;
-        };
-        let one_path = staging.join(format!("{name}.one"));
-        fs::write(&one_path, chara_one)?;
-        manifest.push(ManifestEntry {
-            field: name.to_string(),
-            one: one_path.to_string_lossy().into_owned(),
-        });
-    }
-    Ok(manifest)
-}
-
-fn chunk_manifest(manifest: &[ManifestEntry], shards: usize) -> Vec<Vec<ManifestEntry>> {
-    if manifest.is_empty() {
+fn chunk(jobs: &[ModelJob], shards: usize) -> Vec<Vec<ModelJob>> {
+    if jobs.is_empty() {
         return Vec::new();
     }
-    let size = manifest.len().div_ceil(shards).max(1);
-    manifest
-        .chunks(size)
-        .map(<[ManifestEntry]>::to_vec)
-        .collect()
+    let size = jobs.len().div_ceil(shards).max(1);
+    jobs.chunks(size).map(<[ModelJob]>::to_vec).collect()
 }
 
 struct ShardProcess {
@@ -134,9 +150,9 @@ struct ShardProcess {
 }
 
 fn run_shards(
-    shards: &[Vec<ManifestEntry>],
+    shards: &[Vec<ModelJob>],
     staging: &Path,
-    driver: &Path,
+    bridge: &Path,
     out_dir: &Path,
     total: usize,
 ) -> Result<()> {
@@ -147,12 +163,21 @@ fn run_shards(
     let mut running = Vec::new();
     let mut shard_dirs = Vec::new();
     for (index, shard) in shards.iter().enumerate() {
-        let manifest_path = staging.join(format!("manifest_{index}.json"));
-        fs::write(&manifest_path, serde_json::to_vec(shard)?)?;
         let shard_dir = out_dir.join(format!(".shard_{index}"));
         reset_dir(&shard_dir)?;
+        let entries: Vec<FieldEntry> = shard
+            .iter()
+            .map(|job| FieldEntry {
+                map: &job.map,
+                model: &job.model,
+                json: &job.json,
+                out_dir: shard_dir.to_str().unwrap_or_default(),
+            })
+            .collect();
+        let manifest_path = staging.join(format!("manifest_{index}.json"));
+        fs::write(&manifest_path, serde_json::to_vec(&entries)?)?;
         let log_path = logs_dir.join(format!("shard_{index}.log"));
-        let child = spawn_blender(driver, &manifest_path, &shard_dir, index)?;
+        let child = spawn_blender(bridge, &manifest_path, "field", index)?;
         running.push(stream_child(
             child,
             index,
@@ -176,20 +201,18 @@ fn run_shards(
     merge_shards(&shard_dirs, out_dir)
 }
 
-fn spawn_blender(driver: &Path, manifest: &Path, out_dir: &Path, index: usize) -> Result<Child> {
+fn spawn_blender(bridge: &Path, manifest: &Path, mode: &str, index: usize) -> Result<Child> {
     Command::new("blender")
         .arg("--background")
         .arg("--python")
-        .arg(driver)
+        .arg(bridge)
         .arg("--")
         .arg(manifest)
-        .arg(ADDON_DIR)
-        .arg(out_dir)
-        .arg(index.to_string())
+        .arg(mode)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .context("failed to launch blender (is it on PATH?)")
+        .with_context(|| format!("failed to launch blender for shard {index} (is it on PATH?)"))
 }
 
 fn stream_child(
@@ -214,8 +237,8 @@ fn stream_child(
     })
 }
 
-// The driver prints one `  + field/model` line per exported model and `[i/n] field` headers;
-// surface those (with a running global tally) and tee everything to the shard log.
+// The bridge prints one `  + map/model` line per exported model; surface those (with a running
+// global tally) and tee everything to the shard log.
 fn pump_progress(
     reader: impl Read,
     index: usize,
@@ -228,7 +251,7 @@ fn pump_progress(
         if let Some(model) = line.strip_prefix("  + ") {
             let count = exported.fetch_add(1, Ordering::Relaxed) + 1;
             println!("  [{count}/{total}] s{index} {model}");
-        } else if line.starts_with('[') || line.starts_with("  skip ") || line.starts_with("DONE") {
+        } else if line.starts_with("  skip ") {
             println!("  s{index} {line}");
         }
     }
@@ -241,8 +264,8 @@ fn pump_log(reader: impl Read, mut log: File) {
 }
 
 // Fold each shard's complete/ + gltf_index.json into one. Filenames carry a content hash so
-// identical models across shards collide by name (identical bytes — keep the first); fields
-// are disjoint across shards so the index is a plain key union.
+// identical models across shards collide by name (identical bytes — keep the first); fields are
+// disjoint across shards so the index is a plain key union.
 fn merge_shards(shard_dirs: &[PathBuf], out_dir: &Path) -> Result<()> {
     let complete = out_dir.join("complete");
     fs::create_dir_all(&complete)?;
@@ -281,32 +304,6 @@ fn merge_shards(shard_dirs: &[PathBuf], out_dir: &Path) -> Result<()> {
         serde_json::to_vec_pretty(&index)?,
     )?;
     Ok(())
-}
-
-// Upper bound on exports for the progress denominator: each chara.one declares its model
-// count as a u32 at offset 0 (files under 0x800 bytes or counts > 255 are treated as none,
-// matching the header parser). Some of these models are later skipped, so the live counter
-// finishes at or just below this total.
-fn estimate_total_models(manifest: &[ManifestEntry]) -> usize {
-    manifest
-        .iter()
-        .map(|entry| model_count(Path::new(&entry.one)))
-        .sum()
-}
-
-fn model_count(one_path: &Path) -> usize {
-    let Ok(bytes) = fs::read(one_path) else {
-        return 0;
-    };
-    if bytes.len() < 0x800 {
-        return 0;
-    }
-    let count = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-    if count > 255 {
-        0
-    } else {
-        count as usize
-    }
 }
 
 fn count_index_entries(out_dir: &Path) -> Option<usize> {

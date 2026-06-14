@@ -1,10 +1,9 @@
 mod char_table;
 mod file_header;
 mod models;
-mod reader;
 mod sections;
 mod textures;
-mod tim;
+mod wm2field;
 mod wmx;
 
 use crate::stage::{Context, Stage};
@@ -58,6 +57,13 @@ impl Stage for ParseWorldmap {
             section_slices[40],
         )?;
         println!("  wmx: tiles");
+
+        let wm2field_path = context.uncompressed_dir.join("main/wm2field.tbl");
+        let wm2field_bytes = fs::read(&wm2field_path)
+            .with_context(|| format!("reading {}", wm2field_path.display()))?;
+        let wm2field = wm2field::parse(&wm2field_bytes);
+        write_json_pretty(&out_dir.join("wm2field.json"), &wm2field)?;
+        println!("  wm2field: {} entries", wm2field.len());
 
         Ok(())
     }

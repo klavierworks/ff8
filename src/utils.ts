@@ -1,6 +1,6 @@
+import gateways from '@data/field/gateways_index.json'
 import { Camera, Object3D, Raycaster, Vector3 } from 'three'
 
-import gateways from './gateways.ts'
 import { FieldData } from './modules/field/Field.tsx'
 
 export const numberToFloatingPoint = (value: number) => value / 4096
@@ -21,12 +21,6 @@ export const vectorToFloatingPoint = (value: number[] | Vector3 | { x: number; y
   vector.z = numberToFloatingPoint(value.z)
 
   return vector
-}
-
-export const WORLD_DIRECTIONS = {
-  FORWARD: new Vector3(0, 0, -1),
-  RIGHT: new Vector3(1, 0, 0),
-  UP: new Vector3(0, 1, 0),
 }
 
 export const getInitialField = () => {
