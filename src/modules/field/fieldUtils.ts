@@ -40,9 +40,14 @@ const getFormattedTiles = (tiles: RawFieldData['tiles']) => {
   })
 }
 
+const FIELD_DATA = import.meta.glob<{ default: RawFieldData }>('/extractor/data/converted/field/mapdata/*/data.json')
+
 export const getFieldData = async (fieldId: string) => {
-  const response = await fetch(`/output/${fieldId}.json`)
-  const data = (await response.json()) as RawFieldData
+  const loadFieldData = FIELD_DATA[`/extractor/data/converted/field/mapdata/${fieldId}/data.json`]
+  if (!loadFieldData) {
+    throw new Error(`No field data for ${fieldId}`)
+  }
+  const data = (await loadFieldData()).default
 
   const withMappedOpcodes = {
     ...data,

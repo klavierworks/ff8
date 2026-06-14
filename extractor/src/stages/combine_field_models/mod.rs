@@ -27,30 +27,25 @@ impl Stage for CombineFieldModels {
     }
 
     fn run(&self, context: &Context) -> Result<()> {
-        let models_root = context.converted_dir.join("field/models");
-        let complete_dir = models_root.join("complete");
-        let index_path = models_root.join("gltf_index.json");
+        let out_dir = context.converted_dir.join("field/models");
+        let complete_dir = out_dir.join("complete");
+        let index_path = out_dir.join("gltf_index.json");
 
-        let public_dir = context
-            .converted_dir
-            .parent()
-            .and_then(Path::parent)
-            .context("converted dir must live under <repo>/public/data")?;
-        let out_dir = public_dir.join("models/combined");
-        let loader_manifest = public_dir
-            .parent()
-            .context("public dir must live under <repo>")?
-            .join("src/modules/field/Scripts/Script/Model/manifest.json");
-
-        if out_dir.exists() {
-            fs::remove_dir_all(&out_dir)?;
+        for sub in ["base", "animations"] {
+            let dir = out_dir.join(sub);
+            if dir.exists() {
+                fs::remove_dir_all(&dir)?;
+            }
+            fs::create_dir_all(&dir)?;
         }
-        fs::create_dir_all(out_dir.join("base"))?;
-        fs::create_dir_all(out_dir.join("anims"))?;
 
         let copies_by_model = process_models(&complete_dir, &out_dir)?;
-        let (field_count, model_count) =
-            write_manifest(&index_path, &copies_by_model, &out_dir, &loader_manifest)?;
+        let (field_count, model_count) = write_manifest(&index_path, &copies_by_model, &out_dir)?;
+
+        // The complete/ + gltf_index.json are parse_field_models scratch; the published tree
+        // keeps only base/, animations/, and manifest.json.
+        fs::remove_dir_all(&complete_dir).ok();
+        fs::remove_file(&index_path).ok();
 
         let base_count: usize = copies_by_model
             .values()
@@ -151,7 +146,11 @@ fn process_model(
 
     if let Some(library) = library {
         let (gltf, bin) = library.into_glb();
-        glb::write_glb(&out_dir.join(format!("anims/{model}.glb")), &gltf, &bin)?;
+        glb::write_glb(
+            &out_dir.join(format!("animations/{model}.glb")),
+            &gltf,
+            &bin,
+        )?;
     }
 
     Ok(copies)
@@ -161,7 +160,6 @@ fn write_manifest(
     index_path: &Path,
     copies_by_model: &BTreeMap<String, BTreeMap<String, CopyEntry>>,
     out_dir: &Path,
-    loader_manifest: &Path,
 ) -> Result<(usize, usize)> {
     let index: BTreeMap<String, BTreeMap<String, String>> =
         serde_json::from_slice(&fs::read(index_path)?)
@@ -191,9 +189,5 @@ fn write_manifest(
 
     let serialized = serde_json::to_vec(&manifest)?;
     fs::write(out_dir.join("manifest.json"), &serialized)?;
-    if let Some(parent) = loader_manifest.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(loader_manifest, &serialized)?;
     Ok((manifest.len(), model_refs))
 }

@@ -1,7 +1,21 @@
+import manifest from '@data/field/models/manifest.json'
 import { useGLTF } from '@react-three/drei'
 import { useMemo } from 'react'
 
-import manifest from './manifest.json'
+import { loadAssetUrl, preloadAssetUrl } from '../../../../../loadAssetUrl'
+
+// Lazy globs: one thunk per model glb, resolved on demand so a field only pulls in its models.
+const BASE_LOADERS = import.meta.glob<string>('/extractor/data/converted/field/models/base/**/*.glb', {
+  import: 'default',
+  query: '?url',
+})
+const ANIMATION_LOADERS = import.meta.glob<string>('/extractor/data/converted/field/models/animations/*.glb', {
+  import: 'default',
+  query: '?url',
+})
+
+const baseKey = (model: string, base: string) => `/extractor/data/converted/field/models/base/${model}/${base}.glb`
+const animationKey = (model: string) => `/extractor/data/converted/field/models/animations/${model}.glb`
 
 type CopyEntry = {
   base: string
@@ -41,8 +55,8 @@ const resolveCopy = (model: string, fieldName: string) => {
 
 export const useFragmentedGLTFLoader = (baseGltf: string, fieldName: string) => {
   const { entry, model } = resolveCopy(baseGltf, fieldName)
-  const base = useGLTF(`/models/combined/base/${model}/${entry.base}.glb`)
-  const library = useGLTF(`/models/combined/anims/${model}.glb`)
+  const base = useGLTF(loadAssetUrl(BASE_LOADERS, baseKey(model, entry.base)))
+  const library = useGLTF(loadAssetUrl(ANIMATION_LOADERS, animationKey(model)))
 
   const animations = useMemo(
     () => entry.clips.map((clipIndex) => library.animations[clipIndex]).filter(Boolean),
@@ -57,6 +71,6 @@ useFragmentedGLTFLoader.preload = (baseGltf?: string, fieldName?: string) => {
     return
   }
   const { entry, model } = resolveCopy(baseGltf, fieldName ?? '')
-  useGLTF.preload(`/models/combined/base/${model}/${entry.base}.glb`)
-  useGLTF.preload(`/models/combined/anims/${model}.glb`)
+  preloadAssetUrl(BASE_LOADERS, baseKey(model, entry.base), useGLTF.preload)
+  preloadAssetUrl(ANIMATION_LOADERS, animationKey(model), useGLTF.preload)
 }

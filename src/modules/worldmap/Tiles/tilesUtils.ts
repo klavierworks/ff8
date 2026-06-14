@@ -1,15 +1,34 @@
 import { Box3, BufferAttribute, BufferGeometry, Mesh, Object3D } from 'three'
 
+import { loadAssetUrl, preloadAssetUrl } from '../../../loadAssetUrl'
 import { SEGMENT_SIZE_THREE, SEGMENT_WORLD_SIZE, WORLD_GRID_COLS, WORLD_GRID_ROWS } from '../constants'
 import { positiveModulo } from '../worldPosition'
 import { getTilesState, VARIANT_STAGING_ROW } from './tileState'
 
-export const getTileUrl = (segmentIndex: number | undefined, variantIndex: number | undefined): string => {
-  if (segmentIndex !== undefined) {
-    return `/worldmap/wmset/tiles/segment_${String(segmentIndex).padStart(3, '0')}.glb`
-  }
-  return `/worldmap/wmset/tiles/variant_${String(variantIndex).padStart(3, '0')}.glb`
+// Lazy glob: only the tiles actually rendered are fetched, not the whole world.
+const TILE_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldmap/tiles/*.glb', {
+  import: 'default',
+  query: '?url',
+})
+
+const tileKeyPath = (segmentIndex: number | undefined, variantIndex: number | undefined): string => {
+  const name =
+    segmentIndex !== undefined
+      ? `segment_${String(segmentIndex).padStart(3, '0')}`
+      : `variant_${String(variantIndex).padStart(3, '0')}`
+  return `/extractor/data/converted/worldmap/tiles/${name}.glb`
 }
+
+// Suspends (call inside a Suspense boundary, e.g. before useGLTF).
+export const getTileUrl = (segmentIndex: number | undefined, variantIndex: number | undefined): string =>
+  loadAssetUrl(TILE_LOADERS, tileKeyPath(segmentIndex, variantIndex))
+
+// Non-suspending; for preloading outside of render.
+export const preloadTileUrl = (
+  segmentIndex: number | undefined,
+  variantIndex: number | undefined,
+  onReady: (url: string) => void,
+) => preloadAssetUrl(TILE_LOADERS, tileKeyPath(segmentIndex, variantIndex), onReady)
 
 const SAVEMAP_WORLD_STATE_BYTE = 266
 const SAVEMAP_PRISON_FLAG_BYTE = 264

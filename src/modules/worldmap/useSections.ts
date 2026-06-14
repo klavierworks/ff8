@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react'
+import sectionsData from '@data/worldmap/sections.json'
 
 import { SkyZone } from './Sky/skyUtils'
-
-const SECTIONS_URL = '/worldmap/wmset/sections.json'
 
 export type AkaoSection = { akao_data: string }
 
@@ -59,51 +57,10 @@ export type SpecialLocation = {
   z: number
 }
 
-let cached: Sections | undefined
-let inflight: Promise<Sections> | undefined
+// sections.json is bundled at build time, so it is available synchronously; the hook keeps
+// its `Sections | undefined` shape for callers but never actually returns undefined.
+const SECTIONS = sectionsData as unknown as Sections
 
-const fetchSections = (): Promise<Sections> => {
-  if (cached) {
-    return Promise.resolve(cached)
-  }
-  if (inflight) {
-    return inflight
-  }
-  inflight = fetch(SECTIONS_URL)
-    .then((response) => response.json() as Promise<Sections>)
-    .then((data) => {
-      cached = data
-      return data
-    })
-    .finally(() => {
-      inflight = undefined
-    })
-  return inflight
-}
-
-const useSections = (): Sections | undefined => {
-  const [sections, setSections] = useState<Sections | undefined>(cached)
-
-  useEffect(() => {
-    if (cached) {
-      return
-    }
-    let isStale = false
-    fetchSections()
-      .then((next) => {
-        if (!isStale) {
-          setSections(next)
-        }
-      })
-      .catch((error) => {
-        console.warn('[useSections] fetch failed:', error)
-      })
-    return () => {
-      isStale = true
-    }
-  }, [])
-
-  return sections
-}
+const useSections = (): Sections | undefined => SECTIONS
 
 export default useSections

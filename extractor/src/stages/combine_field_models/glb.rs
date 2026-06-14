@@ -13,8 +13,30 @@ fn pad_to_four(buffer: &mut Vec<u8>, pad_byte: u8) {
     }
 }
 
+// Blender exports primitives with `"targets": null`; three's GLTFLoader treats any non-undefined
+// `targets` as an array and dereferences `.length`, so a null must be dropped, not kept.
+fn strip_null_targets(gltf: &mut Value) {
+    let Some(meshes) = gltf.get_mut("meshes").and_then(Value::as_array_mut) else {
+        return;
+    };
+    for mesh in meshes {
+        let Some(primitives) = mesh.get_mut("primitives").and_then(Value::as_array_mut) else {
+            continue;
+        };
+        for primitive in primitives {
+            if let Some(object) = primitive.as_object_mut() {
+                if object.get("targets").is_some_and(Value::is_null) {
+                    object.remove("targets");
+                }
+            }
+        }
+    }
+}
+
 pub fn encode_glb(gltf: &Value, bin: &[u8]) -> Result<Vec<u8>> {
-    let mut json = serde_json::to_vec(gltf)?;
+    let mut gltf = gltf.clone();
+    strip_null_targets(&mut gltf);
+    let mut json = serde_json::to_vec(&gltf)?;
     pad_to_four(&mut json, 0x20);
 
     let has_bin = !bin.is_empty();

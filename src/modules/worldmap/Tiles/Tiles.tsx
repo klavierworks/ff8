@@ -10,11 +10,11 @@ import TilePrecompiler from './TilePrecompiler/TilePrecompiler'
 import {
   buildVariantOverrides,
   computeVisibleTiles,
-  getTileUrl,
   getWorldStateVariable,
   isDDistrictPrisonAboveGround,
   positionToSegmentCol,
   positionToSegmentRow,
+  preloadTileUrl,
   tileKey,
 } from './tilesUtils'
 
@@ -63,9 +63,11 @@ const Tiles = () => {
 
   useEffect(() => {
     preloadTiles.forEach((tile) => {
-      useGLTF.preload(
-        tile.kind === 'segment' ? getTileUrl(tile.segmentIndex, undefined) : getTileUrl(undefined, tile.variantIndex),
-      )
+      if (tile.kind === 'segment') {
+        preloadTileUrl(tile.segmentIndex, undefined, useGLTF.preload)
+      } else {
+        preloadTileUrl(undefined, tile.variantIndex, useGLTF.preload)
+      }
     })
   }, [preloadTiles])
 

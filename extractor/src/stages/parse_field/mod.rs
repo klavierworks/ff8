@@ -5,6 +5,7 @@ mod field_font;
 mod fields;
 mod inf;
 mod maplist;
+mod model_list;
 mod mrt;
 mod pcb;
 mod rat;
@@ -150,8 +151,13 @@ fn process_field(fs_path: &Path, out_root: &Path) -> Result<()> {
         }
     }
 
-    // Character models are out of scope for now.
-    map.insert("models".into(), json!([]));
+    // The model table is the ordered list of model names from the field's chara.one; scripts
+    // reference models by their index here.
+    let models = archive
+        .file("one")
+        .map(model_list::parse_model_names)
+        .unwrap_or_default();
+    map.insert("models".into(), serde_json::to_value(models)?);
 
     let bytes = serde_json::to_vec_pretty(&Value::Object(map))?;
     fs::write(out_dir.join("data.json"), bytes)?;

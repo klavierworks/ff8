@@ -5,7 +5,13 @@ import { ClampToEdgeWrapping, Color, DoubleSide, NearestFilter, RepeatWrapping, 
 
 import useWorldmapStore from '../../worldmapStore'
 
-const CLOUD_TEXTURE_URL = '/worldmap/sky_cloud.png'
+const CLOUD_TEXTURE_URL = Object.values(
+  import.meta.glob<string>('/extractor/data/converted/worldmap/textures/sky_cloud.png', {
+    eager: true,
+    import: 'default',
+    query: '?url',
+  }),
+)[0]
 
 const CLOUD_WRAPS_PER_REVOLUTION = 16
 const TWO_PI = 2 * Math.PI

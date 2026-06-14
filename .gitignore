@@ -36,3 +36,7 @@ CLAUDE.md
 .netlify
 public/worldmap
 public/combined
+
+extractor/data/*
+!extractor/data/SOURCE/
+extractor/data/SOURCE/*

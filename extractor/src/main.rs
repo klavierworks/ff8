@@ -8,10 +8,7 @@ use std::path::PathBuf;
 
 fn main() -> Result<()> {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let repo_root = manifest_dir
-        .parent()
-        .expect("extractor must live in <repo>/extractor");
-    let data_root = repo_root.join("public/data");
+    let data_root = manifest_dir.join("data");
     let context = Context {
         compressed_dir: data_root.join("SOURCE"),
         uncompressed_dir: data_root.join("UNCOMPRESSED"),
@@ -26,6 +23,7 @@ fn main() -> Result<()> {
         Box::new(stages::ParseField),
         Box::new(stages::ParseFieldModels),
         Box::new(stages::CombineFieldModels),
+        Box::new(stages::EmitTypes),
     ];
 
     let filters: Vec<String> = std::env::args().skip(1).collect();

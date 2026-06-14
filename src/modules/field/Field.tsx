@@ -1,7 +1,7 @@
+import type { FieldData as RawFieldData } from '@data/types/field/FieldData'
+
 import { useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useState } from 'react'
-
-import type data from '../../../public/output/escouse2.json'
 
 import { AREA_NAMES } from '../../constants/areaNames'
 import MAP_NAMES from '../../constants/maps'
@@ -38,7 +38,7 @@ export type FieldData = Omit<RawFieldData, 'scripts' | 'tiles'> & {
   }[]
 }
 
-export type RawFieldData = typeof data
+export type { RawFieldData }
 
 type FieldProps = {
   data: FieldData

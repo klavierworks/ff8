@@ -59,8 +59,9 @@ def export_field(chara_one_path, map_name, out_folder, exporter_module, lib):
             )
             rename_gltf_with_hash(out_folder, model_name, map_name)
             written += 1
+            print(f"  + {map_name}/{model_name}", flush=True)
         except Exception as error:  # noqa: BLE001 - one bad model shouldn't abort the corpus
-            print(f"  skip {map_name}/{model_name}: {error}")
+            print(f"  skip {map_name}/{model_name}: {error}", flush=True)
 
     return written
 
