@@ -11,8 +11,6 @@ pub struct Image {
     pub rgba: Vec<u8>,
 }
 
-// Walk consecutive TIMs packed back-to-back in a group (e.g. face1.bin holds many
-// portrait TIMs). Each paletted TIM yields one image per CLUT.
 pub fn decode_all(bytes: &[u8]) -> Vec<Image> {
     let mut images = Vec::new();
     let mut position = 0;
@@ -26,6 +24,82 @@ pub fn decode_all(bytes: &[u8]) -> Vec<Image> {
         }
     }
     images
+}
+
+pub fn decode_single(bytes: &[u8]) -> Option<Vec<Image>> {
+    decode(bytes, 0).map(|(images, _next)| images)
+}
+
+pub struct TimInfo {
+    pub bpp: u8,
+    pub palette_count: usize,
+    pub width: u32,
+    pub height: u32,
+    pub total_bytes: usize,
+}
+
+pub fn validate(bytes: &[u8]) -> Option<TimInfo> {
+    if bytes.len() < 8 || bytes[0..4] != MAGIC {
+        return None;
+    }
+    let flags = u32_at(bytes, 4)?;
+    // Only bpp bits (0,1) and the CLUT bit (3) may be set; reject mixed-mode and 24bpp (bpp == 3),
+    // none of which the exe uses and the renderer can't handle.
+    if flags & !0b1011 != 0 {
+        return None;
+    }
+    let bpp_code = (flags & 0x3) as u8;
+    if bpp_code == 3 {
+        return None;
+    }
+    let has_clut = (flags >> 3) & 1 == 1;
+
+    let mut cursor = 8;
+    let mut palette_count = 0;
+    if has_clut {
+        let block_size = u32_at(bytes, cursor)?;
+        let colors = u16_at(bytes, cursor + 8)?;
+        let clut_count = u16_at(bytes, cursor + 10)?;
+        if colors == 0 || colors > 256 || clut_count == 0 || clut_count > 1024 {
+            return None;
+        }
+        if block_size != 12 + colors * clut_count * 2 || cursor + block_size > bytes.len() {
+            return None;
+        }
+        palette_count = clut_count;
+        cursor += block_size;
+    }
+
+    let image_block = cursor;
+    let block_size = u32_at(bytes, image_block)?;
+    let raw_width = u16_at(bytes, image_block + 8)?;
+    let height = u16_at(bytes, image_block + 10)?;
+    if raw_width == 0 || height == 0 {
+        return None;
+    }
+    if block_size != 12 + raw_width * height * 2 || image_block + block_size > bytes.len() {
+        return None;
+    }
+    let width = match bpp_code {
+        0 => raw_width * 4,
+        1 => raw_width * 2,
+        _ => raw_width,
+    };
+    if width > 4096 || height > 4096 {
+        return None;
+    }
+
+    Some(TimInfo {
+        bpp: match bpp_code {
+            0 => 4,
+            1 => 8,
+            _ => 16,
+        },
+        palette_count,
+        width: width as u32,
+        height: height as u32,
+        total_bytes: image_block + block_size,
+    })
 }
 
 fn u16_at(bytes: &[u8], offset: usize) -> Option<usize> {

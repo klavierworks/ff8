@@ -12,13 +12,13 @@ import {
   computeVisibleTiles,
   getWorldStateVariable,
   isDDistrictPrisonAboveGround,
-  positionToSegmentCol,
+  positionToSegmentColumn,
   positionToSegmentRow,
   preloadTileUrl,
   tileKey,
 } from './tilesUtils'
 
-type SegmentPosition = { col: number; row: number }
+type SegmentPosition = { column: number; row: number }
 
 const Tiles = () => {
   const [segment, setSegment] = useState<null | SegmentPosition>(null)
@@ -29,14 +29,14 @@ const Tiles = () => {
     if (!position) {
       return
     }
-    const col = positionToSegmentCol(position.x)
+    const column = positionToSegmentColumn(position.x)
     const row = positionToSegmentRow(position.z)
     const current = segmentRef.current
-    if (current && col === current.col && row === current.row) {
+    if (current && column === current.column && row === current.row) {
       return
     }
-    segmentRef.current = { col, row }
-    setSegment({ col, row })
+    segmentRef.current = { column, row }
+    setSegment({ column, row })
   })
 
   const variantOverrides = useMemo(
@@ -45,12 +45,12 @@ const Tiles = () => {
   )
 
   const visibleTiles = useMemo(
-    () => (segment ? computeVisibleTiles(segment.col, segment.row, 3, variantOverrides) : []),
+    () => (segment ? computeVisibleTiles(segment.column, segment.row, 3, variantOverrides) : []),
     [segment, variantOverrides],
   )
 
   const preloadTiles = useMemo(
-    () => (segment ? computeVisibleTiles(segment.col, segment.row, 4, variantOverrides) : []),
+    () => (segment ? computeVisibleTiles(segment.column, segment.row, 4, variantOverrides) : []),
     [segment, variantOverrides],
   )
 
@@ -83,13 +83,13 @@ const Tiles = () => {
             <Tile
               offset={tile.offset}
               segmentIndex={tile.segmentIndex}
-              targetCol={tile.targetCol}
+              targetColumn={tile.targetColumn}
               targetRow={tile.targetRow}
             />
           ) : (
             <Tile
               offset={tile.offset}
-              targetCol={tile.targetCol}
+              targetColumn={tile.targetColumn}
               targetRow={tile.targetRow}
               variantIndex={tile.variantIndex}
             />

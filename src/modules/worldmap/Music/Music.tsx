@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 
+import { musicController } from '../../../audio/MusicController'
 import { MUSIC_IDS } from '../../../constants/audio'
-import { musicController } from '../../field/Scripts/Script/handlers'
 import { VEHICLE_RAGNAROK } from '../Player/FlyingRagnarok/flightConstants'
 import useWorldmapStore from '../worldmapStore'
 

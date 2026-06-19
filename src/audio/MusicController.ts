@@ -47,6 +47,11 @@ const MusicController = () => {
   let channel1: Howl | undefined = undefined
   let channel1Src: string | undefined = undefined
 
+  // A temporary track that takes over while a self-contained overlay (e.g. the Triple Triad
+  // card game) is active. The field track on channel 0 is paused, not replaced, so it can
+  // resume exactly where it left off when the overlay closes.
+  let overlayAudio: Howl | undefined = undefined
+
   const { setState } = create(() => ({
     battleMusicId: 0,
   }))
@@ -188,14 +193,30 @@ const MusicController = () => {
     setState({ battleMusicId: musicId })
   }
 
+  const playOverlayMusic = (url: string) => {
+    channel0?.pause()
+    overlayAudio?.stop()
+    overlayAudio = new Howl({ autoplay: true, loop: true, src: [url], volume: BASE_VOLUME })
+  }
+
+  const stopOverlayMusic = () => {
+    if (overlayAudio) {
+      overlayAudio.stop()
+      overlayAudio = undefined
+    }
+    channel0?.play()
+  }
+
   const reset = () => {
     channel0?.stop()
     channel1?.stop()
+    overlayAudio?.stop()
     preloadedAudio?.unload()
     channel0 = undefined
     channel0Src = undefined
     channel1 = undefined
     channel1Src = undefined
+    overlayAudio = undefined
     preloadedAudio = undefined
     preloadedSrc = undefined
   }
@@ -205,12 +226,16 @@ const MusicController = () => {
     dualMusic,
     pauseChannel,
     playMusic,
+    playOverlayMusic,
     preloadMusic,
     reset,
     setBattleMusic,
     setVolume,
+    stopOverlayMusic,
     transitionVolume,
   }
 }
 
 export default MusicController
+
+export const musicController = MusicController()

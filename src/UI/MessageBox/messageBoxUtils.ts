@@ -20,13 +20,13 @@ export const getCharacterWidth = ({ columnIndex, rowIndex }: { columnIndex: numb
   return OUTPUT_TILE_WIDTH * (characterWidth / 16)
 }
 
-const getFontPosition = (char: string): null | { columnIndex: number; rowIndex: number } => {
-  const rowIndex = fontLayout.findIndex((layoutRow) => layoutRow.includes(char))
+const getFontPosition = (character: string): null | { columnIndex: number; rowIndex: number } => {
+  const rowIndex = fontLayout.findIndex((layoutRow) => layoutRow.includes(character))
   if (rowIndex < 0) {
-    console.error(`Character not found in font layout: ${char}`)
+    console.error(`Character not found in font layout: ${character}`)
     return null
   }
-  const columnIndex = fontLayout[rowIndex].indexOf(char)
+  const columnIndex = fontLayout[rowIndex].indexOf(character)
 
   return { columnIndex, rowIndex }
 }
@@ -44,13 +44,13 @@ const parseTextWithModifiers = (
   let hasOpenModifier = false
   let modifier = ''
 
-  const processChar = (char: string) => {
-    if (char === '{') {
+  const processCharacter = (character: string) => {
+    if (character === '{') {
       hasOpenModifier = true
       return
     }
 
-    if (char === '}') {
+    if (character === '}') {
       hasOpenModifier = false
       placements.push(createModifier(modifier))
       modifier = ''
@@ -58,11 +58,11 @@ const parseTextWithModifiers = (
     }
 
     if (hasOpenModifier) {
-      modifier += char
+      modifier += character
       return
     }
 
-    const position = getFontPosition(char)
+    const position = getFontPosition(character)
     if (!position) {
       return
     }
@@ -81,7 +81,7 @@ const parseTextWithModifiers = (
   }
 
   text.split('\n').forEach((line) => {
-    line.split('').forEach(processChar)
+    line.split('').forEach(processCharacter)
     y += lineHeight
     x = startX
   })
@@ -112,7 +112,7 @@ export const calculateSafePlacement = (
 }
 
 export const drawGradientBackground = (
-  ctx: CanvasRenderingContext2D,
+  context: CanvasRenderingContext2D,
   xPos: number,
   yPos: number,
   width: number,
@@ -123,39 +123,39 @@ export const drawGradientBackground = (
     return
   }
 
-  const gradient = ctx.createLinearGradient(0, 0, width, 0)
+  const gradient = context.createLinearGradient(0, 0, width, 0)
   const alpha = mode === 0 ? 1 : 0.5
   gradient.addColorStop(0, `rgb(66,66,58,${alpha})`)
   gradient.addColorStop(1, `rgb(99,99,99,${alpha})`)
 
-  ctx.fillStyle = gradient
-  ctx.fillRect(xPos, yPos, width, height)
+  context.fillStyle = gradient
+  context.fillRect(xPos, yPos, width, height)
 }
 
 export const drawBorders = (
-  ctx: CanvasRenderingContext2D,
+  context: CanvasRenderingContext2D,
   xPos: number,
   yPos: number,
   width: number,
   height: number,
 ): void => {
-  ctx.strokeStyle = '#848484'
-  ctx.lineWidth = 1
-  ctx.beginPath()
-  ctx.moveTo(xPos, yPos)
-  ctx.lineTo(xPos + width, yPos)
-  ctx.moveTo(xPos, yPos)
-  ctx.lineTo(xPos, yPos + height)
-  ctx.stroke()
+  context.strokeStyle = '#848484'
+  context.lineWidth = 1
+  context.beginPath()
+  context.moveTo(xPos, yPos)
+  context.lineTo(xPos + width, yPos)
+  context.moveTo(xPos, yPos)
+  context.lineTo(xPos, yPos + height)
+  context.stroke()
 
-  ctx.strokeStyle = '#3a3a3a'
-  ctx.lineWidth = 1
-  ctx.beginPath()
-  ctx.moveTo(xPos + width, yPos)
-  ctx.lineTo(xPos + width, yPos + height)
-  ctx.moveTo(xPos, yPos + height)
-  ctx.lineTo(xPos + width, yPos + height)
-  ctx.stroke()
+  context.strokeStyle = '#3a3a3a'
+  context.lineWidth = 1
+  context.beginPath()
+  context.moveTo(xPos + width, yPos)
+  context.lineTo(xPos + width, yPos + height)
+  context.moveTo(xPos, yPos + height)
+  context.lineTo(xPos + width, yPos + height)
+  context.stroke()
 }
 
 export const calculateScaledDimensions = (
@@ -184,14 +184,14 @@ export const isBlinkOff = (progress: number, blinkDelay: number): boolean => {
 }
 
 const adjustBrightness = (
-  ctx: CanvasRenderingContext2D,
+  context: CanvasRenderingContext2D,
   x: number,
   y: number,
   width: number,
   height: number,
   brightness: number,
 ) => {
-  const imageData = ctx.getImageData(x, y, width, height)
+  const imageData = context.getImageData(x, y, width, height)
   const data = imageData.data
 
   for (let i = 0; i < data.length; i += 4) {
@@ -200,11 +200,11 @@ const adjustBrightness = (
     data[i + 2] = Math.min(255, data[i + 2] * brightness)
   }
 
-  ctx.putImageData(imageData, x, y)
+  context.putImageData(imageData, x, y)
 }
 
 export const drawCharacter = (
-  ctx: CanvasRenderingContext2D,
+  context: CanvasRenderingContext2D,
   fontImage: HTMLImageElement,
   placement: Placement,
   xPos: number,
@@ -213,10 +213,10 @@ export const drawCharacter = (
   alpha: number = 1,
 ): void => {
   const { columnIndex, rowIndex, x, y } = placement
-  ctx.imageSmoothingEnabled = false
-  ctx.globalAlpha = alpha
+  context.imageSmoothingEnabled = false
+  context.globalAlpha = alpha
 
-  ctx.drawImage(
+  context.drawImage(
     fontImage,
     columnIndex * SOURCE_TILE_WIDTH,
     rowIndex * SOURCE_TILE_HEIGHT,
@@ -228,9 +228,9 @@ export const drawCharacter = (
     OUTPUT_TILE_HEIGHT,
   )
 
-  adjustBrightness(ctx, xPos + x, yPos + y, OUTPUT_TILE_WIDTH, OUTPUT_TILE_HEIGHT, brightness)
+  adjustBrightness(context, xPos + x, yPos + y, OUTPUT_TILE_WIDTH, OUTPUT_TILE_HEIGHT, brightness)
 
-  ctx.filter = 'none'
+  context.filter = 'none'
 }
 
 export const processTextLayout = (

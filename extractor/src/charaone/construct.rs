@@ -1,8 +1,3 @@
-// Construct layer: turns formatted records into the final scene data the Blender bridge
-// consumes — bone rest positions, skin-ordered mesh vertices with de-duplicated UVs, and the
-// per-frame local bone rotations (accumulated through the hierarchy with quaternions, then
-// read back as YXZ Euler angles). Port of the addon's `src/construct/**`.
-
 use crate::charaone::format::{
     formatted_face, formatted_parent, formatted_skin_bone, formatted_vertex, root_location,
     BonePose, FormattedFace,
@@ -309,13 +304,16 @@ fn construct_animation(
                 .enumerate()
                 .map(|(bone_index, _)| {
                     let local = if bone_index == 0 {
-                        combined[0].unwrap()
+                        combined[0]
                     } else {
-                        match bones[bone_index].parent.and_then(|parent| combined[parent]) {
-                            Some(parent_quat) => {
-                                parent_quat.conjugated().mul(combined[bone_index].unwrap())
-                            }
-                            None => combined[bone_index].unwrap(),
+                        let accumulated = combined[bone_index];
+                        match bones[bone_index]
+                            .parent
+                            .filter(|&parent_index| parent_index < bone_index)
+                            .and_then(|parent_index| combined.get(parent_index).copied())
+                        {
+                            Some(parent_quat) => parent_quat.conjugated().mul(accumulated),
+                            None => accumulated,
                         }
                     };
                     let rotation = quat_to_euler_yxz(local);
@@ -357,14 +355,17 @@ fn accumulate_rotations(
     bones: &[ConstructedBone],
     rest_transforms: Option<&[RestTransform]>,
     variant: Variant,
-) -> Vec<Option<Quat>> {
-    let mut combined: Vec<Option<Quat>> = vec![None; poses.len()];
+) -> Vec<Quat> {
+    let mut combined: Vec<Quat> = Vec::with_capacity(poses.len());
     for (bone_index, pose) in poses.iter().enumerate() {
         let bone_quat = match rest_transforms {
             Some(rest) => {
-                let r = rest[bone_index].rotation;
-                let rest_quat =
-                    euler_yxz_to_quat(r[0].to_radians(), r[1].to_radians(), r[2].to_radians());
+                let rest_rotation = rest[bone_index].rotation;
+                let rest_quat = euler_yxz_to_quat(
+                    rest_rotation[0].to_radians(),
+                    rest_rotation[1].to_radians(),
+                    rest_rotation[2].to_radians(),
+                );
                 let current_quat = euler_yxz_to_quat(
                     pose.x.to_radians(),
                     (-pose.y).to_radians(),
@@ -382,14 +383,19 @@ fn accumulate_rotations(
             }
         };
 
-        combined[bone_index] = Some(if bone_index == 0 {
+        let accumulated = if bone_index == 0 {
             bone_quat
         } else {
-            match bones[bone_index].parent.and_then(|parent| combined[parent]) {
+            match bones[bone_index]
+                .parent
+                .filter(|&parent_index| parent_index < bone_index)
+                .and_then(|parent_index| combined.get(parent_index).copied())
+            {
                 Some(parent_quat) => parent_quat.mul(bone_quat),
                 None => bone_quat,
             }
-        });
+        };
+        combined.push(accumulated);
     }
     combined
 }

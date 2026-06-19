@@ -15,15 +15,10 @@ use std::thread;
 
 const BRIDGE: &str = include_str!("../../../resources/charaone_gltf_bridge.py");
 
-// How many blender processes export in parallel. Each works an independent slice of the
-// constructed models into its own scratch folder, so they never touch the same files;
-// merge_shards folds the slices into one complete/ + gltf_index.json afterwards.
 const SHARDS: usize = 4;
 
 pub struct ParseFieldModels;
 
-// One model awaiting glTF export. parse/format/construct already ran in Rust; the bridge only
-// needs to read the constructed json and write the glTF.
 #[derive(Clone)]
 struct ModelJob {
     map: String,
@@ -237,8 +232,6 @@ fn stream_child(
     })
 }
 
-// The bridge prints one `  + map/model` line per exported model; surface those (with a running
-// global tally) and tee everything to the shard log.
 fn pump_progress(
     reader: impl Read,
     index: usize,

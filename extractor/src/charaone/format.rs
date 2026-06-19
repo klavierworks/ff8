@@ -1,8 +1,3 @@
-// Format layer: turns raw parsed records into the cleaned values the construct layer needs
-// (signed/scaled coordinates, reordered face vertices, decoded bone rotations). Port of the
-// addon's `src/format/**`. The only variant-sensitive piece is the per-pose rotation decode:
-// field poses are 4-byte bit-packed, worldmap poses are three raw uint16s.
-
 use crate::charaone::parse::{Face, Pose, Vertex};
 
 const ROTATION_SCALE: f64 = 180.0 / 2048.0;
@@ -83,7 +78,6 @@ fn sanitise_coord(value: u16) -> f64 {
     signed as f64 / 256.0
 }
 
-// A face with vertices/texcoords reordered into the addon's MCH2Blend order.
 pub struct FormattedFace {
     pub is_triangle: bool,
     pub texture_index: u16,

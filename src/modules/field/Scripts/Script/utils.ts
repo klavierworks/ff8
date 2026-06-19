@@ -72,13 +72,14 @@ export const openMessage = (
   new Promise<number>((resolve) => {
     const { currentMessages } = useGlobalStore.getState()
 
-    document.addEventListener('messageClosed', ({ detail }) => {
+    const handleMessageClosed = ({ detail }: CustomEvent<{ id: string; selectedOption: number }>) => {
       if (detail.id !== id) {
         return
       }
-
+      document.removeEventListener('messageClosed', handleMessageClosed as EventListener)
       resolve(detail.selectedOption)
-    })
+    }
+    document.addEventListener('messageClosed', handleMessageClosed as EventListener)
     useGlobalStore.setState({
       currentMessages: [
         ...currentMessages,

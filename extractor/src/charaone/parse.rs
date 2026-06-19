@@ -1,9 +1,3 @@
-// Parse layer: reads the raw MCH-format model section (bones, vertices, faces, meshes,
-// skins, animations) plus the chara.one / mch / worldmap headers that locate it. This is a
-// port of the addon's `src/parse/**`; the field and worldmap formats share the model body
-// and differ only in how characters are located in the file and in the per-pose size (4-byte
-// bit-packed for field, 6-byte uint16 triples for worldmap).
-
 use crate::charaone::Variant;
 use crate::utils::reader::Reader;
 use crate::utils::tim::Tim;
@@ -82,7 +76,6 @@ pub struct ModelData {
     pub animations: Vec<Animation>,
 }
 
-// A single parsed character ready for the format/construct layers, regardless of source.
 pub struct ParsedModel {
     pub name: String,
     pub textures: Vec<Tim>,
@@ -397,10 +390,6 @@ fn parse_mch_header(data: &[u8]) -> Result<MchHeader> {
     })
 }
 
-// Parses every model in a field chara.one. Main field characters ("d###") live in separate
-// .mch files keyed by name in `mch_dir`; like the original driver, a d-model without its mch
-// is skipped. `previous_tim_offset` carries the last successful TIM offset forward as a
-// fallback for models whose own offsets resolve to nothing.
 pub fn parse_field(chara_one: &[u8], mch_dir: &Path) -> Vec<ParsedModel> {
     let mut previous_tim_offset: Option<usize> = None;
     let mut models = Vec::new();
@@ -479,8 +468,6 @@ fn parse_field_secondary(
 
 const MAX_PADDING_BETWEEN_SECTIONS: usize = 16;
 
-// Walks a worldmap chara.one (a flat concatenation of character sections after a 4-byte EOF
-// marker). Each section is a run of TIMs followed by an MCH-format model body + animations.
 pub fn parse_worldmap(data: &[u8], base_name: &str) -> Vec<ParsedModel> {
     let mut models = Vec::new();
     let mut cursor = 4; // skip the EOF marker (== file size)
@@ -568,7 +555,6 @@ fn read_u32(data: &[u8], offset: usize) -> Option<u32> {
     Some(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
 }
 
-// Re-exported for the construct layer's texture sizing.
 pub fn texture_dimensions(textures: &[Tim], index: usize) -> (u32, u32) {
     textures
         .get(index)

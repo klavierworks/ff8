@@ -5,9 +5,8 @@ use std::path::Path;
 
 const SKY_CLOUD_TIM_INDEX: usize = 10;
 
-// All four texture sets are parsed and exported as PNGs; `objects` feeds the model
-// atlas. `world`/`road`/`world2` are retained on the returned value for completeness
-// even though the wmx stage currently re-parses what it needs from the raw sections.
+// `objects` feeds the model atlas; `world`/`road`/`world2` are exported as PNGs but unread here
+// because the wmx stage re-parses what it needs from the raw sections.
 #[allow(dead_code)]
 pub struct TextureSets {
     pub world: Vec<Tim>,

@@ -28,20 +28,20 @@ const Sky = ({ zones }: SkyProps) => {
   const vehicleId = useWorldmapStore((state) => state.vehicleId)
 
   const [psxPos, setPsxPos] = useState<null | PsxPos>(null)
-  const posSegRef = useRef<null | { col: number; row: number }>(null)
+  const posSegRef = useRef<null | { column: number; row: number }>(null)
 
   useFrame(() => {
     const pos = useGlobalStore.getState().characterPosition
     if (!pos) {
       return
     }
-    const col = Math.floor(pos.x / SEGMENT_SIZE_THREE)
+    const column = Math.floor(pos.x / SEGMENT_SIZE_THREE)
     const row = Math.floor(pos.z / SEGMENT_SIZE_THREE)
     const current = posSegRef.current
-    if (current && col === current.col && row === current.row) {
+    if (current && column === current.column && row === current.row) {
       return
     }
-    posSegRef.current = { col, row }
+    posSegRef.current = { column, row }
     const x = Math.round(pos.x / WORLDMAP_SCALE)
     const y = Math.round(pos.z / WORLDMAP_SCALE)
     setPsxPos((prev) => (prev?.x === x && prev?.y === y ? prev : { x, y }))

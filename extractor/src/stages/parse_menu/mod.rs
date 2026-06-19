@@ -1,20 +1,16 @@
 mod groups;
 mod naming;
 mod text;
-mod tim;
 
 use crate::stage::{Context, Stage};
 use crate::utils::ff8_text::TextCodec;
-use anyhow::Result;
+use crate::utils::tim_clut as tim;
+use anyhow::{Context as _, Result};
 use serde::Serialize;
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
 
-// Each used group is identified by its dense ordinal position (doc_index, 0..117) — the
-// identity the ShumiTranslator / FF8ModdingWiki section maps use. The raw mngrphd slot is
-// kept too, since it's the archive's physical address. Files are foldered by what the data
-// is and named with the documented name where one exists (see naming.rs).
 #[derive(Serialize)]
 struct GroupRecord {
     doc_index: usize,
@@ -76,8 +72,38 @@ impl Stage for ParseMenu {
             serde_json::to_vec_pretty(&manifest)?,
         )?;
         println!("  menu groups: {images} image, {texts} text, {raws} data");
+
+        let main_dir = context.uncompressed_dir.join("main");
+        let area_count = export_string_table(
+            &codec,
+            &menu_dir.join("areames.dc1"),
+            &out_dir.join("area-names.json"),
+            text::decode_raw_string_table,
+        )?;
+        let namedic_count = export_string_table(
+            &codec,
+            &main_dir.join("namedic.bin"),
+            &out_dir.join("namedic.json"),
+            text::decode_string_table,
+        )?;
+        println!("  menu lists: {area_count} area names, {namedic_count} namedic entries");
         Ok(())
     }
+}
+
+// areames.dc1 (area names, with {x0e..} tokens into the namedic dictionary) and namedic.bin
+// (the name dictionary itself) are standalone string tables outside mngrp.bin.
+fn export_string_table(
+    codec: &TextCodec,
+    source: &Path,
+    target: &Path,
+    table: fn(&TextCodec, &[u8]) -> Option<Vec<Value>>,
+) -> Result<usize> {
+    let bytes = fs::read(source).with_context(|| format!("reading {}", source.display()))?;
+    let strings = table(codec, &bytes)
+        .with_context(|| format!("{} is not a string table", source.display()))?;
+    fs::write(target, serde_json::to_vec_pretty(&strings)?)?;
+    Ok(strings.len())
 }
 
 fn export_group(

@@ -1,11 +1,3 @@
-// A faithful port of the slice of Blender's `mathutils` the construct stage relies on:
-// the YXZ Euler <-> quaternion conversions, the Hamilton product, and conjugation. The
-// addon builds animation curves with `mathutils.Quaternion`/`Euler(..., 'YXZ')`; matching
-// those conventions (axes i=Y, j=X, k=Z with odd parity, and Blender's two-solution Euler
-// extraction) keeps the exported curves identical to the original pipeline. Worked in f64;
-// the angles round-trip through the bridge's `Euler` and only need to agree to within
-// floating-point noise.
-
 #[derive(Clone, Copy)]
 pub struct Quat {
     pub w: f64,
@@ -35,8 +27,6 @@ impl Quat {
     }
 }
 
-// Euler (radians, stored XYZ) -> quaternion for Blender rotation order 'YXZ'
-// (axis order i=1/Y, j=0/X, k=2/Z, odd parity), replicating eulO_to_quat.
 pub fn euler_yxz_to_quat(x: f64, y: f64, z: f64) -> Quat {
     let ti = y * 0.5;
     let tj = -x * 0.5; // odd parity negates the half-angle on the j (X) axis
@@ -59,8 +49,6 @@ pub fn euler_yxz_to_quat(x: f64, y: f64, z: f64) -> Quat {
     }
 }
 
-// Quaternion -> Euler (radians, stored XYZ) for order 'YXZ', replicating quat_to_mat3 +
-// mat3_to_eulO (which picks the lower-L1-norm of the two valid solutions).
 pub fn quat_to_euler_yxz(q: Quat) -> [f64; 3] {
     let mat = quat_to_mat3(q);
     let (first, second) = mat3_to_eul2_yxz(&mat);
@@ -73,7 +61,6 @@ pub fn quat_to_euler_yxz(q: Quat) -> [f64; 3] {
     }
 }
 
-// Column-major 3x3 (mat[col][row]), matching Blender's quat_to_mat3 for a unit quaternion.
 fn quat_to_mat3(q: Quat) -> [[f64; 3]; 3] {
     let scale = std::f64::consts::SQRT_2;
     let q0 = scale * q.w;

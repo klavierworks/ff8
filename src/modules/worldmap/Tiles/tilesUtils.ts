@@ -39,7 +39,7 @@ export const getWorldStateVariable = (memory: Record<number, number>) => memory[
 export const isDDistrictPrisonAboveGround = (memory: Record<number, number>): boolean =>
   (memory[SAVEMAP_PRISON_FLAG_BYTE] & SAVEMAP_PRISON_ABOVE_GROUND_MASK) !== 0
 
-type BakedPosition = { col: number; row: number }
+type BakedPosition = { column: number; row: number }
 
 type TileOffset = [number, number, number]
 
@@ -47,27 +47,27 @@ type VisibleTile = (
   | { kind: 'segment'; offset: TileOffset; segmentIndex: number }
   | { kind: 'variant'; offset: TileOffset; variantIndex: number }
 ) & {
-  targetCol: number
+  targetColumn: number
   targetRow: number
 }
 
 export const getSegmentBakedPosition = (segmentIndex: number): BakedPosition => ({
-  col: segmentIndex % WORLD_GRID_COLS,
+  column: segmentIndex % WORLD_GRID_COLS,
   row: Math.floor(segmentIndex / WORLD_GRID_COLS),
 })
 
 export const getVariantBakedPosition = (variantIndex: number): BakedPosition => ({
-  col: variantIndex % WORLD_GRID_COLS,
+  column: variantIndex % WORLD_GRID_COLS,
   row: VARIANT_STAGING_ROW + Math.floor(variantIndex / WORLD_GRID_COLS),
 })
 
-const getTileOffset = (targetCol: number, targetRow: number, baked: BakedPosition): TileOffset => [
-  (targetCol - baked.col) * SEGMENT_WORLD_SIZE,
+const getTileOffset = (targetColumn: number, targetRow: number, baked: BakedPosition): TileOffset => [
+  (targetColumn - baked.column) * SEGMENT_WORLD_SIZE,
   0,
   (targetRow - baked.row) * SEGMENT_WORLD_SIZE,
 ]
 
-export const positionToSegmentCol = (worldX: number) => Math.floor(worldX / SEGMENT_SIZE_THREE)
+export const positionToSegmentColumn = (worldX: number) => Math.floor(worldX / SEGMENT_SIZE_THREE)
 export const positionToSegmentRow = (worldZ: number) => Math.floor(worldZ / SEGMENT_SIZE_THREE)
 
 export const buildVariantOverrides = (
@@ -82,37 +82,37 @@ export const buildVariantOverrides = (
 }
 
 export const computeVisibleTiles = (
-  playerCol: number,
+  playerColumn: number,
   playerRow: number,
   radius: number,
   variantOverrides: ReadonlyMap<number, number>,
 ): VisibleTile[] => {
   const tiles: VisibleTile[] = []
   for (let deltaRow = -radius; deltaRow <= radius; deltaRow++) {
-    for (let deltaCol = -radius; deltaCol <= radius; deltaCol++) {
-      const targetCol = playerCol + deltaCol
+    for (let deltaColumn = -radius; deltaColumn <= radius; deltaColumn++) {
+      const targetColumn = playerColumn + deltaColumn
       const targetRow = playerRow + deltaRow
 
-      const wrappedCol = positiveModulo(targetCol, WORLD_GRID_COLS)
+      const wrappedColumn = positiveModulo(targetColumn, WORLD_GRID_COLS)
       const wrappedRow = positiveModulo(targetRow, WORLD_GRID_ROWS)
-      const segmentIndex = wrappedRow * WORLD_GRID_COLS + wrappedCol
+      const segmentIndex = wrappedRow * WORLD_GRID_COLS + wrappedColumn
 
       const variantIndex = variantOverrides.get(segmentIndex)
       const baked =
         variantIndex !== undefined ? getVariantBakedPosition(variantIndex) : getSegmentBakedPosition(segmentIndex)
-      const offset = getTileOffset(targetCol, targetRow, baked)
+      const offset = getTileOffset(targetColumn, targetRow, baked)
 
       tiles.push(
         variantIndex !== undefined
-          ? { kind: 'variant', offset, targetCol, targetRow, variantIndex }
-          : { kind: 'segment', offset, segmentIndex, targetCol, targetRow },
+          ? { kind: 'variant', offset, targetColumn, targetRow, variantIndex }
+          : { kind: 'segment', offset, segmentIndex, targetColumn, targetRow },
       )
     }
   }
   return tiles
 }
 
-export const tileKey = (tile: VisibleTile) => `${tile.targetCol}/${tile.targetRow}`
+export const tileKey = (tile: VisibleTile) => `${tile.targetColumn}/${tile.targetRow}`
 
 const SEAM_EXPANSION_PSX = 1
 const SEAM_BOUNDARY_TOLERANCE = 0.5

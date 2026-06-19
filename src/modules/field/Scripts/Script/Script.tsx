@@ -97,6 +97,9 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
   const hasTriggeredConstructorRef = useRef<boolean>(false)
   const hasTriggeredDefaultRef = useRef<boolean>(false)
   useFrame(() => {
+    if (useGlobalStore.getState().isCardGameActive) {
+      return
+    }
     if (!isActive && !hasTriggeredConstructorRef.current && entityRef.current) {
       hasTriggeredConstructorRef.current = true
       scriptController.triggerMethod('constructor').then(() => {
@@ -116,9 +119,9 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
   })
 
   useFrame((_, delta) => {
-    const isTransitioningMap = !!useGlobalStore.getState().pendingFieldId
+    const { isCardGameActive, pendingFieldId } = useGlobalStore.getState()
 
-    if (isTransitioningMap) {
+    if (isCardGameActive || !!pendingFieldId) {
       return
     }
 
@@ -171,6 +174,9 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
 
   const hasPausedMovement = useRef(false)
   useFrame(({ scene }, delta) => {
+    if (useGlobalStore.getState().isCardGameActive) {
+      return
+    }
     if (!entityRef.current || script.type !== 'model') {
       return
     }

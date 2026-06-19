@@ -1,9 +1,3 @@
-// Shared chara.one model pipeline: parse -> format -> construct, in Rust. Both the field and
-// worldmap model stages build on this; the only differences between the two source formats are
-// captured by `Variant`. The output is a `ConstructedModel` (serialised to JSON) plus one raw
-// texture buffer per material — the contract consumed by the vendored Blender GLTF bridge,
-// which does the scene assembly + rest-pose bake + glTF export (Blender as exporter only).
-
 mod construct;
 mod format;
 mod math;
@@ -99,8 +93,6 @@ pub struct BuiltModel {
     pub textures: Vec<Tim>,
 }
 
-// Every model in a field chara.one. Main field characters ("d###") need their .mch sidecar in
-// `mch_dir`; a d-model without one is skipped (matching the original tool).
 pub fn build_field_models(chara_one: &[u8], mch_dir: &Path) -> Vec<BuiltModel> {
     parse::parse_field(chara_one, mch_dir)
         .into_iter()
@@ -108,8 +100,6 @@ pub fn build_field_models(chara_one: &[u8], mch_dir: &Path) -> Vec<BuiltModel> {
         .collect()
 }
 
-// Every character in a worldmap chara.one (a single self-contained file). Names are
-// `<base>_000`, `<base>_001`, ...
 pub fn build_worldmap_models(data: &[u8], base_name: &str) -> Vec<BuiltModel> {
     parse::parse_worldmap(data, base_name)
         .into_iter()

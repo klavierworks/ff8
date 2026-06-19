@@ -82,8 +82,8 @@ export const wasKeyPressed = (keyFlag: keyof typeof KEY_FLAGS) => {
   return wasPressed
 }
 const keydownListener = (event: KeyboardEvent) => {
-  const { currentMessages } = useGlobalStore.getState()
-  if (currentMessages.length > 0) {
+  const { currentMessages, isCardGameActive } = useGlobalStore.getState()
+  if (currentMessages.length > 0 || isCardGameActive) {
     return
   }
   DOWN.push(event.code)

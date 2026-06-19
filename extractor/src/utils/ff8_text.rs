@@ -37,6 +37,17 @@ impl TextCodec {
     }
 
     pub fn decode_string(&self, bytes: &[u8], start: usize) -> (String, usize) {
+        self.decode(bytes, start, false)
+    }
+
+    // areames.dc1 references the namedic dictionary by index via 0x0e tokens; emitting them raw
+    // ({x0eNN}) keeps every location reference uniform so the consumer can resolve them all
+    // against namedic.json rather than the 8-entry hand-authored sysfnt_data.json subset.
+    pub fn decode_string_raw_locations(&self, bytes: &[u8], start: usize) -> (String, usize) {
+        self.decode(bytes, start, true)
+    }
+
+    fn decode(&self, bytes: &[u8], start: usize, raw_locations: bool) -> (String, usize) {
         let mut out = String::new();
         let mut index = start;
         while index < bytes.len() {
@@ -51,6 +62,7 @@ impl TextCodec {
                 0x09 => out.push_str(&wait_token(payload(bytes, &mut index))),
                 0x0b => out.push_str(&cursor_token(payload(bytes, &mut index))),
                 0x0c => out.push_str(&self.gf_token(payload(bytes, &mut index))),
+                0x0e if raw_locations => out.push_str(&raw_pair(byte, payload(bytes, &mut index))),
                 0x0e => out.push_str(&self.location_token(payload(bytes, &mut index))),
                 0x1c => out.push_str(&jp_token(payload(bytes, &mut index))),
                 0x07 | 0x08 | 0x0a | 0x0d | 0x0f..=0x1b | 0x1d..=0x1f => {

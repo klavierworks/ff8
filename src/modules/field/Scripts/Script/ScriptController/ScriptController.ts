@@ -24,7 +24,7 @@ type QueueItem = {
 
 type WaitMode = 'end' | 'start'
 
-// Engine per-entity opcode budget per tick (sub_529FF0's `v19 = 16`).
+// Engine per-entity opcode budget per tick (16 in the original).
 const MAX_OPCODES_PER_TICK = 16
 
 const createScriptController = ({
@@ -194,7 +194,7 @@ const createScriptController = ({
 
   // Drains opcodes for the active queue item until it blocks (an async opcode
   // such as MOVE/WAIT awaits), is preempted, or a run of synchronous opcodes
-  // hits the per-tick budget. Mirrors the engine's per-entity loop (sub_529FF0):
+  // hits the per-tick budget. Mirrors the engine's per-entity loop:
   // up to 16 opcodes per tick, only yielding on an in-progress opcode. So the
   // tick a MOVE finishes, the following MSPEED + next MOVE run in the same tick
   // and multi-segment movement stays continuous instead of stuttering between

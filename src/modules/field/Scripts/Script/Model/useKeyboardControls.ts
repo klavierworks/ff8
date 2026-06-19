@@ -1,6 +1,8 @@
 import { useThree } from '@react-three/fiber'
 import { Dispatch, SetStateAction, useEffect, useState } from 'react'
 
+import useGlobalStore from '../../../../../store'
+
 const KEY_MAP: Record<string, keyof MovementFlags> = {
   ArrowDown: 'backward',
   ArrowLeft: 'left',
@@ -13,12 +15,14 @@ const KEY_MAP: Record<string, keyof MovementFlags> = {
 const onMovementKeyPress =
   (invalidate: (frames?: number) => void, setMovementFlags: Dispatch<SetStateAction<MovementFlags>>, value: boolean) =>
   (event: KeyboardEvent) => {
+    if (useGlobalStore.getState().isCardGameActive) {
+      return
+    }
     invalidate()
     const movementKey = KEY_MAP[event.code]
 
     setMovementFlags((movementFlags: MovementFlags) => {
       const currentFlags: MovementFlags = { ...movementFlags }
-      console.log(movementKey, value, event.code)
       if (Object.keys(movementFlags).includes(movementKey)) {
         currentFlags[movementKey] = value
       }

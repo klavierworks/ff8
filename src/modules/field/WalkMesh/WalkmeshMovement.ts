@@ -2,7 +2,7 @@ import { BufferGeometry, Mesh, Object3D, Plane, Triangle, Vector3 } from 'three'
 
 import useGlobalStore from '../../../store'
 
-// ─── Walkmesh wall-slide steering (ports sub_479C60 / sub_47A3E0) ───
+// ─── Walkmesh wall-slide steering ───
 const MAX_SLIDE_ITERATIONS = 16
 const MAX_TRAVERSE_CROSSINGS = 8
 const FLANK_PROBE_ANGLE = Math.PI / 4 // 45° = 32/256 of a revolution
@@ -13,7 +13,7 @@ const _flank = new Vector3()
 const _probe = new Vector3()
 const _up = new Vector3(0, 0, 1)
 
-interface PathNode {
+type PathNode = {
   entryPoint?: Vector3
   f: number
   g: number
@@ -22,7 +22,7 @@ interface PathNode {
   triangleId: number
 }
 
-interface TriangleNode {
+type TriangleNode = {
   id: number
   neighbors: number[]
   triangle: Triangle
@@ -152,7 +152,7 @@ class WalkmeshMovementController {
     const fromX = currentPosition.x
     const fromY = currentPosition.y
 
-    // Ports sub_479C60's convergent slide: if the path dead-ahead is clear, go
+    // The original's convergent slide: if the path dead-ahead is clear, go
     // straight; otherwise rotate the heading by ±11.25° toward whichever ±45°
     // flank is open and re-probe, converging on the wall tangent. Steering only
     // engages once the way ahead is blocked, so a clear run (e.g. the train on
@@ -795,7 +795,7 @@ class WalkmeshMovementController {
     return this.optimizePath(path, trianglePath)
   }
 
-  // Ports sub_47A3E0: walk from the current triangle toward an XY target, hopping
+  // Walk from the current triangle toward an XY target, hopping
   // across each edge the target lies beyond into that edge's neighbour. A crossed
   // edge with no walkable neighbour is a wall (blocked). Stays edge-local, so it
   // never teleports onto a different surface that merely overlaps in XY (bridges).

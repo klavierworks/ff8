@@ -21,7 +21,7 @@
   filter: blur(1.5px);
 }
 
-/* sub_5419F0 (0x5419F0) sets polygon code 0x2E (POLY_FT4 semi-transparent)
+/* The original sets polygon code 0x2E (POLY_FT4 semi-transparent)
    for mode 2 and 0x2C (opaque) for mode 3. ABR=1 on PSX is 50%+50%
    blending, which `opacity: 0.5` approximates against the 3D backdrop. */
 .small {

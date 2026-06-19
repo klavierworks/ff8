@@ -39,6 +39,14 @@ impl Stage for EmitTypes {
         count += emit_named(
             converted,
             &types_dir,
+            "menu",
+            "area-names.json",
+            "AreaNames",
+        )?;
+        count += emit_named(converted, &types_dir, "menu", "namedic.json", "Namedic")?;
+        count += emit_named(
+            converted,
+            &types_dir,
             "worldmap",
             "sections.json",
             "WorldmapSections",
@@ -50,6 +58,7 @@ impl Stage for EmitTypes {
             "wm2field.json",
             "Wm2Field",
         )?;
+        count += emit_named(converted, &types_dir, "exe", "cards.json", "Cards")?;
 
         println!("  emitted {count} type files -> {}", types_dir.display());
         Ok(())

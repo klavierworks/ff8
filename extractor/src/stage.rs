@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 pub struct Context {
+    pub source_dir: PathBuf,
     pub compressed_dir: PathBuf,
     pub uncompressed_dir: PathBuf,
     pub converted_dir: PathBuf,

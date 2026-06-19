@@ -5,6 +5,7 @@ import { Scene } from 'three'
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../constants/constants'
 import { offlineController } from '../OfflineController'
 import useGlobalStore from '../store'
+import CardGame from './CardGame/CardGame'
 import MessageBox from './MessageBox/MessageBox'
 import OfflineProgress from './OfflineProgress/OfflineProgress'
 import { isSavePointMessage } from './textUtils'
@@ -15,6 +16,7 @@ type UiProps = {
 
 const Ui = ({ worldScene }: UiProps) => {
   const currentMessages = useGlobalStore((state) => state.currentMessages)
+  const isCardGameActive = useGlobalStore((state) => state.isCardGameActive)
 
   const messagesByChannel = currentMessages.reduce(
     (acc, message) => {
@@ -42,7 +44,7 @@ const Ui = ({ worldScene }: UiProps) => {
     }
   }, [])
 
-  if (messagesArray.length === 0) {
+  if (messagesArray.length === 0 && !isCardGameActive) {
     return null
   }
 
@@ -56,6 +58,7 @@ const Ui = ({ worldScene }: UiProps) => {
         right={SCREEN_WIDTH / 2}
         top={SCREEN_HEIGHT / 2}
       />
+      {isCardGameActive && <CardGame />}
       {worldScene &&
         messagesArray.map((messages) => (
           <MessageBox

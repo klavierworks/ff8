@@ -1,13 +1,3 @@
-// mngrp.bin carries no per-group filenames; its only stable identity is the dense ordinal
-// position of each used group (0..117), which is what the ShumiTranslator / FF8ModdingWiki
-// section maps key on. We assign documented identities by that ordinal — the layout is
-// verified at every anchor (tkmnmes1/2/3 and face1/face2 match offset and size to the byte,
-// and the magazine/card/tutorial textures were confirmed by eye against the wiki table).
-//
-// folder = the content group; stem = the source's own asset name (the .tim base name where
-// one exists, else a content label); note = the wiki's human description. Sections the wiki
-// leaves unnamed get no folder/stem and are placed by decoded content.
-
 pub struct Naming {
     pub folder: Option<&'static str>,
     pub stem: Option<String>,

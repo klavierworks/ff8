@@ -11,8 +11,8 @@ const MIN_REAL_CHARS: usize = 8;
 // offsets to several sub-sections. We try both and keep whichever yields real text,
 // falling back to None (raw) when the bytes aren't actually text.
 pub fn try_decode(codec: &TextCodec, bytes: &[u8]) -> Option<Vec<Value>> {
-    let plain = read_section(codec, bytes, 0);
-    let container = read_container(codec, bytes);
+    let plain = read_section(codec, bytes, 0, TextCodec::decode_string);
+    let container = read_container(codec, bytes, TextCodec::decode_string);
     let best = [plain, container]
         .into_iter()
         .flatten()
@@ -34,7 +34,27 @@ fn quality(strings: &[Value]) -> (usize, usize) {
     (real.len(), real.iter().map(|string| string.len()).sum())
 }
 
-fn read_section(codec: &TextCodec, bytes: &[u8], base: usize) -> Option<Vec<Value>> {
+// areames.dc1 / namedic.bin are bare string sections (no tkmnmes container): u16 count, then
+// u16 offsets from the file start, then the FF8-text pool. The same primitive the menu groups
+// use, exposed for the standalone files.
+pub fn decode_string_table(codec: &TextCodec, bytes: &[u8]) -> Option<Vec<Value>> {
+    read_section(codec, bytes, 0, TextCodec::decode_string)
+}
+
+// Same primitive, but location refs (0x0e) stay raw {x0eNN} for the consumer to resolve against
+// namedic.json instead of the hand-authored sysfnt_data.json subset (used for areames.dc1).
+pub fn decode_raw_string_table(codec: &TextCodec, bytes: &[u8]) -> Option<Vec<Value>> {
+    read_section(codec, bytes, 0, TextCodec::decode_string_raw_locations)
+}
+
+type Decoder = fn(&TextCodec, &[u8], usize) -> (String, usize);
+
+fn read_section(
+    codec: &TextCodec,
+    bytes: &[u8],
+    base: usize,
+    decode: Decoder,
+) -> Option<Vec<Value>> {
     let count = read_u16(bytes, base)?;
     if count == 0 || count > MAX_OFFSETS {
         return None;
@@ -58,12 +78,12 @@ fn read_section(codec: &TextCodec, bytes: &[u8], base: usize) -> Option<Vec<Valu
         }
         previous = offset;
         has_string = true;
-        strings.push(Value::String(codec.decode_string(bytes, base + offset).0));
+        strings.push(Value::String(decode(codec, bytes, base + offset).0));
     }
     has_string.then_some(strings)
 }
 
-fn read_container(codec: &TextCodec, bytes: &[u8]) -> Option<Vec<Value>> {
+fn read_container(codec: &TextCodec, bytes: &[u8], decode: Decoder) -> Option<Vec<Value>> {
     let count = read_u16(bytes, 0)?;
     if count == 0 || count > MAX_OFFSETS || 2 + count * 2 > bytes.len() {
         return None;
@@ -74,7 +94,7 @@ fn read_container(codec: &TextCodec, bytes: &[u8]) -> Option<Vec<Value>> {
         if padding == 0 {
             continue;
         }
-        strings.extend(read_section(codec, bytes, padding)?);
+        strings.extend(read_section(codec, bytes, padding, decode)?);
     }
     (!strings.is_empty()).then_some(strings)
 }

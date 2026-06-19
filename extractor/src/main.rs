@@ -10,8 +10,10 @@ use std::path::PathBuf;
 fn main() -> Result<()> {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let data_root = manifest_dir.join("data");
+    let source_dir = data_root.join("SOURCE");
     let context = Context {
-        compressed_dir: data_root.join("SOURCE"),
+        compressed_dir: source_dir.join("Data"),
+        source_dir,
         uncompressed_dir: data_root.join("UNCOMPRESSED"),
         converted_dir: data_root.join("converted"),
     };
@@ -20,6 +22,7 @@ fn main() -> Result<()> {
         Box::new(stages::DecompressFs),
         Box::new(stages::ParseKernel),
         Box::new(stages::ParseMenu),
+        Box::new(stages::ParseExe),
         Box::new(stages::ParseWorldmap),
         Box::new(stages::ParseField),
         Box::new(stages::IndexGateways),

@@ -33,14 +33,14 @@ const scaleDownPsxDistance = (value: number) => value >> DISTANCE_SHIFT
 
 const lerpU8 = (a: number, b: number, t: number) => (a + t * (b - a)) / 255
 
-const lerpColor = (a: SkyZoneColor, b: SkyZoneColor, t: number, output: Color) => {
-  output.setRGB(lerpU8(a[0], b[0], t), lerpU8(a[1], b[1], t), lerpU8(a[2], b[2], t))
-  return output
+const lerpColor = (a: SkyZoneColor, b: SkyZoneColor, t: number, _output: Color) => {
+  _output.setRGB(lerpU8(a[0], b[0], t), lerpU8(a[1], b[1], t), lerpU8(a[2], b[2], t))
+  return _output
 }
 
-const writeColor = (source: SkyZoneColor, output: Color) => {
-  output.setRGB(source[0] / 255, source[1] / 255, source[2] / 255)
-  return output
+const writeColor = (source: SkyZoneColor, _output: Color) => {
+  _output.setRGB(source[0] / 255, source[1] / 255, source[2] / 255)
+  return _output
 }
 
 const getStartZoneIndex = (vehicleFlag: number) => (getVehicleClass(vehicleFlag) !== FOOT_VEHICLE_CLASS ? 2 : 1)
@@ -79,7 +79,7 @@ export const matchZone = (
 export const resolveSkyColors = (
   zones: readonly SkyZone[],
   match: SkyZoneMatch,
-  output: ResolvedSkyColors,
+  _output: ResolvedSkyColors,
 ): null | ResolvedSkyColors => {
   const defaultZone = zones[0]
   if (!defaultZone) {
@@ -87,20 +87,20 @@ export const resolveSkyColors = (
   }
   const matched = zones[match.index] ?? defaultZone
   if (match.index === 0) {
-    writeColor(defaultZone.fog_color_1, output.zenith)
-    writeColor(defaultZone.fog_color_2, output.mid)
-    writeColor(defaultZone.fog_color_3, output.horizon)
-    writeColor(defaultZone.light_color_1, output.lightColor1)
-    writeColor(defaultZone.light_color_2, output.lightColor2)
-    return output
+    writeColor(defaultZone.fog_color_1, _output.zenith)
+    writeColor(defaultZone.fog_color_2, _output.mid)
+    writeColor(defaultZone.fog_color_3, _output.horizon)
+    writeColor(defaultZone.light_color_1, _output.lightColor1)
+    writeColor(defaultZone.light_color_2, _output.lightColor2)
+    return _output
   }
   const t = Math.min(Math.max(match.blend, 0), 1)
-  lerpColor(matched.fog_color_1, defaultZone.fog_color_1, t, output.zenith)
-  lerpColor(matched.fog_color_2, defaultZone.fog_color_2, t, output.mid)
-  lerpColor(matched.fog_color_3, defaultZone.fog_color_3, t, output.horizon)
-  lerpColor(matched.light_color_1, defaultZone.light_color_1, t, output.lightColor1)
-  lerpColor(matched.light_color_2, defaultZone.light_color_2, t, output.lightColor2)
-  return output
+  lerpColor(matched.fog_color_1, defaultZone.fog_color_1, t, _output.zenith)
+  lerpColor(matched.fog_color_2, defaultZone.fog_color_2, t, _output.mid)
+  lerpColor(matched.fog_color_3, defaultZone.fog_color_3, t, _output.horizon)
+  lerpColor(matched.light_color_1, defaultZone.light_color_1, t, _output.lightColor1)
+  lerpColor(matched.light_color_2, defaultZone.light_color_2, t, _output.lightColor2)
+  return _output
 }
 
 export const createResolvedSkyColors = (): ResolvedSkyColors => ({

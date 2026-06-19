@@ -1,6 +1,6 @@
 import { Scene, Vector3 } from 'three'
 
-import MusicController from '../../../../audio/MusicController'
+import { musicController } from '../../../../audio/MusicController'
 import { MUSIC_IDS } from '../../../../constants/audio'
 import { DRAW_POINTS } from '../../../../constants/drawPoints'
 import MAP_NAMES from '../../../../constants/maps'
@@ -8,6 +8,8 @@ import { SPEEDS } from '../../../../constants/speeds'
 import LerpValue from '../../../../LerpValue'
 import useGlobalStore from '../../../../store'
 import { framesToMs, MS_PER_FRAME } from '../../../../timing'
+import { cardGameController } from '../../../../UI/CardGame/CardGameController'
+import { addCardToCollection, getOwnedCardCount, removeCardFromCollection } from '../../../../UI/CardGame/collection'
 import { floatingPointToNumber, numberToFloatingPoint, vectorToFloatingPoint } from '../../../../utils'
 import useWorldmapStore from '../../../worldmap/worldmapStore'
 import { Opcode, OpcodeObj, Script } from '../types'
@@ -36,8 +38,6 @@ import { closeMessage, enableMessageToClose, openMessage, remoteExecute, remoteE
 
 const dummiedCommand = () => undefined
 const unusedCommand = () => undefined
-
-export const musicController = MusicController()
 
 type HandlerArgs = {
   animationController: ReturnType<typeof createAnimationController>
@@ -191,9 +191,8 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const x = STACK.pop() as number
     const id = STACK.pop() as number
     const channel = STACK.pop() as number
-    console.log('AMSEW displaying message', { channel, id, x, y })
+
     await displayMessage(id, x, y, channel)
-    console.log('AMSEW done displaying message', { channel, id, x, y })
   },
   ANGELODISABLE: ({ STACK }) => {
     STACK.pop() as number
@@ -461,8 +460,21 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       startFrame: firstFrame,
     })
   },
-  CARDGAME: ({ STACK }) => {
-    STACK.splice(-7)
+  // SCRIPT_CARDGAME pops 7 bytes (see ida.md "Triple Triad"); only the board palette (2nd pop) and
+  // opponent strength (3rd pop) are used — the rest are spawn odds and deck/opponent ids. Slot 0
+  // returns the player's card count (the script's "need 5 cards" gate) and slot 1 the win/loss/draw
+  // code. The controller owns config, scoring, and music.
+  CARDGAME: async ({ STACK, TEMP_STACK }) => {
+    STACK.pop() as number
+    const backgroundPalette = STACK.pop() as number
+    const opponentLevel = STACK.pop() as number
+    STACK.pop() as number
+    STACK.pop() as number
+    STACK.pop() as number
+    STACK.pop() as number
+    const { ownedCardCount, resultCode } = await cardGameController.start({ backgroundPalette, opponentLevel })
+    TEMP_STACK[0] = ownedCardCount
+    TEMP_STACK[1] = resultCode
   },
   CHANGEPARTY: ({ STACK }) => {
     STACK.pop() as number
@@ -809,7 +821,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   FACEDIRINIT: () => {},
   FACEDIRLIMIT: ({ headController, STACK }) => {
     const yawLimit = STACK.pop() as number
-    STACK.pop() // roll limit — unused (v29 = 0 in sub_472B30)
+    STACK.pop() // roll limit — unused (always 0 in the original)
     const pitchLimit = STACK.pop() as number
     headController.setLimits(pitchLimit, yawLimit)
   },
@@ -963,9 +975,10 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   GAMEOVER: () => {
     console.error('GAME OVER WHAT DID YOU DO')
   },
+  // SCRIPT_GETCARD grants the player a card (see ida.md "Triple Triad").
   GETCARD: ({ STACK, TEMP_STACK }) => {
-    STACK.pop() as number
-    // Card collection not implemented — report card not yet obtained.
+    const cardId = STACK.pop() as number
+    addCardToCollection(cardId)
     TEMP_STACK[0] = 0
   },
   GETDRESS: unusedCommand,
@@ -1006,9 +1019,8 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     STACK.splice(-3)
   },
   HOWMANYCARD: ({ STACK, TEMP_STACK }) => {
-    STACK.pop() as number
-    // Card collection not implemented — report zero copies of the card.
-    TEMP_STACK[0] = 0
+    const cardId = STACK.pop() as number
+    TEMP_STACK[0] = getOwnedCardCount(cardId)
   },
   IDLOCK: ({ currentOpcode }) => {
     const currentLockedTriangles = useGlobalStore.getState().lockedTriangles
@@ -2035,9 +2047,15 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       activeCameraId: STACK.pop() as number,
     })
   },
+  // SCRIPT_SETCARD adds (mode 0xF0) or removes one copy of a card (see ida.md "Triple Triad").
   SETCARD: ({ STACK }) => {
-    STACK.pop() as number
-    STACK.pop() as number
+    const cardId = STACK.pop() as number
+    const mode = STACK.pop() as number
+    if (mode === 0xf0) {
+      addCardToCollection(cardId)
+    } else {
+      removeCardFromCollection(cardId)
+    }
   },
   // Camera movement during movie overlays
   SETDCAMERA: ({ STACK }) => {
@@ -2409,9 +2427,9 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     console.log('Done waiting')
   },
   WHERECARD: ({ STACK, TEMP_STACK }) => {
-    STACK.pop() as number
-    // Card location lookup not implemented — return 0 placeholder.
-    TEMP_STACK[0] = 0
+    const cardId = STACK.pop() as number
+    // The engine tracks each card's location; we only track the player's own collection.
+    TEMP_STACK[0] = getOwnedCardCount(cardId) > 0 ? 1 : 0
   },
   WHOAMI: ({ STACK, TEMP_STACK }) => {
     STACK.pop() as number

@@ -15,7 +15,7 @@ import {
 } from './tileUtils'
 
 type TileBaseProps = {
-  targetCol: number
+  targetColumn: number
   targetRow: number
 }
 
@@ -27,12 +27,12 @@ type TileProps = TileBaseProps &
     | { offset?: TileOffset; segmentIndex: number; variantIndex?: never }
   )
 
-const Tile = ({ offset, segmentIndex, targetCol, targetRow, variantIndex }: TileProps) => {
+const Tile = ({ offset, segmentIndex, targetColumn, targetRow, variantIndex }: TileProps) => {
   const { scene } = useGLTF(getTileUrl(segmentIndex, variantIndex))
   const { camera, gl } = useThree()
-  const canonicalCol = positiveModulo(targetCol, WORLD_GRID_COLS)
+  const canonicalColumn = positiveModulo(targetColumn, WORLD_GRID_COLS)
   const canonicalRow = positiveModulo(targetRow, WORLD_GRID_ROWS)
-  const canonicalSegmentIndex = canonicalRow * WORLD_GRID_COLS + canonicalCol
+  const canonicalSegmentIndex = canonicalRow * WORLD_GRID_COLS + canonicalColumn
 
   const clonedScene = useMemo(() => {
     expandTileSeams(scene)
@@ -42,12 +42,12 @@ const Tile = ({ offset, segmentIndex, targetCol, targetRow, variantIndex }: Tile
       variantIndex !== undefined ? getVariantBakedPosition(variantIndex) : getSegmentBakedPosition(segmentIndex)
     const rootData: TileRootUserData = {
       canonicalSegmentIndex,
-      psxOffsetX: (canonicalCol - baked.col) * SEGMENT_WORLD_SIZE,
+      psxOffsetX: (canonicalColumn - baked.column) * SEGMENT_WORLD_SIZE,
       psxOffsetZ: (canonicalRow - baked.row) * SEGMENT_WORLD_SIZE,
     }
     cloned.userData[TILE_ROOT_USER_DATA_KEY] = rootData
     return cloned
-  }, [scene, segmentIndex, canonicalCol, canonicalRow, canonicalSegmentIndex, variantIndex])
+  }, [scene, segmentIndex, canonicalColumn, canonicalRow, canonicalSegmentIndex, variantIndex])
 
   const animatedTextures = useMemo(() => collectAnimatedTextures(clonedScene), [clonedScene])
 

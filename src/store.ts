@@ -9,7 +9,7 @@ import { FieldData } from './modules/field/Field'
 import createSFXController from './modules/field/Scripts/Script/SFXController/SFXController'
 import WalkmeshMovementController from './modules/field/WalkMesh/WalkmeshMovement'
 
-interface GlobalState {
+type GlobalState = {
   activeCameraId: number
   availableCharacters: number[]
 
@@ -57,6 +57,7 @@ interface GlobalState {
   hasMoved: boolean
   initialAngle: number | undefined
 
+  isCardGameActive: boolean
   isDebugMode: boolean
   isLoading: boolean
   isLoadingSavedGame: boolean
@@ -111,6 +112,8 @@ interface GlobalState {
   >
 
   module: 'battle' | 'field' | 'menu' | 'worldmap'
+
+  ownedCards: Record<number, number>
 
   party: number[]
 
@@ -179,6 +182,7 @@ const INITIAL_STATE: GlobalState = {
   hasMoved: false,
   initialAngle: undefined,
 
+  isCardGameActive: false,
   isDebugMode: false,
   isLoading: false,
   isLoadingSavedGame: false,
@@ -205,6 +209,29 @@ const INITIAL_STATE: GlobalState = {
   messageStyles: {},
 
   module: 'menu',
+  ownedCards: {
+    0: 1,
+    1: 1,
+    2: 1,
+    3: 1,
+    4: 1,
+    5: 1,
+    6: 1,
+    7: 1,
+    8: 1,
+    9: 1,
+    10: 1,
+    16: 1,
+    24: 1,
+    35: 1,
+    47: 1,
+    50: 1,
+    72: 1,
+    84: 1,
+    89: 1,
+    96: 1,
+    109: 1,
+  },
   party: [0],
   partyMembersFollowing: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   pendingCharacterPosition: undefined,

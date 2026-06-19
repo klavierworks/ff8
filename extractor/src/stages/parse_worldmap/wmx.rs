@@ -274,7 +274,6 @@ fn scale_5_to_8(value: u16) -> u8 {
     ((value & 0x1F) as u32 * 255 / 31) as u8
 }
 
-/// Decode a TIM's indexed image data into one index per pixel (row-major).
 /// 4bpp: low nibble first, then high; 8bpp: one byte per pixel.
 fn decode_indices(tim: &Tim) -> Result<Vec<u8>> {
     let w = tim.header.img_w as usize;
@@ -296,8 +295,7 @@ fn decode_indices(tim: &Tim) -> Result<Vec<u8>> {
 }
 
 /// FF8 transparency rule: a texel is transparent iff its 16-bit colour word is
-/// 0x0000. The PSX STP bit (bit 15) is NOT alpha here. Returns one RGBA per
-/// colour in palette `palette_index`.
+/// 0x0000. The PSX STP bit (bit 15) is NOT alpha here.
 fn palette_rgba_from_words(words: &[u16]) -> Vec<[u8; 4]> {
     words
         .iter()
@@ -342,7 +340,6 @@ fn tile_from_indices(indices: &[u8], palette: &[[u8; 4]], width: u32, height: u3
     out
 }
 
-/// Render a TIM at full image size using a single palette (word==0 alpha rule).
 fn render_tim_single_palette(tim: &Tim, palette_index: usize) -> Result<RgbaImage> {
     let w = tim.header.img_w as u32;
     let h = tim.header.img_h as u32;
@@ -873,9 +870,7 @@ fn normalize(v: [f64; 3]) -> [f32; 3] {
     ]
 }
 
-/// Quantised position key for the normal-averaging map and dedup cache. Uses
-/// the integer world coordinates, which are exact here (positions derive from
-/// integer block origins + i16 vertex components).
+// Positions derive from integer block origins + i16 vertex components, so the i64 cast is exact.
 type PosKey = (i64, i64, i64);
 
 fn pos_key(pos: [f32; 3]) -> PosKey {

@@ -32,10 +32,10 @@ type ModelProps = {
 }
 
 const Model = ({ index }: ModelProps) => {
-  const obj = useLoader(OBJLoader, loadAssetUrl(OBJ_LOADERS, `${MODELS_DIR}/model_${index}.obj`))
+  const loadedObject = useLoader(OBJLoader, loadAssetUrl(OBJ_LOADERS, `${MODELS_DIR}/model_${index}.obj`))
   const texture = useLoader(TextureLoader, loadAssetUrl(TEXTURE_LOADERS, `${MODELS_DIR}/model_${index}.png`))
   const cloned = useMemo(() => {
-    const group = obj.clone(true)
+    const group = loadedObject.clone(true)
     group.traverse((child) => {
       if (!(child instanceof Mesh)) {
         return
@@ -47,7 +47,7 @@ const Model = ({ index }: ModelProps) => {
       child.material = createBasicMaterial(child.material, texture)
     })
     return group
-  }, [obj, texture])
+  }, [loadedObject, texture])
   return <primitive object={cloned} />
 }
 
