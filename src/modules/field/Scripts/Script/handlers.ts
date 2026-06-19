@@ -1,8 +1,9 @@
+import drawPoints from '@data/exe/draw-points.json'
+import magic from '@data/kernel/magic.json'
 import { Scene, Vector3 } from 'three'
 
 import { musicController } from '../../../../audio/MusicController'
 import { MUSIC_IDS } from '../../../../constants/audio'
-import { DRAW_POINTS } from '../../../../constants/drawPoints'
 import MAP_NAMES from '../../../../constants/maps'
 import { SPEEDS } from '../../../../constants/speeds'
 import LerpValue from '../../../../LerpValue'
@@ -710,11 +711,14 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
 
   DRAWPOINT: async ({ sfxController, STACK }) => {
     const drawPointId = STACK.pop() as number
+    const drawPoint = drawPoints[drawPointId - 1]!
+    const magicName = magic[drawPoint.magicId]?.name ?? ''
+
     await sfxController.play(66, 0, 127, 128)
     preloadSound(67)
     await openMessage(
       'drawpoint',
-      [`Found a draw point!\n${DRAW_POINTS[drawPointId]} found.`],
+      [`Found a draw point!\n${magicName} found.`],
       {
         channel: 0,
         height: 40,

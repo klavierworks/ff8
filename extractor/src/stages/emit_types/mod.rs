@@ -59,6 +59,13 @@ impl Stage for EmitTypes {
             "Wm2Field",
         )?;
         count += emit_named(converted, &types_dir, "exe", "cards.json", "Cards")?;
+        count += emit_named(
+            converted,
+            &types_dir,
+            "exe",
+            "draw-points.json",
+            "DrawPoints",
+        )?;
 
         println!("  emitted {count} type files -> {}", types_dir.display());
         Ok(())

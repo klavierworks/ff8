@@ -1,9 +1,10 @@
 import type { FieldData as RawFieldData } from '@data/types/field/FieldData'
 
+import areaNames from '@data/menu/area-names.json'
+import namedic from '@data/menu/namedic.json'
 import { useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useState } from 'react'
 
-import { AREA_NAMES } from '../../constants/areaNames'
 import MAP_NAMES from '../../constants/maps'
 import useGlobalStore from '../../store'
 import { getInitialEntrance } from '../../utils'
@@ -47,7 +48,11 @@ type FieldProps = {
 const Field = ({ data }: FieldProps) => {
   const currentLocationPlaceName = useGlobalStore((state) => state.currentLocationPlaceName as number)
   useEffect(() => {
-    const name = AREA_NAMES[currentLocationPlaceName]
+    const resolveNamedic = (text: string) =>
+      text.replace(/\{x0e([0-9a-f]{2})\}/g, (_, hex: string) => namedic[parseInt(hex, 16) - 0x20] ?? '')
+
+    const name = resolveNamedic(areaNames[currentLocationPlaceName]);
+
     if (name) {
       document.title = `${name} - Final Fantasy VIII GL`
     } else {
@@ -123,12 +128,12 @@ const FieldLoader = (props: FieldLoaderProps) => {
       useGlobalStore.setState({
         ...(data
           ? {
-              availableMessages: data.text,
-              cameraFocusHeight: data.cameraFocusHeight,
-              characterPosition: pendingCharacterPosition ?? getInitialEntrance(data!),
-              fieldData: data,
-              fieldDirection: data.controlDirection,
-            }
+            availableMessages: data.text,
+            cameraFocusHeight: data.cameraFocusHeight,
+            characterPosition: pendingCharacterPosition ?? getInitialEntrance(data!),
+            fieldData: data,
+            fieldDirection: data.controlDirection,
+          }
           : {}),
 
         activeCameraId: 0,

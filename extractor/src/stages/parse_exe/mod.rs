@@ -1,4 +1,5 @@
 mod cards;
+mod draw_points;
 mod textures;
 
 use crate::stage::{Context, Stage};
@@ -52,6 +53,17 @@ impl Stage for ParseExe {
             serde_json::to_vec_pretty(&cards)?,
         )?;
         println!("  exe cards: {} -> {}", cards.len(), out_dir.display());
+
+        let draw_points = draw_points::export(&exe)?;
+        fs::write(
+            out_dir.join("draw-points.json"),
+            serde_json::to_vec_pretty(&draw_points)?,
+        )?;
+        println!(
+            "  exe draw points: {} -> {}",
+            draw_points.len(),
+            out_dir.display()
+        );
         Ok(())
     }
 }
