@@ -1,4 +1,5 @@
 /// <reference lib="webworker" />
+import { CACHE_NAME } from './CONSTANTS'
 import { handleFetch } from './fetch'
 import { disableOfflineMode, enableOfflineMode } from './main'
 import { recoverState } from './state'
@@ -22,7 +23,9 @@ const handleIncomingMessage = async ({ type }: { type: 'DISABLE_OFFLINE' | 'ENAB
   }
 }
 
-sw.addEventListener('message', (e) => handleIncomingMessage(e.data))
+sw.addEventListener('message', (event) => {
+  event.waitUntil(handleIncomingMessage(event.data))
+})
 
 sw.addEventListener('install', () => {
   console.log('Service Worker: Installing')
@@ -32,9 +35,12 @@ sw.addEventListener('install', () => {
 sw.addEventListener('activate', (event) => {
   console.log('Service Worker: Activating')
   event.waitUntil(
-    sw.clients.claim().then(() => {
+    (async () => {
+      const cacheNames = await caches.keys()
+      await Promise.all(cacheNames.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name)))
+      await sw.clients.claim()
       console.log('Service Worker: Claimed all clients')
-    }),
+    })(),
   )
 })
 

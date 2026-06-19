@@ -1,5 +1,5 @@
-import { SERVICE_WORKER_STATE } from '../OfflineController'
 import { getPreservedState, setPreservedState } from './db'
+import { SERVICE_WORKER_STATE } from './stateShape'
 
 const sw = self as unknown as ServiceWorkerGlobalScope
 

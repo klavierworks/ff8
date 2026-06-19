@@ -1,8 +1,14 @@
-/models/combined/base/*
+/assets/*
   Cache-Control: public, max-age=31536000, immutable
 
-/models/combined/anims/*
+/audio/*
   Cache-Control: public, max-age=31536000
 
-/output/*
-  Cache-Control: public, max-age=3600
+/HDFont/*
+  Cache-Control: public, max-age=31536000
+
+/_sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/custom-manifest.json
+  Cache-Control: public, max-age=0, must-revalidate

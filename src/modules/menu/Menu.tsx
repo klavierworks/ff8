@@ -77,7 +77,7 @@ const optionsSelect = async () => {
   )
   const { isEnablingOffline, isOfflineEnabled } = offlineController.getState()
 
-  let offlineOptionMessage = `{Green}Enable Offline (2GB){White}`
+  let offlineOptionMessage = `{Green}Enable Offline (290MB){White}`
   if (isEnablingOffline) {
     offlineOptionMessage = `{YellowBlink}Enabling offline{White}`
   }

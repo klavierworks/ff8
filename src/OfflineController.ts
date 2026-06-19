@@ -1,12 +1,16 @@
 import { createStore } from 'zustand'
 
-export const SERVICE_WORKER_STATE = {
-  isEnablingOffline: false,
-  isOfflineEnabled: false,
-  progress: {
-    current: 0,
-    total: 0,
-  },
+import { SERVICE_WORKER_STATE } from './serviceWorker/stateShape'
+
+const requestPersistentStorage = async () => {
+  if (!navigator.storage?.persist) {
+    return
+  }
+  if (await navigator.storage.persisted()) {
+    return
+  }
+  const isGranted = await navigator.storage.persist()
+  console.log(`Persistent storage ${isGranted ? 'granted' : 'denied'}`)
 }
 
 const OfflineController = () => {
@@ -27,6 +31,7 @@ const OfflineController = () => {
       console.warn('Service worker not ready, cannot enable offline mode')
       return
     }
+    await requestPersistentStorage()
     controller.postMessage({ type: 'ENABLE_OFFLINE' })
   }
 

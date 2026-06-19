@@ -1,4 +1,4 @@
-import { SERVICE_WORKER_STATE } from '../OfflineController'
+import { SERVICE_WORKER_STATE } from './stateShape'
 
 const PRESERVED_STATE_STORE = 'offline-state'
 const KEY_NAME = 'preserved-state'

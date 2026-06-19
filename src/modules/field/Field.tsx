@@ -51,7 +51,7 @@ const Field = ({ data }: FieldProps) => {
     const resolveNamedic = (text: string) =>
       text.replace(/\{x0e([0-9a-f]{2})\}/g, (_, hex: string) => namedic[parseInt(hex, 16) - 0x20] ?? '')
 
-    const name = resolveNamedic(areaNames[currentLocationPlaceName]);
+    const name = resolveNamedic(areaNames[currentLocationPlaceName])
 
     if (name) {
       document.title = `${name} - Final Fantasy VIII GL`
@@ -128,12 +128,12 @@ const FieldLoader = (props: FieldLoaderProps) => {
       useGlobalStore.setState({
         ...(data
           ? {
-            availableMessages: data.text,
-            cameraFocusHeight: data.cameraFocusHeight,
-            characterPosition: pendingCharacterPosition ?? getInitialEntrance(data!),
-            fieldData: data,
-            fieldDirection: data.controlDirection,
-          }
+              availableMessages: data.text,
+              cameraFocusHeight: data.cameraFocusHeight,
+              characterPosition: pendingCharacterPosition ?? getInitialEntrance(data!),
+              fieldData: data,
+              fieldDirection: data.controlDirection,
+            }
           : {}),
 
         activeCameraId: 0,
