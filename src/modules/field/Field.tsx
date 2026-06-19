@@ -47,10 +47,9 @@ type FieldProps = {
 const Field = ({ data }: FieldProps) => {
   const currentLocationPlaceName = useGlobalStore((state) => state.currentLocationPlaceName as number)
   useEffect(() => {
-    const name = AREA_NAMES[currentLocationPlaceName as keyof typeof AREA_NAMES]
+    const name = AREA_NAMES[currentLocationPlaceName]
     if (name) {
-      const cleanedString = name.replace(/\{Term ([^}]+)\}/, '$1')
-      document.title = `${cleanedString} - Final Fantasy VIII GL`
+      document.title = `${name} - Final Fantasy VIII GL`
     } else {
       document.title = `${data.id} - Final Fantasy VIII GL`
     }
