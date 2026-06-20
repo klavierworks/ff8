@@ -1,5 +1,6 @@
 import drawPoints from '@data/exe/draw-points.json'
 import magic from '@data/kernel/magic.json'
+import { LAGUNA_CHARACTER_SLOTS, MAIN_CHARACTER_SLOTS } from 'src/constants/party'
 import { Scene, Vector3 } from 'three'
 
 import { musicController } from '../../../../audio/MusicController'
@@ -135,7 +136,17 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     MEMORY[72] += gil
   },
   ADDITEM: ({ STACK }) => {
-    STACK.splice(-2)
+    const itemId = STACK.pop() as number
+    const quantity = STACK.pop() as number
+    if (itemId === 0) {
+      return
+    }
+    useGlobalStore.setState((state) => ({
+      inventory: {
+        ...state.inventory,
+        [itemId]: Math.min((state.inventory[itemId] ?? 0) + quantity, 100),
+      },
+    }))
   },
 
   ADDMAGIC: ({ STACK }) => {
@@ -1012,9 +1023,8 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     return -2
   },
   HASITEM: ({ STACK, TEMP_STACK }) => {
-    STACK.pop() as number
-    // Inventory not implemented — always report the item as held.
-    TEMP_STACK[0] = 1
+    const itemId = STACK.pop() as number
+    TEMP_STACK[0] = useGlobalStore.getState().inventory[itemId] !== undefined ? 1 : 0
   },
   HIDE: ({ setState }) => {
     setState({ isPushable: false, isTalkable: false, isVisible: false })
@@ -1093,13 +1103,12 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
 
     movementController.jumpToPosition(target, duration)
   },
-  // Flips Squall/Laguna teams
   JUNCTION: ({ STACK }) => {
-    const isNowLaguna = (STACK.pop() as number) === 1
+    const isEnteringDream = ((STACK.pop() as number) & 1) === 1
     useGlobalStore.setState((state) => ({
-      ...state,
-      party: isNowLaguna ? [8, 9, 10] : [...state.sleepingParty],
-      sleepingParty: isNowLaguna ? [...state.party] : [],
+      isLagunaDream: isEnteringDream,
+      party: isEnteringDream ? [LAGUNA_CHARACTER_SLOTS[0]] : [...state.sleepingParty],
+      sleepingParty: isEnteringDream ? [...state.party] : [],
     }))
   },
   // Used once in the balamb basement. I think it might clear a ladder key?
@@ -2436,9 +2445,17 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     TEMP_STACK[0] = getOwnedCardCount(cardId) > 0 ? 1 : 0
   },
   WHOAMI: ({ STACK, TEMP_STACK }) => {
-    STACK.pop() as number
-    // Character data lookup not implemented — return 0 placeholder.
-    TEMP_STACK[0] = 0
+    const characterId = STACK.pop() as number
+    const { isLagunaDream } = useGlobalStore.getState()
+    const characterSlots = isLagunaDream ? LAGUNA_CHARACTER_SLOTS : MAIN_CHARACTER_SLOTS
+    const index = characterSlots.indexOf(characterId)
+
+    if (index === -1) {
+      TEMP_STACK[0] = 255 // real game returns 255 when not found
+      return
+    }
+
+    TEMP_STACK[0] = index
   },
   WINCLOSE: ({ STACK }) => {
     const channel = STACK.pop() as number // const channel

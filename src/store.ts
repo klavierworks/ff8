@@ -57,8 +57,11 @@ type GlobalState = {
   hasMoved: boolean
   initialAngle: number | undefined
 
+  inventory: Record<number, number>
+
   isCardGameActive: boolean
   isDebugMode: boolean
+  isLagunaDream: boolean
   isLoading: boolean
   isLoadingSavedGame: boolean
   isMapFadeEnabled: boolean
@@ -182,8 +185,11 @@ const INITIAL_STATE: GlobalState = {
   hasMoved: false,
   initialAngle: undefined,
 
+  inventory: {},
+
   isCardGameActive: false,
   isDebugMode: false,
+  isLagunaDream: false,
   isLoading: false,
   isLoadingSavedGame: false,
 
