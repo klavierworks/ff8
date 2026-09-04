@@ -255,6 +255,7 @@ const useControls = ({ characterHeight, isActive, movementController, rotationCo
     const isClimbingLadder = movementController.getState().isClimbingLadder
 
     if (isClimbingLadder) {
+      movementController.setUserControlledSpeed(undefined)
       return
     }
     const camera = scene.getObjectByName('sceneCamera') as PerspectiveCamera

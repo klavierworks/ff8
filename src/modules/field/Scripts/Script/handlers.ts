@@ -2043,7 +2043,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
 
     movementController.setPosition(position, currentOpcode.param)
   },
-  SET3: async ({ currentOpcode, movementController, STACK }) => {
+  SET3: ({ currentOpcode, movementController, STACK }) => {
     const lastThree = STACK.splice(-3)
     const position = new Vector3(...(lastThree.map(numberToFloatingPoint) as [number, number, number]))
     movementController.setPosition(position, currentOpcode.param)

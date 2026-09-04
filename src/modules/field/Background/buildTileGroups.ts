@@ -87,21 +87,16 @@ const buildGroupGeometry = (groupTiles: Tile[], atlasWidth: number, atlasHeight:
   return { geometry, tileDepths, tilePositions }
 }
 
-const getRenderIdByLayerID = (tiles: Tile[]) => {
-  const presentLayerIDs = Array.from(new Set(tiles.map((tile) => tile.layerID))).sort((a, b) => a - b)
-  if (presentLayerIDs[0] !== 0) {
-    presentLayerIDs.unshift(0)
-  }
-  const renderIdByLayerID: Record<number, number> = {}
-  presentLayerIDs.forEach((layerID, index) => {
-    renderIdByLayerID[layerID] = index
-  })
-  return renderIdByLayerID
-}
+// The tile record's layer byte is twice the parallax slot index the scroll opcodes address.
+const getSlotFromLayerID = (layerID: number) => layerID / 2
 
-export const buildTileGroups = (tiles: Tile[], atlasWidth: number, atlasHeight: number): Layer[] => {
+export const buildTileGroups = (
+  tiles: Tile[],
+  atlasWidth: number,
+  atlasHeight: number,
+  layerWrap: LayerWrap[],
+): Layer[] => {
   const extents = getLayerExtents(tiles)
-  const renderIdByLayerID = getRenderIdByLayerID(tiles)
 
   const grouped: Record<string, Tile[]> = {}
   tiles.forEach((tile) => {
@@ -115,9 +110,9 @@ export const buildTileGroups = (tiles: Tile[], atlasWidth: number, atlasHeight: 
   const layers = Object.entries(grouped).map(([id, groupTiles]) => {
     const sample = groupTiles[0]
     const extent = extents[sample.layerID]
-    const wrapPeriodX = extent.maxX - extent.minX
-    const wrapPeriodY = extent.maxY - extent.minY
-    const isScreenLocked = wrapPeriodX <= SCREEN_WIDTH && wrapPeriodY <= SCREEN_HEIGHT
+    const isScreenLocked = extent.maxX - extent.minX <= SCREEN_WIDTH && extent.maxY - extent.minY <= SCREEN_HEIGHT
+    const slot = getSlotFromLayerID(sample.layerID)
+    const wrap = layerWrap[slot]
     const { geometry, tileDepths, tilePositions } = buildGroupGeometry(groupTiles, atlasWidth, atlasHeight)
 
     return {
@@ -127,14 +122,13 @@ export const buildTileGroups = (tiles: Tile[], atlasWidth: number, atlasHeight: 
       isScreenLocked,
       layerID: sample.layerID,
       parameter: sample.parameter === 255 ? -1 : sample.parameter,
-      renderID: renderIdByLayerID[sample.layerID],
-      shouldWrapX: !isScreenLocked && wrapPeriodX >= SCREEN_WIDTH,
-      shouldWrapY: !isScreenLocked && wrapPeriodY >= SCREEN_HEIGHT,
+      renderID: slot,
+      shouldWrap: wrap?.isEnabled === true,
       state: sample.state,
       tileDepths,
       tilePositions,
-      wrapPeriodX,
-      wrapPeriodY,
+      wrapHeight: wrap?.height ?? 0,
+      wrapWidth: wrap?.width ?? 0,
     }
   })
 
@@ -146,8 +140,20 @@ export const buildTileGroups = (tiles: Tile[], atlasWidth: number, atlasHeight: 
   })
 }
 
-const wrapAroundCenter = (value: number, center: number, period: number) => {
-  return value - period * Math.round((value - center) / period)
+// sub_475480 @ 0x475966: a tile that falls outside the screen-sized clip window is shifted by
+// exactly one layer period — not reduced modulo it — and the engine then culls whatever is
+// still outside. Layers whose content overruns their period rely on the single shift.
+const CLIP_MARGIN_NEAR = 32
+const CLIP_MARGIN_FAR = 16
+
+const wrapIntoClipWindow = (value: number, center: number, span: number, period: number) => {
+  if (value < center - span / 2 - CLIP_MARGIN_NEAR) {
+    return value + period
+  }
+  if (value > center + span / 2 + CLIP_MARGIN_FAR) {
+    return value - period
+  }
+  return value
 }
 
 export const writeLayerPositions = (
@@ -158,13 +164,11 @@ export const writeLayerPositions = (
   offsetY: number,
   centerX: number,
   centerY: number,
-  shouldWrapX: boolean,
-  shouldWrapY: boolean,
 ) => {
   const positionAttribute = layer.geometry.getAttribute('position')
   const positions = positionAttribute.array as Float32Array
 
-  const { tileDepths, tilePositions, wrapPeriodX, wrapPeriodY } = layer
+  const { shouldWrap, tileDepths, tilePositions, wrapHeight, wrapWidth } = layer
   const unitsPerPixelPerDepth = (2 * fovHalfTan) / SCREEN_HEIGHT
 
   for (let i = 0; i < tileDepths.length; i += 1) {
@@ -173,11 +177,9 @@ export const writeLayerPositions = (
 
     let screenX = tilePositions[i * 2] + offsetX
     let screenY = tilePositions[i * 2 + 1] + offsetY
-    if (shouldWrapX) {
-      screenX = wrapAroundCenter(screenX, centerX, wrapPeriodX)
-    }
-    if (shouldWrapY) {
-      screenY = wrapAroundCenter(screenY, centerY, wrapPeriodY)
+    if (shouldWrap) {
+      screenX = wrapIntoClipWindow(screenX, centerX, SCREEN_WIDTH, wrapWidth)
+      screenY = wrapIntoClipWindow(screenY, centerY, SCREEN_HEIGHT, wrapHeight)
     }
 
     const left = screenX * unitsPerPixel

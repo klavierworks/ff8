@@ -7,9 +7,9 @@ type BackgroundProps = {
 }
 
 const Background = ({ data }: BackgroundProps) => {
-  const { backgroundDetails, tiles } = data
+  const { backgroundDetails, layerWrap, tiles } = data
 
-  const { layers, texture } = useLayeredTiles(tiles, backgroundDetails.sprite)
+  const { layers, texture } = useLayeredTiles(tiles, backgroundDetails.sprite, layerWrap)
 
   return layers.map((layer) => <Layer key={layer.id} layer={layer} texture={texture} />)
 }

@@ -201,6 +201,35 @@ def transform_mesh_vertices(mesh_obj, armature_obj, bones, mesh_data):
 
 # ─── Animation ───
 
+# Blender 4.4 replaced Action.fcurves with slotted actions — curves now live in a channelbag
+# hanging off a layer's strip, keyed by the slot the animated ID binds to — and 5.0 dropped the
+# legacy accessor outright. These three keep both APIs working.
+
+def get_action_slot(action):
+    if not hasattr(action, "slots"):
+        return None
+    if action.slots:
+        return action.slots[0]
+    return action.slots.new(id_type="OBJECT", name="Object")
+
+
+def get_action_fcurves(action):
+    if hasattr(action, "fcurves"):
+        return action.fcurves
+    layer = action.layers[0] if action.layers else action.layers.new("Layer")
+    strip = layer.strips[0] if layer.strips else layer.strips.new(type="KEYFRAME")
+    return strip.channelbag(get_action_slot(action), ensure=True).fcurves
+
+
+def assign_action(armature_obj, action):
+    if not armature_obj.animation_data:
+        armature_obj.animation_data_create()
+    armature_obj.animation_data.action = action
+    slot = get_action_slot(action)
+    if slot is not None:
+        armature_obj.animation_data.action_slot = slot
+
+
 def create_action(animation):
     if animation["name"] in bpy.data.actions:
         bpy.data.actions.remove(bpy.data.actions[animation["name"]])
@@ -214,13 +243,14 @@ def create_action(animation):
         for keyframe in animation["keyframes"]
         for transform in keyframe["joint_transforms"]
     }
+    fcurves = get_action_fcurves(action)
     for bone_name in bone_names:
         location = [
-            action.fcurves.new(data_path=f'pose.bones["{bone_name}"].location', index=i)
+            fcurves.new(data_path=f'pose.bones["{bone_name}"].location', index=i)
             for i in range(3)
         ]
         rotation = [
-            action.fcurves.new(data_path=f'pose.bones["{bone_name}"].rotation_euler', index=i)
+            fcurves.new(data_path=f'pose.bones["{bone_name}"].rotation_euler', index=i)
             for i in range(3)
         ]
         curves[bone_name] = {"location": location, "rotation": rotation}
@@ -260,23 +290,20 @@ def add_keyframe(curve, frame, value):
 
 
 def setup_keyframes(armature_obj, animation, action):
-    if not armature_obj.animation_data:
-        armature_obj.animation_data_create()
     action.use_fake_user = True
     action.use_cyclic = True
-    armature_obj.animation_data.action = action
+    assign_action(armature_obj, action)
     if animation["keyframes"]:
         action.frame_range = (0, animation["frame_count"])
     action.use_frame_range = True
     for bone in armature_obj.pose.bones:
         bone.rotation_mode = "YXZ"
-    for curve in action.fcurves:
+    for curve in get_action_fcurves(action):
         curve.keyframe_points.sort()
         for point in curve.keyframe_points:
             point.handle_left_type = "AUTO"
             point.handle_right_type = "AUTO"
         curve.update()
-    armature_obj.animation_data.action = action
 
 
 # ─── Rest-pose bake (depsgraph) ───
@@ -345,7 +372,7 @@ def export_model(model, images):
 
     target_armature = create_armature(bones, name + "_armature")
     original_armature.data.pose_position = "POSE"
-    original_armature.animation_data.action = bpy.data.actions[name + "_action_000"]
+    assign_action(original_armature, bpy.data.actions[name + "_action_000"])
 
     mesh_objects = []
     for index, mesh_data in enumerate(model["meshes"]):

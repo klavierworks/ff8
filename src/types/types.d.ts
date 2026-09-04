@@ -92,13 +92,18 @@ declare global {
     layerID: number
     parameter: number
     renderID: number
-    shouldWrapX: boolean
-    shouldWrapY: boolean
+    shouldWrap: boolean
     state: number
     tileDepths: Float32Array
     tilePositions: Float32Array
-    wrapPeriodX: number
-    wrapPeriodY: number
+    wrapHeight: number
+    wrapWidth: number
+  }
+
+  type LayerWrap = {
+    height: number
+    isEnabled: boolean
+    width: number
   }
 
   type Message = {

@@ -11,6 +11,7 @@ import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
 import createScriptController from '../ScriptController/ScriptController'
 import { ScriptStateStore } from '../state'
+import { applyModelDepth, createModelDepthUniform, getViewDepth } from './modelDepth'
 import useControls from './useControls'
 import useFollower from './useFollower'
 import useFootsteps from './useFootsteps'
@@ -68,18 +69,24 @@ const Model = ({
   const ModelComponent = components[modelName] ?? components['d000']
   const [meshGroup, setMeshGroup] = useState<Group>()
 
-  const convertMaterialsToBasic = useCallback((group: Group) => {
-    group.traverse((child) => {
-      if (child instanceof Mesh && child.material instanceof MeshStandardMaterial) {
-        const meshBasicMaterial = new MeshBasicMaterial()
-        meshBasicMaterial.color = child.material.color
-        meshBasicMaterial.userData.originalColor = child.material.color.clone()
-        meshBasicMaterial.map = child.material.map
-        meshBasicMaterial.side = DoubleSide
-        child.material = meshBasicMaterial
-      }
-    })
-  }, [])
+  const [modelViewDepth] = useState(createModelDepthUniform)
+
+  const convertMaterialsToBasic = useCallback(
+    (group: Group) => {
+      group.traverse((child) => {
+        if (child instanceof Mesh && child.material instanceof MeshStandardMaterial) {
+          const meshBasicMaterial = new MeshBasicMaterial()
+          meshBasicMaterial.color = child.material.color
+          meshBasicMaterial.userData.originalColor = child.material.color.clone()
+          meshBasicMaterial.map = child.material.map
+          meshBasicMaterial.side = DoubleSide
+          applyModelDepth(meshBasicMaterial, modelViewDepth)
+          child.material = meshBasicMaterial
+        }
+      })
+    },
+    [modelViewDepth],
+  )
 
   const globalMeshTint = useGlobalStore((state) => state.globalMeshTint)
   const meshTintColor = useScriptStateStore((state) => state.meshTintColor)
@@ -184,6 +191,14 @@ const Model = ({
 
     const floorZ = walkmeshController.getPlaneHeightOnTriangle(current.x, current.y, triangleId)
     animationGroupRef.current.position.z = floorZ !== null ? floorZ - current.z : 0
+  })
+
+  useFrame(({ camera }) => {
+    if (!animationGroupRef.current) {
+      return
+    }
+
+    modelViewDepth.value = getViewDepth(animationGroupRef.current, camera)
   })
 
   const talkRadiusRef = useRef<Mesh>(null)

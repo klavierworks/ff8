@@ -114,29 +114,31 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
     })
   }
 
-  const setPosition = async (position: Vector3, walkmeshTriangle?: number) => {
+  // Placement is instant, not a movement. Routing it through waypoints let a
+  // MOVE opcode later in the same script tick overwrite the waypoint before the
+  // next tick consumed it, leaving the entity parked on the -999 sentinel.
+  const setPosition = (position: Vector3, walkmeshTriangle?: number) => {
     let triangle: null | number = walkmeshTriangle ?? null
     if (triangle === null) {
       triangle = walkmeshController.getTriangleForPosition(position, undefined, true)
     }
 
     resolvePendingPositionSignal()
-    const signal = new PromiseSignal()
 
     setState({
+      hasBeenPlaced: true,
       position: {
         ...getState().position,
+        current: getState().position.current.copy(position),
         duration: 0,
         isAnimationEnabled: false,
         isFacingTarget: false,
-        isPaused: false,
-        signal,
+        isPaused: true,
+        signal: undefined,
         walkmeshTriangle: triangle,
-        waypoints: [position],
+        waypoints: undefined,
       },
     })
-
-    await signal.promise
   }
 
   const setOffset = (x: number, y: number, z: number) => {
@@ -373,13 +375,45 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       speedBeforeClimbingLadder: isClimbingLadder ? getState().movementSpeed : 0,
     })
 
+  // A move that leaves the walkmesh still has to keep the triangle current:
+  // Model.tsx snaps the mesh to that triangle's plane, so a triangle left over
+  // from the previous waypoint gets extrapolated far outside itself (the
+  // ectake2 car floating below the road on the ramp and the exit turn). Null is
+  // a valid result here — off the mesh there is no floor to snap to.
+  const updateWalkmeshTriangleForFreeMove = (position: Vector3) => {
+    const triangle = walkmeshController.getTriangleForPosition(position, undefined, true)
+    if (triangle === getState().position.walkmeshTriangle) {
+      return
+    }
+
+    setState({
+      position: {
+        ...getState().position,
+        walkmeshTriangle: triangle,
+      },
+    })
+  }
+
+  const applyPositionToEntity = (entity: Object3D) => {
+    if (getState().position.current.x !== -999) {
+      setState({
+        hasBeenPlaced: true,
+      })
+    }
+
+    const { x, y, z } = getPosition()
+    entity.position.set(x, y, z)
+  }
+
   const tick = (entity: Object3D, delta: number, scene: Scene) => {
     const { jump, offset, position } = getState()
 
     if (position.isPaused && offset.isPaused) {
+      applyPositionToEntity(entity)
       return
     }
     if (!position.waypoints && !offset.goal && !jump.directLine) {
+      applyPositionToEntity(entity)
       return
     }
 
@@ -438,6 +472,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       } else if (position.isAllowedToLeaveWalkmesh) {
         const direction = positionGoal.clone().sub(currentPosition).normalize()
         currentPosition.add(direction.multiplyScalar(maxDistance))
+        updateWalkmeshTriangleForFreeMove(currentPosition)
       } else {
         const direction = new Vector3().subVectors(positionGoal, currentPosition)
         direction.z = 0
@@ -529,13 +564,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         },
       })
     }
-    if (getState().position.current.x !== -999) {
-      setState({
-        hasBeenPlaced: true,
-      })
-    }
-
-    entity.position.set(getPosition().x, getPosition().y, getPosition().z)
+    applyPositionToEntity(entity)
   }
 
   const reset = () => {
@@ -575,8 +604,14 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
     })
   }
 
+  // The lead character never gets waypoints: useControls steps it with
+  // setPosition every frame, so its movement shows up only as a user speed.
   const isMoving = () => {
-    return getState().position.waypoints !== undefined && getState().position.isPaused === false
+    const { isPaused, userControlledSpeed, waypoints } = getState().position
+    if (userControlledSpeed !== undefined) {
+      return true
+    }
+    return waypoints !== undefined && isPaused === false
   }
 
   const getMovementSpeed = () => {

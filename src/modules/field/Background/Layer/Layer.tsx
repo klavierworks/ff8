@@ -49,10 +49,10 @@ const Layer = ({ layer, texture }: LayerProps) => {
       shadeBlue = tint.startBlue + (tint.endBlue - tint.startBlue) * shade
     }
 
-    let isLayerVisible = parameter === -1 || currentParameterState === state
-    if (backgroundLayerVisibility[parameter] === false) {
-      isLayerVisible = false
-    }
+    // sub_475480: a special-param layer's state register starts at -1 (byte 0xFF), which matches no
+    // tile state, so it stays hidden until BGDRAW/BGANIME enables it.
+    let isLayerVisible =
+      parameter === -1 || (backgroundLayerVisibility[parameter] === true && currentParameterState === state)
     if (shadeRed === 0 && shadeGreen === 0 && shadeBlue === 0) {
       isLayerVisible = false
     }
@@ -89,8 +89,6 @@ const Layer = ({ layer, texture }: LayerProps) => {
     const controlledScroll = layerScrollAdjustments[renderID]
 
     const isScriptScrolled = controlledScroll !== undefined || layerScrollOffsets[renderID] !== undefined
-    const shouldWrapX = layer.shouldWrapX && isScriptScrolled
-    const shouldWrapY = layer.shouldWrapY && isScriptScrolled
 
     let cameraRatio = SCROLL_RATIO_FULL
     if (layer.isScreenLocked && !isScriptScrolled) {
@@ -104,13 +102,10 @@ const Layer = ({ layer, texture }: LayerProps) => {
       offsetY += controlledScroll.yOffset + seedScroll.current.y * (1 - controlledScroll.yRatio / SCROLL_RATIO_FULL)
     }
 
-    if (layerScroll.current.positioning === 'camera') {
-      offsetX -= layerScroll.current.x
-      offsetY -= layerScroll.current.y
-    } else {
-      offsetX += layerScroll.current.x
-      offsetY += layerScroll.current.y
-    }
+    // sub_475480: the layer's own scroll is subtracted on both axes, whichever opcode set it —
+    // seed·(1 − ratio/256) + constOffset − ownScroll.
+    offsetX -= layerScroll.current.x
+    offsetY -= layerScroll.current.y
 
     const previous = lastWrite.current
     if (
@@ -124,7 +119,7 @@ const Layer = ({ layer, texture }: LayerProps) => {
       return
     }
 
-    writeLayerPositions(layer, cameraLength, fovHalfTan, offsetX, offsetY, centerX, centerY, shouldWrapX, shouldWrapY)
+    writeLayerPositions(layer, cameraLength, fovHalfTan, offsetX, offsetY, centerX, centerY)
     previous.length = cameraLength
     previous.fovHalfTan = fovHalfTan
     previous.offsetX = offsetX
