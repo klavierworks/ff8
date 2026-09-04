@@ -142,8 +142,8 @@ const Camera = ({ data }: CameraProps) => {
     let finalPanX: number
     let finalPanY: number
     if (positioning === 'camera') {
-      finalPanX = clippedPanX + scrollX
-      finalPanY = clippedPanY - scrollY
+      finalPanX = clamp(clippedPanX + scrollX, boundaries.left, boundaries.right)
+      finalPanY = clamp(clippedPanY - scrollY, boundaries.top, boundaries.bottom)
     } else {
       finalPanX = scrollX
       finalPanY = -scrollY

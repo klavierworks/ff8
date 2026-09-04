@@ -1,11 +1,11 @@
 import drawPoints from '@data/exe/draw-points.json'
 import magic from '@data/kernel/magic.json'
-import { LAGUNA_CHARACTER_SLOTS, MAIN_CHARACTER_SLOTS } from 'src/constants/party'
 import { Scene, Vector3 } from 'three'
 
 import { musicController } from '../../../../audio/MusicController'
 import { MUSIC_IDS } from '../../../../constants/audio'
 import MAP_NAMES from '../../../../constants/maps'
+import { LAGUNA_CHARACTER_SLOTS, MAIN_CHARACTER_SLOTS } from '../../../../constants/party'
 import { SPEEDS } from '../../../../constants/speeds'
 import LerpValue from '../../../../LerpValue'
 import useGlobalStore from '../../../../store'
@@ -622,10 +622,10 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   // a specific compass direction. The L/R suffix in the original probably meant "favour
   // turning left/right" but both branches collapse to the shortest path, so we
   // don't pass a direction hint.
-  CTURNL: async ({ rotationController, STACK }) => {
+  CTURNL: ({ rotationController, STACK }) => {
     STACK.pop() as number // animation byte — stack-balance only
     const angle = STACK.pop() as number
-    await rotationController.turnToFaceAngle(angle, 'fast')
+    rotationController.turnToFaceAngle(angle, 'fast')
   },
   CTURNR: async ({ rotationController, STACK }) => {
     STACK.pop() as number // animation byte — stack-balance only
