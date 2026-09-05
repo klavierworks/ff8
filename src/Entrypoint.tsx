@@ -5,6 +5,7 @@ import { Scene } from 'three'
 import { musicController } from './audio/MusicController'
 import MAP_NAMES from './constants/maps'
 import FieldLoader from './modules/field/Field'
+import ScriptClock from './modules/field/ScriptClock/ScriptClock'
 import { attachKeyDownListeners } from './modules/field/Scripts/Script/common'
 import Menu from './modules/menu/Menu'
 import Worldmap from './modules/worldmap/Worldmap'
@@ -51,6 +52,7 @@ const Entrypoint = ({ setWorldScene }: EntrypointProps) => {
 
   return (
     <>
+      <ScriptClock />
       {module === 'field' && <FieldLoader />}
       {module === 'menu' && <Menu />}
       {module === 'worldmap' && <Worldmap />}

@@ -3,6 +3,7 @@ import { create } from 'zustand'
 
 import LerpValue, { cosineEaseInOut } from '../../../../../LerpValue'
 import { framesToMs } from '../../../../../timing'
+import { nextScriptFrame } from '../../../scriptClock'
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
 import { getShortestRouteToAngle, radiansToUnit, signedAngleBetweenVectors } from '../RotationController/rotationUtils'
@@ -132,7 +133,7 @@ const createHeadRotationController = (
 
   const sync = async () => {
     while (getState().yaw.isAnimating || getState().pitch.isAnimating) {
-      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await nextScriptFrame()
     }
   }
 

@@ -1,12 +1,14 @@
 import { useFrame } from '@react-three/fiber'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Object3D, PerspectiveCamera, Scene, Vector3 } from 'three'
+import { Group, Object3D, PerspectiveCamera, Scene, Vector3 } from 'three'
 
 import useGlobalStore from '../../../../../store'
 import { checkForIntersections } from '../../../../../utils'
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
+import { ScriptStateStore } from '../state'
 import { convert256ToRadians } from '../utils'
+import { collectEntityGroups, getFieldEntities, getOverlappingEntities, getPushTarget } from './entityCollision'
 import { getPlayerEntity } from './modelUtils'
 import useKeyboardControls from './useKeyboardControls'
 
@@ -22,11 +24,18 @@ type useControlsProps = {
   isActive: boolean
   movementController: ReturnType<typeof createMovementController>
   rotationController: ReturnType<typeof createRotationController>
+  useScriptStateStore: ScriptStateStore
 }
 
 const desiredPosition = new Vector3(0, 0, 0)
 
-const useControls = ({ characterHeight, isActive, movementController, rotationController }: useControlsProps) => {
+const useControls = ({
+  characterHeight,
+  isActive,
+  movementController,
+  rotationController,
+  useScriptStateStore,
+}: useControlsProps) => {
   const isRunEnabled = useGlobalStore((state) => state.isRunEnabled)
 
   const movementFlags = useKeyboardControls()
@@ -116,20 +125,41 @@ const useControls = ({ characterHeight, isActive, movementController, rotationCo
   const [POSITION_VECTOR] = useState(new Vector3())
 
   const collidableCandidates = useRef<Object3D[]>([])
+  const entityCandidates = useRef<Group[]>([])
   const collidableRefreshCounter = useRef(0)
-  const getCollidableBlockages = useCallback((scene: Scene) => {
+  const refreshCollidables = useCallback((scene: Scene) => {
     collidableRefreshCounter.current -= 1
-    if (collidableRefreshCounter.current <= 0 || collidableCandidates.current.length === 0) {
-      collidableRefreshCounter.current = COLLIDABLE_REFRESH_FRAMES
-      const candidates: Object3D[] = []
-      scene.traverse((object) => {
-        if ('isSolid' in object.userData) {
-          candidates.push(object)
-        }
-      })
-      collidableCandidates.current = candidates
+    if (collidableRefreshCounter.current > 0) {
+      return
     }
-    return collidableCandidates.current.filter((object) => object.parent !== null && object.userData.isSolid)
+    collidableRefreshCounter.current = COLLIDABLE_REFRESH_FRAMES
+    const candidates: Object3D[] = []
+    scene.traverse((object) => {
+      if ('isSolid' in object.userData) {
+        candidates.push(object)
+      }
+    })
+    collidableCandidates.current = candidates
+    entityCandidates.current = collectEntityGroups(scene)
+  }, [])
+
+  const getCollidableBlockages = useCallback(
+    () => collidableCandidates.current.filter((object) => object.parent !== null && object.userData.isSolid),
+    [],
+  )
+
+  const triggerPush = useCallback((overlapping: ReturnType<typeof getOverlappingEntities>) => {
+    if (useGlobalStore.getState().hasActivePushMethod) {
+      return
+    }
+    const target = getPushTarget(overlapping)
+    if (!target) {
+      return
+    }
+    useGlobalStore.setState({ hasActivePushMethod: true })
+    target.scriptController.triggerMethod('push').then(() => {
+      useGlobalStore.setState({ hasActivePushMethod: false })
+    })
   }, [])
   const handleFrame = useCallback(
     async (camera: PerspectiveCamera, scene: Scene, delta: number) => {
@@ -187,9 +217,19 @@ const useControls = ({ characterHeight, isActive, movementController, rotationCo
         return
       }
 
-      const blockages = getCollidableBlockages(scene)
+      refreshCollidables(scene)
 
-      const isPermitted = checkForIntersections(player, newPosition, blockages, camera)
+      const overlapping = getOverlappingEntities(
+        newPosition,
+        useScriptStateStore.getState().pushRadius,
+        getFieldEntities(entityCandidates.current),
+      )
+      triggerPush(overlapping)
+      if (overlapping.some((entity) => entity.isSolid)) {
+        return
+      }
+
+      const isPermitted = checkForIntersections(player, newPosition, getCollidableBlockages(), camera)
       if (!isPermitted) {
         return
       }
@@ -215,6 +255,9 @@ const useControls = ({ characterHeight, isActive, movementController, rotationCo
       forwardDirection,
       POSITION_VECTOR,
       getCollidableBlockages,
+      refreshCollidables,
+      triggerPush,
+      useScriptStateStore,
     ],
   )
 

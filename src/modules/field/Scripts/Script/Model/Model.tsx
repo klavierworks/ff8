@@ -4,19 +4,16 @@ import { ComponentType, type JSX, lazy, useCallback, useEffect, useRef, useState
 import { Bone, Box3, Color, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, Vector3 } from 'three'
 
 import useGlobalStore from '../../../../../store'
-import { Script } from '../../types'
 import { createAnimationController } from '../AnimationController/AnimationController'
 import createHeadRotationController from '../HeadRotationController/HeadRotationController'
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
-import createScriptController from '../ScriptController/ScriptController'
 import { ScriptStateStore } from '../state'
 import { applyModelDepth, createModelDepthUniform, getViewDepth } from './modelDepth'
 import useControls from './useControls'
 import useFollower from './useFollower'
 import useFootsteps from './useFootsteps'
-import usePushRadius from './usePushRadius'
-import useTalkRadius from './useTalkRadius'
+import useTalkTrigger from './useTalkTrigger'
 
 type ModelProps = {
   animationController: ReturnType<typeof createAnimationController>
@@ -24,8 +21,6 @@ type ModelProps = {
   models: string[]
   movementController: ReturnType<typeof createMovementController>
   rotationController: ReturnType<typeof createRotationController>
-  script: Script
-  scriptController: ReturnType<typeof createScriptController>
   useScriptStateStore: ScriptStateStore
 }
 
@@ -47,8 +42,6 @@ const Model = ({
   models,
   movementController,
   rotationController,
-  script,
-  scriptController,
   useScriptStateStore,
 }: ModelProps) => {
   const fieldId = useGlobalStore((state) => state.fieldId)!
@@ -141,9 +134,6 @@ const Model = ({
     }
   })
 
-  const talkMethod = script.methods.find((method) => method.methodId === 'talk')
-  const pushMethod = script.methods.find((method) => method.methodId === 'push')
-
   useFootsteps({ animationController, movementController })
 
   const [characterDimensions] = useState<Vector3>(new Vector3())
@@ -153,10 +143,17 @@ const Model = ({
     isActive: isLeadCharacter,
     movementController,
     rotationController,
+    useScriptStateStore,
+  })
+
+  useTalkTrigger({
+    isActive: isLeadCharacter,
+    movementController,
+    rotationController,
+    useScriptStateStore,
   })
 
   const animationGroupRef = useRef<Group>(null)
-  const pushableSphereRef = useRef<Mesh>(null)
 
   const walkmeshController = useGlobalStore((state) => state.walkmeshController)
 
@@ -201,27 +198,6 @@ const Model = ({
     modelViewDepth.value = getViewDepth(animationGroupRef.current, camera)
   })
 
-  const talkRadiusRef = useRef<Mesh>(null)
-
-  const hasBeenPlaced = movementController.getState().hasBeenPlaced
-  const hasTalkableSphere = !!talkMethod && !isLeadCharacter && !isFollower && !!meshGroup && hasBeenPlaced
-  useTalkRadius({
-    isActive: hasTalkableSphere,
-    scriptController,
-    talkMethod,
-    talkTargetRef: talkRadiusRef,
-    useScriptStateStore,
-  })
-
-  const hasPushableSphere = !!pushMethod && !isLeadCharacter && !isFollower && !!meshGroup && hasBeenPlaced
-  usePushRadius({
-    isActive: hasPushableSphere,
-    pushMethod,
-    pushTargetRef: pushableSphereRef,
-    scriptController,
-    useScriptStateStore,
-  })
-
   useFollower({
     isActive: !!isFollower,
     movementController,
@@ -235,22 +211,22 @@ const Model = ({
 
   const talkRadius = useScriptStateStore((state) => state.talkRadius)
   const pushRadius = useScriptStateStore((state) => state.pushRadius)
+  const isPlayerControlled = isLeadCharacter || isFollower
 
   return (
     <group>
-      {hasPushableSphere && (
-        <Sphere args={[pushRadius / 4096, 16, 16]} ref={pushableSphereRef} visible={isDebugMode}>
-          <meshBasicMaterial color="green" opacity={0.2} side={DoubleSide} transparent />
+      {isDebugMode && !isPlayerControlled && (
+        <Sphere args={[pushRadius / 4096, 16, 16]}>
+          <meshBasicMaterial
+            color={isSolid && isVisible ? 'red' : 'green'}
+            opacity={0.2}
+            side={DoubleSide}
+            transparent
+          />
         </Sphere>
       )}
-      {hasTalkableSphere && (
-        <Sphere
-          args={[talkRadius / 4096, 16, 16]}
-          name="talkRadius"
-          ref={talkRadiusRef}
-          userData={{ isSolid: false }}
-          visible={isDebugMode}
-        >
+      {isDebugMode && !isPlayerControlled && (
+        <Sphere args={[talkRadius / 4096, 16, 16]}>
           <meshBasicMaterial color="white" opacity={0.2} side={DoubleSide} transparent wireframe />
         </Sphere>
       )}
@@ -258,9 +234,6 @@ const Model = ({
         args={characterDimensions.toArray().map((i) => i + 0.01) as [number, number]}
         name="hitbox"
         position={[0, 0, characterDimensions.z / 2.5]}
-        userData={{
-          isSolid: isSolid && isVisible && !isLeadCharacter && !isFollower,
-        }}
         visible={isDebugMode}
       >
         <meshBasicMaterial color={isSolid ? 'red' : 'green'} opacity={0.5} transparent />

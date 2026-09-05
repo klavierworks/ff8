@@ -4,6 +4,7 @@ import { PSX_CONTROLS_MAP } from '../../../../constants/controls'
 import LerpValue from '../../../../LerpValue'
 import useGlobalStore from '../../../../store'
 import { checkForIntersectingMeshes } from '../../Gateways/gatewayUtils'
+import { nextScriptFrame } from '../../scriptClock'
 import { getScriptEntity } from './Model/modelUtils'
 import { openMessage } from './utils'
 
@@ -176,7 +177,7 @@ export const setCameraAndLayerFocus = async (object: Object3D, duration: number)
 
   spring.start(1, duration)
   while (spring.isAnimating) {
-    await new Promise(requestAnimationFrame)
+    await nextScriptFrame()
   }
 }
 
@@ -188,6 +189,6 @@ export const triggerFadeout = () => {
 export const awaitFadesync = async () => {
   const { fadeSpring } = useGlobalStore.getState()
   while (fadeSpring.isAnimating) {
-    await new Promise((resolve) => requestAnimationFrame(resolve))
+    await nextScriptFrame()
   }
 }

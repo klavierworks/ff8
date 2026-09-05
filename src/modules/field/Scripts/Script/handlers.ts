@@ -14,6 +14,7 @@ import { cardGameController } from '../../../../UI/CardGame/CardGameController'
 import { addCardToCollection, getOwnedCardCount, removeCardFromCollection } from '../../../../UI/CardGame/collection'
 import { floatingPointToNumber, numberToFloatingPoint, vectorToFloatingPoint } from '../../../../utils'
 import useWorldmapStore from '../../../worldmap/worldmapStore'
+import { nextScriptFrame, waitForScriptFrames } from '../../scriptClock'
 import { Opcode, OpcodeObj, Script } from '../types'
 import { createAnimationController } from './AnimationController/AnimationController'
 import {
@@ -36,7 +37,7 @@ import createRotationController from './RotationController/RotationController'
 import createSFXController from './SFXController/SFXController'
 import { preloadSound } from './SFXController/webAudio'
 import createScriptState, { ScriptState } from './state'
-import { closeMessage, enableMessageToClose, openMessage, remoteExecute, remoteExecutePartyMember, wait } from './utils'
+import { closeMessage, enableMessageToClose, openMessage, remoteExecute, remoteExecutePartyMember } from './utils'
 
 const dummiedCommand = () => undefined
 const unusedCommand = () => undefined
@@ -229,7 +230,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   },
   ANIMESYNC: async ({ animationController }) => {
     while (!animationController.getIsSafeToMoveOn()) {
-      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await nextScriptFrame()
     }
   },
   ASK: (args) => {
@@ -286,7 +287,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       if (!useGlobalStore.getState().backgroundAnimations[script.backgroundParamId]) {
         return
       }
-      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await nextScriptFrame()
     }
   },
   BGANIMEFLAG: unusedCommand,
@@ -301,7 +302,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   },
   BGANIMESYNC: async ({ script }) => {
     while (useGlobalStore.getState().backgroundAnimations[script.backgroundParamId].isAnimating) {
-      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await nextScriptFrame()
     }
   },
   BGCLEAR: ({ STACK }) => {
@@ -536,7 +537,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   },
   COLSYNC: async () => {
     while (useGlobalStore.getState().isTransitioningColorOverlay) {
-      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await nextScriptFrame()
     }
   },
   COPYINFO: ({ STACK }) => {
@@ -1403,7 +1404,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       if (!messagesOnChannel[0].isCloseable) {
         enableMessageToClose(messagesOnChannel[0].id)
       }
-      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await nextScriptFrame()
     }
   },
   MESVAR: ({ STACK }) => {
@@ -1460,7 +1461,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
 
   MOVESYNC: async ({ movementController }) => {
     while (movementController.getState().position.waypoints) {
-      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await nextScriptFrame()
     }
   },
   // Memory 80 is used to track frames. This is used to fake a movie
@@ -1531,7 +1532,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   NOP: unusedCommand,
   OFFSETSYNC: async ({ movementController }) => {
     while (movementController.getState().offset.goal) {
-      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await nextScriptFrame()
     }
   },
   OPENEYES: unusedCommand,
@@ -1991,7 +1992,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       Object.values(useGlobalStore.getState().layerScrollOffsets).some((transition) => transition.isInProgress) ||
       useGlobalStore.getState().cameraFocusSpring?.isAnimating
     ) {
-      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await nextScriptFrame()
     }
   },
   SCROLLSYNC2: async ({ STACK }) => {
@@ -2001,7 +2002,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       useGlobalStore.getState().layerScrollOffsets[layerID] &&
       useGlobalStore.getState().layerScrollOffsets[layerID].isInProgress
     ) {
-      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await nextScriptFrame()
     }
   },
   SEALEDOFF: ({ STACK }) => {
@@ -2402,7 +2403,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   // UNKNOWN11 has finished playing.
   UNKNOWN12: async ({ rotationController }) => {
     while (rotationController.getState().angle.isAnimating) {
-      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await nextScriptFrame()
     }
   }, // "PIVOT_SYNC"
   UNKNOWN13: ({ STACK }) => {
@@ -2433,11 +2434,12 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     setState({ isUnused: false })
   },
 
-  WAIT: async ({ STACK }) => {
+  WAIT: ({ STACK }) => {
     const psxGameFrames = STACK.pop() as number
-    console.log(`Waiting for ${psxGameFrames} frames (${framesToMs(psxGameFrames)}ms)`)
-    await wait(framesToMs(psxGameFrames))
-    console.log('Done waiting')
+    if (psxGameFrames <= 0) {
+      return
+    }
+    return waitForScriptFrames(psxGameFrames)
   },
   WHERECARD: ({ STACK, TEMP_STACK }) => {
     const cardId = STACK.pop() as number

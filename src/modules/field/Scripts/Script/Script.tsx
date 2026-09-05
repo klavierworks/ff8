@@ -236,7 +236,7 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
         )}
         {script.type === 'model' &&
           (isDrawPoint ? (
-            <DrawPoint scriptController={scriptController} useScriptStateStore={useScriptStateStore} />
+            <DrawPoint />
           ) : (
             <Model
               animationController={animationController}
@@ -244,8 +244,6 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
               models={models}
               movementController={movementController}
               rotationController={rotationController}
-              script={script}
-              scriptController={scriptController}
               useScriptStateStore={useScriptStateStore}
             />
           ))}

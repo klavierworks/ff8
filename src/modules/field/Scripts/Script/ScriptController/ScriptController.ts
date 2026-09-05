@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import type { Script, ScriptMethod } from '../../types'
 import type { OPCODE_HANDLERS } from '../handlers'
 
+import { getScriptFrame } from '../../../scriptClock'
 import { createAnimationController } from '../AnimationController/AnimationController'
 import createHeadRotationController from '../HeadRotationController/HeadRotationController'
 import createMovementController from '../MovementController/MovementController'
@@ -19,6 +20,7 @@ type QueueItem = {
   isLooping: boolean
   method: ScriptMethod
   priority: number
+  queuedAtFrame: number
   uniqueId: string
 }
 
@@ -100,6 +102,7 @@ const createScriptController = ({
       isLooping,
       method,
       priority,
+      queuedAtFrame: getScriptFrame(),
       uniqueId,
     })
 
@@ -276,9 +279,19 @@ const createScriptController = ({
     }
   }
 
+  // A method requested on frame N starts on frame N+1, whatever order the
+  // entities happen to tick in. REQSW/PREQSW block their caller until that
+  // start, so the one-frame cost the scripts' WAIT counts compensate for holds.
+  let lastTickedFrame = -1
   const tick = () => {
+    const frame = getScriptFrame()
+    if (frame === lastTickedFrame) {
+      return
+    }
+    lastTickedFrame = frame
+
     const currentQueueItem = getState().queue[0]
-    if (!currentQueueItem || currentQueueItem.isAwaiting) {
+    if (!currentQueueItem || currentQueueItem.isAwaiting || currentQueueItem.queuedAtFrame >= frame) {
       return
     }
     void runOpcodes(currentQueueItem.uniqueId)
