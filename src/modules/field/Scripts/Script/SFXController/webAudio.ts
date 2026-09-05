@@ -1,3 +1,4 @@
+import { MAX_SFX_VOLUME } from '../../../../../constants/audio'
 import { getSoundFromId } from './utils'
 
 export interface AudioSourceNode {
@@ -114,7 +115,7 @@ export const createAudioSource = async (
   const panNode = context.createStereoPanner()
 
   source.buffer = buffer
-  gainNode.gain.value = Math.max(0, Math.min(1, volume / 256))
+  gainNode.gain.value = Math.max(0, Math.min(1, volume / MAX_SFX_VOLUME))
   panNode.pan.value = Math.max(-1, Math.min(1, (pan - 128) / 128))
 
   source.connect(gainNode)
@@ -138,7 +139,7 @@ export const createAudioSource = async (
 }
 
 export const setVolumeForSource = (sourceNode: AudioSourceNode, volume: number, duration?: number): void => {
-  const targetVolume = Math.max(0, Math.min(1, volume / 256))
+  const targetVolume = Math.max(0, Math.min(1, volume / MAX_SFX_VOLUME))
 
   if (!duration) {
     sourceNode.gainNode.gain.value = targetVolume

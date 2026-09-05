@@ -221,15 +221,27 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
     await moveToPoint(target, passedOptions, targetActor)
   }
 
-  const jumpToPosition = (end: Vector3, duration: number) => {
-    const start = getState().position.current.clone()
+  const getLandingPosition = (end: Vector3, walkmeshTriangle?: number) => {
+    if (walkmeshTriangle === undefined) {
+      return end
+    }
+    const height = walkmeshController.getPlaneHeightOnTriangle(end.x, end.y, walkmeshTriangle)
+    if (height === null) {
+      return end
+    }
+    return new Vector3(end.x, end.y, height)
+  }
 
-    const directLine = new Line3(start, end)
-    const jumpCurve = new JumpCurve(start, end, duration)
+  const jumpToPosition = (end: Vector3, duration: number, walkmeshTriangle?: number) => {
+    const start = getState().position.current.clone()
+    const landing = getLandingPosition(end, walkmeshTriangle)
+
+    const directLine = new Line3(start, landing)
+    const jumpCurve = new JumpCurve(start, landing, duration)
 
     resolvePendingJumpSignal()
     const signal = new PromiseSignal()
-    setState({
+    setState((state) => ({
       jump: {
         curve: jumpCurve,
         directLine,
@@ -237,7 +249,11 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         progress: 0,
         signal,
       },
-    })
+      position: {
+        ...state.position,
+        walkmeshTriangle: walkmeshTriangle ?? state.position.walkmeshTriangle,
+      },
+    }))
   }
 
   const moveToOffset = async (x: number, y: number, z: number, duration: number) => {

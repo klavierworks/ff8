@@ -66,15 +66,13 @@ const useScrollTransition = (type: 'camera' | 'layer', layerID?: number) => {
     const progress = duration === 0 ? 1 : Math.min(elapsed / framesToSeconds(duration), 1)
     const easedProgress = ease === 'cosine' ? cosineEaseInOut(progress) : progress
 
-    // A layer slot holds one scroll value whatever wrote it — D/L/C differ only in easing — so it
-    // always lerps toward the target as given. Only the camera slot has the negated form.
-    const isSimpleLerp = type === 'layer' || positioning === 'camera'
-    if (isSimpleLerp) {
+    const isStartedFromLiveValue = type === 'camera' && positioning !== 'camera'
+    if (isStartedFromLiveValue) {
+      currentValue.current.x = MathUtils.lerp(transitionState.current.initialX, endX, easedProgress)
+      currentValue.current.y = MathUtils.lerp(transitionState.current.initialY, endY, easedProgress)
+    } else {
       currentValue.current.x = MathUtils.lerp(startX, endX, easedProgress)
       currentValue.current.y = MathUtils.lerp(startY, endY, easedProgress)
-    } else {
-      currentValue.current.x = MathUtils.lerp(transitionState.current.initialX, -endX, easedProgress)
-      currentValue.current.y = MathUtils.lerp(transitionState.current.initialY, -endY, easedProgress)
     }
 
     currentValue.current.positioning = currentTransition.positioning

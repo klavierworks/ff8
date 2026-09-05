@@ -246,11 +246,11 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   },
   AXISSYNC: unusedCommand,
   BASEANIME: ({ animationController, currentOpcode, STACK }) => {
-    const standAnimationId = currentOpcode.param
-    const runAnimationId = STACK.pop() as number
-    const walkAnimationId = STACK.pop() as number
+    const standingAnimationId = currentOpcode.param
+    const walkingAnimationId = STACK.pop() as number
+    const runningAnimationId = STACK.pop() as number
 
-    animationController.setIdleAnimations(standAnimationId, runAnimationId, walkAnimationId)
+    animationController.setIdleAnimations(standingAnimationId, walkingAnimationId, runningAnimationId)
   },
   BATTLE: async ({ STACK }) => {
     STACK.splice(-2)
@@ -1083,18 +1083,16 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     }
   },
 
-  // I think these are identical. Maybe in reality they use different curves. Jump is used only 3 times though.
-  JUMP: ({ movementController, STACK }) => {
+  JUMP: ({ currentOpcode, movementController, STACK }) => {
     const duration = STACK.pop() as number
-    const z = STACK.pop() as number
     const y = STACK.pop() as number
     const x = STACK.pop() as number
 
-    const target = vectorToFloatingPoint({ x, y, z })
+    const target = vectorToFloatingPoint({ x, y, z: 0 })
 
-    movementController.jumpToPosition(target, duration)
+    movementController.jumpToPosition(target, duration, currentOpcode.param)
   },
-  JUMP3: ({ movementController, STACK }) => {
+  JUMP3: ({ currentOpcode, movementController, STACK }) => {
     const duration = STACK.pop() as number
     const z = STACK.pop() as number
     const y = STACK.pop() as number
@@ -1102,7 +1100,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
 
     const target = vectorToFloatingPoint({ x, y, z })
 
-    movementController.jumpToPosition(target, duration)
+    movementController.jumpToPosition(target, duration, currentOpcode.param)
   },
   JUNCTION: ({ STACK }) => {
     const isEnteringDream = ((STACK.pop() as number) & 1) === 1
@@ -1326,10 +1324,14 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     })
   },
   MAPJUMPO: ({ STACK }) => {
-    STACK.pop() as number // const walkmeshTriangleId = STACK.pop() as number;
+    const walkmeshTriangleId = STACK.pop() as number
     const fieldId = STACK.pop() as number
 
+    const NO_POSITION_VALUE = 0x7fff
+
     useGlobalStore.setState({
+      pendingCharacterPosition: undefined,
+      pendingCharacterTriangle: walkmeshTriangleId === NO_POSITION_VALUE ? 0 : walkmeshTriangleId,
       pendingFieldId: MAP_NAMES[fieldId],
     })
   },
@@ -1582,17 +1584,17 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     STACK.pop() as number
   },
   PJUMPA: ({ movementController, scene, STACK }) => {
-    //STACK.pop() as number;
-    const actorId = STACK.pop() as number
-    const player = getPartyMemberModelComponent(scene, actorId)
+    const duration = STACK.pop() as number
+    const partyMemberId = STACK.pop() as number
+    const player = getPartyMemberModelComponent(scene, partyMemberId)
     if (!player) {
-      console.warn('No player found for party member ID', actorId)
+      console.warn('No player found for party member ID', partyMemberId)
       return
     }
 
     const targetPoint = player.getWorldPosition(new Vector3())
 
-    movementController.jumpToPosition(targetPoint, 32)
+    movementController.jumpToPosition(targetPoint, duration)
   },
   // Pause the script while this character does a slow, walking-style turn to
   // look at one of the active party members.

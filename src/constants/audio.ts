@@ -1,3 +1,7 @@
+// ─── Audio: runtime ───
+
+export const MAX_SFX_VOLUME = 128
+
 export const MUSIC_IDS = {
   0: '/audio/Disc 1/11. The Loser.mp3', // The Loser
   1: '/audio/Disc 1/05. The Winner.mp3', // The Winner

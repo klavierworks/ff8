@@ -95,7 +95,8 @@ const FieldLoader = (props: FieldLoaderProps) => {
         console.warn('Trying to transition with no pending field id')
         return
       }
-      const { isLoadingSavedGame, isMapFadeEnabled, pendingCharacterPosition } = useGlobalStore.getState()
+      const { isLoadingSavedGame, isMapFadeEnabled, pendingCharacterPosition, pendingCharacterTriangle } =
+        useGlobalStore.getState()
 
       const lastFieldId = useGlobalStore.getState().fieldId
       const isSwitchingBetweenMaps = lastFieldId && pendingFieldId && pendingFieldId !== lastFieldId
@@ -131,6 +132,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
               availableMessages: data.text,
               cameraFocusHeight: data.cameraFocusHeight,
               characterPosition: pendingCharacterPosition ?? getInitialEntrance(data!),
+              characterSpawnTriangle: pendingCharacterTriangle,
               fieldData: data,
               fieldDirection: data.controlDirection,
             }
@@ -178,6 +180,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
 
         messageStyles: {},
         pendingCharacterPosition: undefined,
+        pendingCharacterTriangle: undefined,
         pendingFieldId: undefined,
 
         walkmeshController: undefined,

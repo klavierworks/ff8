@@ -30,6 +30,7 @@ pub const LAYER_SLOT_COUNT: usize = 8;
 #[derive(Debug, Clone, Copy)]
 pub struct CameraLimits {
     pub camera_focus_height: i16,
+    pub camera_ranges: [Range; LAYER_SLOT_COUNT],
     pub layer_wrap: [LayerWrap; LAYER_SLOT_COUNT],
     pub limits: Limits,
 }
@@ -53,6 +54,13 @@ pub fn parse_camera_limits(inf_bytes: &[u8]) -> Result<CameraLimits> {
 
 const STANDARD_WRAP_FLAGS_OFFSET: usize = 15;
 const STANDARD_RANGES_OFFSET: usize = 20;
+
+const ZERO_RANGE: Range = Range {
+    bottom: 0,
+    left: 0,
+    right: 0,
+    top: 0,
+};
 
 const NO_LAYER_WRAP: LayerWrap = LayerWrap {
     height: 0,
@@ -80,12 +88,21 @@ fn read_layer_wrap(inf: &[u8]) -> Result<[LayerWrap; LAYER_SLOT_COUNT]> {
     Ok(wraps)
 }
 
+fn read_camera_ranges(inf: &[u8]) -> Result<[Range; LAYER_SLOT_COUNT]> {
+    let mut ranges = [ZERO_RANGE; LAYER_SLOT_COUNT];
+    for (slot, range) in ranges.iter_mut().enumerate() {
+        *range = read_range(inf, STANDARD_RANGES_OFFSET + 8 * slot)?;
+    }
+    Ok(ranges)
+}
+
 fn parse_standard(inf: &[u8]) -> Result<CameraLimits> {
     let camera_focus_height = read_i16(inf, 18)?;
     let camera_range = read_range(inf, STANDARD_RANGES_OFFSET)?;
     let screen_range = read_range(inf, STANDARD_RANGES_OFFSET + 8 * 8)?;
     Ok(CameraLimits {
         camera_focus_height,
+        camera_ranges: read_camera_ranges(inf)?,
         layer_wrap: read_layer_wrap(inf)?,
         limits: Limits {
             camera_range,
@@ -102,8 +119,14 @@ fn parse_offset(inf: &[u8], focus_offset: usize, has_screen_range: bool) -> Resu
     } else {
         SCREEN_RANGE_DEFAULT
     };
+    let mut camera_ranges = [ZERO_RANGE; LAYER_SLOT_COUNT];
+    for (slot, range) in camera_ranges.iter_mut().enumerate() {
+        *range = read_range(inf, focus_offset + 2 + 8 * slot)?;
+    }
+
     Ok(CameraLimits {
         camera_focus_height,
+        camera_ranges,
         // The short .inf layouts place the wrap flags somewhere unverified; every field that
         // uses one puts all of its tiles on slot 0, which no shipped map ever wraps.
         layer_wrap: [NO_LAYER_WRAP; LAYER_SLOT_COUNT],

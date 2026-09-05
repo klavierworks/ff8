@@ -44,6 +44,7 @@ const useControls = ({
 
   const isUserControllable = useGlobalStore((state) => state.isUserControllable)
   const initialFieldPosition = useGlobalStore((state) => state.characterPosition)
+  const spawnTriangle = useGlobalStore((state) => state.characterSpawnTriangle)
   const isTransitioningMap = useGlobalStore((state) => !!state.pendingFieldId)
   const walkmeshController = useGlobalStore((state) => state.walkmeshController)
 
@@ -69,7 +70,10 @@ const useControls = ({
     }
 
     const initialPosition = new Vector3(initialFieldPosition.x, initialFieldPosition.y, initialFieldPosition.z)
-    const newPosition = walkmeshController.getPositionOnWalkmesh(initialPosition)
+    const newPosition =
+      spawnTriangle !== undefined
+        ? walkmeshController.getTriangleCentre(spawnTriangle)
+        : walkmeshController.getPositionOnWalkmesh(initialPosition)
     console.log('Placing character at', newPosition, 'from initial position', initialPosition)
     if (newPosition) {
       movementController.setPosition(newPosition)
@@ -85,6 +89,7 @@ const useControls = ({
     initialFieldPosition,
     isTransitioningMap,
     setHasPlacedCharacter,
+    spawnTriangle,
     movementController,
     walkmeshController,
     isActive,

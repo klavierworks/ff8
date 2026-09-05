@@ -3,29 +3,6 @@ import { BufferAttribute, BufferGeometry } from 'three'
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../constants/constants'
 import { getLayerIdFromTile, TILE_BLENDS_TO_THREEJS, TILE_PADDING, TILE_SIZE, TILES_PER_COLUMN } from './tileUtils'
 
-type LayerExtent = {
-  maxX: number
-  maxY: number
-  minX: number
-  minY: number
-}
-
-const getLayerExtents = (tiles: Tile[]) => {
-  const extents: Record<number, LayerExtent> = {}
-
-  tiles.forEach((tile) => {
-    const current = extents[tile.layerID] ?? { maxX: -Infinity, maxY: -Infinity, minX: Infinity, minY: Infinity }
-    extents[tile.layerID] = {
-      maxX: Math.max(current.maxX, tile.X + TILE_SIZE),
-      maxY: Math.max(current.maxY, tile.Y + TILE_SIZE),
-      minX: Math.min(current.minX, tile.X),
-      minY: Math.min(current.minY, tile.Y),
-    }
-  })
-
-  return extents
-}
-
 const UV_INSET = 0.5
 
 const getTileSourceUV = (index: number, atlasWidth: number, atlasHeight: number) => {
@@ -96,8 +73,6 @@ export const buildTileGroups = (
   atlasHeight: number,
   layerWrap: LayerWrap[],
 ): Layer[] => {
-  const extents = getLayerExtents(tiles)
-
   const grouped: Record<string, Tile[]> = {}
   tiles.forEach((tile) => {
     const id = getLayerIdFromTile(tile)
@@ -109,8 +84,6 @@ export const buildTileGroups = (
 
   const layers = Object.entries(grouped).map(([id, groupTiles]) => {
     const sample = groupTiles[0]
-    const extent = extents[sample.layerID]
-    const isScreenLocked = extent.maxX - extent.minX <= SCREEN_WIDTH && extent.maxY - extent.minY <= SCREEN_HEIGHT
     const slot = getSlotFromLayerID(sample.layerID)
     const wrap = layerWrap[slot]
     const { geometry, tileDepths, tilePositions } = buildGroupGeometry(groupTiles, atlasWidth, atlasHeight)
@@ -119,7 +92,6 @@ export const buildTileGroups = (
       blendType: TILE_BLENDS_TO_THREEJS[sample.blendType as keyof typeof TILE_BLENDS_TO_THREEJS],
       geometry,
       id,
-      isScreenLocked,
       layerID: sample.layerID,
       parameter: sample.parameter === 255 ? -1 : sample.parameter,
       renderID: slot,

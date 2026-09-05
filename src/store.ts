@@ -28,6 +28,7 @@ type GlobalState = {
 
   cameraScrollOffset: CameraScrollTransition
   characterPosition: undefined | Vector3
+  characterSpawnTriangle: number | undefined
   colorOverlay: {
     duration: number
     endBlue: number
@@ -122,6 +123,7 @@ type GlobalState = {
 
   partyMembersFollowing: number[]
   pendingCharacterPosition: undefined | Vector3
+  pendingCharacterTriangle: number | undefined
   pendingFieldId: (typeof MAP_NAMES)[number] | undefined
 
   playerMovementSpeed: number
@@ -157,6 +159,7 @@ const INITIAL_STATE: GlobalState = {
   cameraFocusSpring: undefined,
   cameraScrollOffset: {} as CameraScrollTransition,
   characterPosition: undefined,
+  characterSpawnTriangle: undefined,
   colorOverlay: {
     duration: 0,
     endBlue: 0,
@@ -238,9 +241,10 @@ const INITIAL_STATE: GlobalState = {
     96: 1,
     109: 1,
   },
-  party: [0],
+  party: [0, 1],
   partyMembersFollowing: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   pendingCharacterPosition: undefined,
+  pendingCharacterTriangle: undefined,
   pendingFieldId: undefined,
 
   playerMovementSpeed: 0,

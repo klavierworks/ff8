@@ -10,7 +10,7 @@ import useGlobalStore from '../../../store'
 import { vectorToFloatingPoint } from '../../../utils'
 import { FieldData } from '../Field'
 import useScrollTransition from '../useScrollTransition'
-import { calculateFOV, getBoundaries, getCameraDirections } from './cameraUtils'
+import { calculateFOV, getBoundaries, getCameraDirections, getCameraRangeIndex } from './cameraUtils'
 import Focus from './Focus/Focus'
 
 type CameraProps = {
@@ -29,7 +29,7 @@ const _scaledRight = new Vector3()
 const _scaledUp = new Vector3()
 
 const Camera = ({ data }: CameraProps) => {
-  const { cameras, limits } = data
+  const { cameraRanges, cameras, limits } = data
 
   const [initialCameraTargetPosition, setInitialCameraTargetPosition] = useState(new Vector3())
 
@@ -93,13 +93,12 @@ const Camera = ({ data }: CameraProps) => {
     setInitialCameraTargetPosition(lookAtTarget.clone())
   }, [activeCameraId, camera, cameras, data, isDebugMode, moveableCamera])
 
-  const boundaries = useMemo(() => getBoundaries(limits), [limits])
+  const boundaries = useMemo(
+    () => getBoundaries(cameraRanges[getCameraRangeIndex(activeCameraId)], limits.screenRange),
+    [activeCameraId, cameraRanges, limits],
+  )
 
   useFrame(({ scene }) => {
-    if (activeCameraId !== 0) {
-      return
-    }
-
     const focusObject = scene.getObjectByName('focus')
 
     if (!initialCameraTargetPosition || !focusObject) {
@@ -127,7 +126,7 @@ const Camera = ({ data }: CameraProps) => {
     const lookAtSpaceY = upAxis.dot(lookAtDelta)
     const lookAtSpaceZ = forwardAxis.dot(lookAtDelta)
 
-    const cameraZoom = data.cameras[0].camera_zoom
+    const cameraZoom = cameras[activeCameraId].camera_zoom
     const scale = cameraZoom / camSpaceZ
     const lookAtScale = cameraZoom / lookAtSpaceZ
 
@@ -141,12 +140,15 @@ const Camera = ({ data }: CameraProps) => {
 
     let finalPanX: number
     let finalPanY: number
-    if (positioning === 'camera') {
+    if (activeCameraId !== 0) {
+      finalPanX = clippedPanX
+      finalPanY = clippedPanY
+    } else if (positioning === 'camera') {
       finalPanX = clamp(clippedPanX + scrollX, boundaries.left, boundaries.right)
-      finalPanY = clamp(clippedPanY - scrollY, boundaries.top, boundaries.bottom)
+      finalPanY = clamp(clippedPanY + scrollY, boundaries.top, boundaries.bottom)
     } else {
       finalPanX = scrollX
-      finalPanY = -scrollY
+      finalPanY = scrollY
     }
 
     if (finalPanX === 0 && finalPanY === 0) {

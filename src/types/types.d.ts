@@ -88,7 +88,6 @@ declare global {
     blendType: Blending
     geometry: BufferGeometry
     id: string
-    isScreenLocked: boolean
     layerID: number
     parameter: number
     renderID: number

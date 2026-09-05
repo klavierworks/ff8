@@ -28,9 +28,19 @@ export const getCameraDirections = (camera: Camera) => {
   }
 }
 
-export const getBoundaries = (limits: FieldData['limits']) => ({
-  bottom: limits.cameraRange.bottom - limits.screenRange.bottom / 2,
-  left: limits.cameraRange.left + limits.screenRange.right / 2,
-  right: limits.cameraRange.right - limits.screenRange.right / 2,
-  top: limits.cameraRange.top + limits.screenRange.bottom / 2,
-})
+export const getBoundaries = (
+  cameraRange: FieldData['cameraRanges'][number],
+  screenRange: FieldData['limits']['screenRange'],
+) => {
+  const halfScreenWidth = (screenRange.right - screenRange.left) / 2
+  const halfScreenHeight = (screenRange.bottom - screenRange.top) / 2
+
+  return {
+    bottom: cameraRange.bottom - halfScreenHeight,
+    left: cameraRange.left + halfScreenWidth,
+    right: cameraRange.right - halfScreenWidth,
+    top: cameraRange.top + halfScreenHeight,
+  }
+}
+
+export const getCameraRangeIndex = (activeCameraId: number) => (activeCameraId ? 1 : 0)

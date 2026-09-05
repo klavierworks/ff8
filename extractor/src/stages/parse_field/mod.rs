@@ -85,6 +85,10 @@ fn process_field(fs_path: &Path, out_root: &Path) -> Result<()> {
     );
     map.insert("limits".into(), serde_json::to_value(limits.limits)?);
     map.insert("layerWrap".into(), serde_json::to_value(limits.layer_wrap)?);
+    map.insert(
+        "cameraRanges".into(),
+        serde_json::to_value(limits.camera_ranges)?,
+    );
 
     let id = archive.file("id").context("missing .id")?;
     merge(

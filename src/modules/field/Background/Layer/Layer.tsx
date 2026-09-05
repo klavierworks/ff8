@@ -13,7 +13,7 @@ type LayerProps = {
 
 const SHADE_NEUTRAL = 128
 const SCROLL_RATIO_FULL = 256
-const SEED_LAYER_ID = 0
+const CAMERA_LAYER_ID = 0
 const _cameraPosition = new Vector3()
 
 const Layer = ({ layer, texture }: LayerProps) => {
@@ -24,7 +24,7 @@ const Layer = ({ layer, texture }: LayerProps) => {
 
   const camera = useThree(({ scene }) => scene.getObjectByName('sceneCamera') as PerspectiveCamera)
   const layerScroll = useCameraScroll('layer', renderID)
-  const seedScroll = useCameraScroll('layer', SEED_LAYER_ID)
+  const cameraLayerScroll = useCameraScroll('layer', CAMERA_LAYER_ID)
 
   useFrame(() => {
     const mesh = meshRef.current
@@ -32,7 +32,7 @@ const Layer = ({ layer, texture }: LayerProps) => {
       return
     }
 
-    const { backgroundAnimations, backgroundLayerVisibility, layerScrollAdjustments, layerScrollOffsets, layerTints } =
+    const { backgroundAnimations, backgroundLayerVisibility, layerScrollAdjustments, layerTints } =
       useGlobalStore.getState()
 
     const animation = backgroundAnimations[parameter]
@@ -84,28 +84,18 @@ const Layer = ({ layer, texture }: LayerProps) => {
     const centerX = view && view.enabled ? view.offsetX : 0
     const centerY = view && view.enabled ? view.offsetY : 0
 
-    let offsetX = 0
-    let offsetY = 0
     const controlledScroll = layerScrollAdjustments[renderID]
+    const xRatio = controlledScroll?.xRatio ?? SCROLL_RATIO_FULL
+    const yRatio = controlledScroll?.yRatio ?? SCROLL_RATIO_FULL
 
-    const isScriptScrolled = controlledScroll !== undefined || layerScrollOffsets[renderID] !== undefined
+    const cameraPanX = centerX + cameraLayerScroll.current.x
+    const cameraPanY = centerY + cameraLayerScroll.current.y
 
-    let cameraRatio = SCROLL_RATIO_FULL
-    if (layer.isScreenLocked && !isScriptScrolled) {
-      cameraRatio = 0
-    }
-    offsetX += centerX * (1 - cameraRatio / SCROLL_RATIO_FULL)
-    offsetY += centerY * (1 - cameraRatio / SCROLL_RATIO_FULL)
+    const parallaxX = cameraPanX * (1 - xRatio / SCROLL_RATIO_FULL)
+    const parallaxY = cameraPanY * (1 - yRatio / SCROLL_RATIO_FULL)
 
-    if (controlledScroll) {
-      offsetX += controlledScroll.xOffset + seedScroll.current.x * (1 - controlledScroll.xRatio / SCROLL_RATIO_FULL)
-      offsetY += controlledScroll.yOffset + seedScroll.current.y * (1 - controlledScroll.yRatio / SCROLL_RATIO_FULL)
-    }
-
-    // sub_475480: the layer's own scroll is subtracted on both axes, whichever opcode set it —
-    // seed·(1 − ratio/256) + constOffset − ownScroll.
-    offsetX -= layerScroll.current.x
-    offsetY -= layerScroll.current.y
+    const offsetX = (controlledScroll?.xOffset ?? 0) + parallaxX - layerScroll.current.x
+    const offsetY = (controlledScroll?.yOffset ?? 0) + parallaxY - layerScroll.current.y
 
     const previous = lastWrite.current
     if (
