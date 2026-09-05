@@ -36,9 +36,7 @@ fn main() -> Result<()> {
     let selected: Vec<&dyn Stage> = stages
         .iter()
         .map(|stage| &**stage)
-        .filter(|stage| {
-            filters.is_empty() || filters.iter().any(|filter| stage.name().contains(filter))
-        })
+        .filter(|stage| filters.is_empty() || filters.iter().any(|filter| stage.name() == filter))
         .collect();
 
     for (index, stage) in selected.iter().enumerate() {

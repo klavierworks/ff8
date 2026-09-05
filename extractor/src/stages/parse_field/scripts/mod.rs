@@ -462,12 +462,13 @@ fn force_group_names(groups: &mut [Group]) {
 }
 
 fn background_param_id(groups: &[Group], group_id: usize) -> i32 {
-    if groups[group_id].kind != GroupType::Background {
+    let group = &groups[group_id];
+    if group.kind != GroupType::Background {
         return -1;
     }
-    groups[..group_id]
+    groups
         .iter()
-        .filter(|group| group.kind == GroupType::Background)
+        .filter(|other| other.kind == GroupType::Background && other.file_index < group.file_index)
         .count() as i32
 }
 
