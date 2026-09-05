@@ -6,7 +6,8 @@ import useGlobalStore from '../../../../../store'
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
 import { ScriptStateStore } from '../state'
-import { collectEntityGroups, findTalkTarget, getFieldEntities } from './entityCollision'
+import { findTalkTarget } from './interactionUtils'
+import { getInteractiveEntities } from './modelUtils'
 
 type useTalkTriggerProps = {
   isActive: boolean
@@ -46,10 +47,10 @@ const useTalkTrigger = ({
       }
 
       const target = findTalkTarget(
+        getInteractiveEntities(scene),
         position.current,
         rotationController.getState().angle.get(),
         useScriptStateStore.getState().pushRadius,
-        getFieldEntities(collectEntityGroups(scene)),
       )
       if (!target) {
         return

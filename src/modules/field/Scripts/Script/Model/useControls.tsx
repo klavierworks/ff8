@@ -1,6 +1,6 @@
 import { useFrame } from '@react-three/fiber'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Group, Object3D, PerspectiveCamera, Scene, Vector3 } from 'three'
+import { Object3D, PerspectiveCamera, Scene, Vector3 } from 'three'
 
 import useGlobalStore from '../../../../../store'
 import { checkForIntersections } from '../../../../../utils'
@@ -8,8 +8,8 @@ import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
 import { ScriptStateStore } from '../state'
 import { convert256ToRadians } from '../utils'
-import { collectEntityGroups, getFieldEntities, getOverlappingEntities, getPushTarget } from './entityCollision'
-import { getPlayerEntity } from './modelUtils'
+import { hasScriptMethod, isWithinPushRange } from './interactionUtils'
+import { getInteractiveEntities, getPlayerEntity, InteractiveEntity } from './modelUtils'
 import useKeyboardControls from './useKeyboardControls'
 
 export const SPEED = {
@@ -125,34 +125,27 @@ const useControls = ({
   const [POSITION_VECTOR] = useState(new Vector3())
 
   const collidableCandidates = useRef<Object3D[]>([])
-  const entityCandidates = useRef<Group[]>([])
   const collidableRefreshCounter = useRef(0)
-  const refreshCollidables = useCallback((scene: Scene) => {
+  const getCollidableBlockages = useCallback((scene: Scene) => {
     collidableRefreshCounter.current -= 1
-    if (collidableRefreshCounter.current > 0) {
-      return
+    if (collidableRefreshCounter.current <= 0 || collidableCandidates.current.length === 0) {
+      collidableRefreshCounter.current = COLLIDABLE_REFRESH_FRAMES
+      const candidates: Object3D[] = []
+      scene.traverse((object) => {
+        if ('isSolid' in object.userData) {
+          candidates.push(object)
+        }
+      })
+      collidableCandidates.current = candidates
     }
-    collidableRefreshCounter.current = COLLIDABLE_REFRESH_FRAMES
-    const candidates: Object3D[] = []
-    scene.traverse((object) => {
-      if ('isSolid' in object.userData) {
-        candidates.push(object)
-      }
-    })
-    collidableCandidates.current = candidates
-    entityCandidates.current = collectEntityGroups(scene)
+    return collidableCandidates.current.filter((object) => object.parent !== null && object.userData.isSolid)
   }, [])
 
-  const getCollidableBlockages = useCallback(
-    () => collidableCandidates.current.filter((object) => object.parent !== null && object.userData.isSolid),
-    [],
-  )
-
-  const triggerPush = useCallback((overlapping: ReturnType<typeof getOverlappingEntities>) => {
+  const triggerPush = useCallback((entities: InteractiveEntity[]) => {
     if (useGlobalStore.getState().hasActivePushMethod) {
       return
     }
-    const target = getPushTarget(overlapping)
+    const target = entities.find((entity) => entity.isPushable && hasScriptMethod(entity, 'push'))
     if (!target) {
       return
     }
@@ -217,19 +210,17 @@ const useControls = ({
         return
       }
 
-      refreshCollidables(scene)
-
-      const overlapping = getOverlappingEntities(
-        newPosition,
-        useScriptStateStore.getState().pushRadius,
-        getFieldEntities(entityCandidates.current),
+      const pushRadius = useScriptStateStore.getState().pushRadius
+      const touchedEntities = getInteractiveEntities(scene).filter((entity) =>
+        isWithinPushRange(entity, newPosition, pushRadius),
       )
-      triggerPush(overlapping)
-      if (overlapping.some((entity) => entity.isSolid)) {
+
+      triggerPush(touchedEntities)
+      if (touchedEntities.some((entity) => entity.isSolid)) {
         return
       }
 
-      const isPermitted = checkForIntersections(player, newPosition, getCollidableBlockages(), camera)
+      const isPermitted = checkForIntersections(player, newPosition, getCollidableBlockages(scene), camera)
       if (!isPermitted) {
         return
       }
@@ -255,7 +246,6 @@ const useControls = ({
       forwardDirection,
       POSITION_VECTOR,
       getCollidableBlockages,
-      refreshCollidables,
       triggerPush,
       useScriptStateStore,
     ],
