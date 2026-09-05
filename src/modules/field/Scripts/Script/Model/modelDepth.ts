@@ -1,4 +1,4 @@
-import { Camera, Material, Object3D, Vector3 } from 'three'
+import { Camera, Object3D, Vector3, WebGLProgramParametersWithUniforms } from 'three'
 
 const MODEL_DEPTH_COMPRESSION = 0.001
 
@@ -16,14 +16,11 @@ const VERTEX_OVERRIDE = `#include <logdepthbuf_vertex>
 
 export const createModelDepthUniform = (): ModelDepthUniform => ({ value: 0 })
 
-export const applyModelDepth = (material: Material, modelViewDepth: ModelDepthUniform) => {
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.modelViewDepth = modelViewDepth
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', VERTEX_DECLARATION)
-      .replace('#include <logdepthbuf_vertex>', VERTEX_OVERRIDE)
-  }
-  material.customProgramCacheKey = () => 'modelViewDepth'
+export const patchModelDepth = (shader: WebGLProgramParametersWithUniforms, modelViewDepth: ModelDepthUniform) => {
+  shader.uniforms.modelViewDepth = modelViewDepth
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', VERTEX_DECLARATION)
+    .replace('#include <logdepthbuf_vertex>', VERTEX_OVERRIDE)
 }
 
 const _objectPosition = new Vector3()

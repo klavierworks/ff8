@@ -122,6 +122,8 @@ declare global {
     y: number
   }
 
+  type ModelColor = FieldData['modelColors'][number]
+
   type MovementFlags = {
     backward: boolean
     forward: boolean

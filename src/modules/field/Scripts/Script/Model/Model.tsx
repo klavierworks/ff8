@@ -9,7 +9,9 @@ import createHeadRotationController from '../HeadRotationController/HeadRotation
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
 import { ScriptStateStore } from '../state'
-import { applyModelDepth, createModelDepthUniform, getViewDepth } from './modelDepth'
+import { createModelDepthUniform, getViewDepth } from './modelDepth'
+import { applyModelMaterial } from './modelMaterial'
+import { createPaletteOffsetUniform, getPaletteOffset } from './modelPalette'
 import useControls from './useControls'
 import useFollower from './useFollower'
 import useFootsteps from './useFootsteps'
@@ -35,6 +37,8 @@ const components = Object.fromEntries(
     return [name, lazy(modelFiles[path] as () => Promise<{ default: ComponentType<GenericModelProps> }>)]
   }),
 )
+
+const POLY_COLOR_NEUTRAL = 128
 
 const Model = ({
   animationController,
@@ -63,6 +67,7 @@ const Model = ({
   const [meshGroup, setMeshGroup] = useState<Group>()
 
   const [modelViewDepth] = useState(createModelDepthUniform)
+  const [paletteOffset] = useState(createPaletteOffsetUniform)
 
   const convertMaterialsToBasic = useCallback(
     (group: Group) => {
@@ -73,13 +78,18 @@ const Model = ({
           meshBasicMaterial.userData.originalColor = child.material.color.clone()
           meshBasicMaterial.map = child.material.map
           meshBasicMaterial.side = DoubleSide
-          applyModelDepth(meshBasicMaterial, modelViewDepth)
+          applyModelMaterial(meshBasicMaterial, modelViewDepth, paletteOffset)
           child.material = meshBasicMaterial
         }
       })
     },
-    [modelViewDepth],
+    [modelViewDepth, paletteOffset],
   )
+
+  const modelColors = useGlobalStore((state) => state.fieldData?.modelColors)
+  useEffect(() => {
+    paletteOffset.value.copy(getPaletteOffset(modelColors, modelName))
+  }, [modelColors, modelName, paletteOffset])
 
   const globalMeshTint = useGlobalStore((state) => state.globalMeshTint)
   const meshTintColor = useScriptStateStore((state) => state.meshTintColor)
@@ -87,11 +97,15 @@ const Model = ({
     if (!meshGroup) {
       return
     }
-    const color = new Color(...(meshTintColor ?? globalMeshTint ?? [128, 128, 128]).map((c) => (c / 256 - 0.5) * 2))
+    const tint = new Color(
+      ...(meshTintColor ?? globalMeshTint ?? [POLY_COLOR_NEUTRAL, POLY_COLOR_NEUTRAL, POLY_COLOR_NEUTRAL]).map(
+        (channel) => channel / POLY_COLOR_NEUTRAL,
+      ),
+    )
 
     meshGroup.traverse((child) => {
       if (child instanceof Mesh && child.material instanceof MeshBasicMaterial) {
-        child.material.color = child.material.userData.originalColor.clone().add(color)
+        child.material.color = child.material.userData.originalColor.clone().multiply(tint)
       }
     })
   }, [globalMeshTint, meshGroup, meshTintColor])

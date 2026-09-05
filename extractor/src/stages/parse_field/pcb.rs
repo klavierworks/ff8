@@ -16,9 +16,12 @@ pub fn parse_pcb(pcb_bytes: &[u8]) -> Vec<ModelColor> {
     (0..count)
         .map(|index| {
             let base = index * ENTRY_SIZE;
-            let name = String::from_utf8_lossy(&pcb_bytes[base..base + 4])
-                .trim_end_matches('\0')
-                .to_string();
+            let bytes = &pcb_bytes[base..base + 4];
+            let end = bytes
+                .iter()
+                .position(|&byte| byte == 0)
+                .unwrap_or(bytes.len());
+            let name = String::from_utf8_lossy(&bytes[..end]).to_string();
             let color = [
                 pcb_bytes[base + 5],
                 pcb_bytes[base + 6],
