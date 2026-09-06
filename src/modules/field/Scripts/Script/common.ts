@@ -4,7 +4,7 @@ import { PSX_CONTROLS_MAP } from '../../../../constants/controls'
 import LerpValue from '../../../../LerpValue'
 import useGlobalStore from '../../../../store'
 import { checkForIntersectingMeshes } from '../../Gateways/gatewayUtils'
-import { nextScriptFrame } from '../../scriptClock'
+import { getScriptFrame, nextScriptFrame } from '../../scriptClock'
 import { getScriptEntity } from './Model/modelUtils'
 import { openMessage } from './utils'
 
@@ -65,10 +65,13 @@ export const KEY_FLAGS = {
   32768: 'ArrowLeft',
 } as const
 
-let DOWN: string[] = []
-let KEYS_PRESSED: string[] = []
+const PRESS_EDGE_LIFETIME_FRAMES = 2
+
+let heldKeys: string[] = []
+const pressedAtFrame = new Map<string, number>()
+
 export const isKeyDown = (keyFlag: keyof typeof KEY_FLAGS) => {
-  return DOWN.includes(KEY_FLAGS[keyFlag])
+  return heldKeys.includes(KEY_FLAGS[keyFlag])
 }
 
 export const wasKeyPressed = (keyFlag: keyof typeof KEY_FLAGS) => {
@@ -76,26 +79,30 @@ export const wasKeyPressed = (keyFlag: keyof typeof KEY_FLAGS) => {
   if (!key) {
     return false
   }
-  const wasPressed = KEYS_PRESSED.includes(key)
-  if (wasPressed) {
-    KEYS_PRESSED = KEYS_PRESSED.filter((k) => k !== key)
+
+  const pressedFrame = pressedAtFrame.get(key)
+  if (pressedFrame === undefined || getScriptFrame() - pressedFrame >= PRESS_EDGE_LIFETIME_FRAMES) {
+    return false
   }
-  return wasPressed
+
+  pressedAtFrame.delete(key)
+  return true
 }
+
 const keydownListener = (event: KeyboardEvent) => {
   const { currentMessages, isCardGameActive } = useGlobalStore.getState()
-  if (currentMessages.length > 0 || isCardGameActive) {
+  if (currentMessages.length > 0 || isCardGameActive || event.repeat) {
     return
   }
-  DOWN.push(event.code)
-  if (KEYS_PRESSED.includes(event.code)) {
-    return
+
+  if (!heldKeys.includes(event.code)) {
+    heldKeys = [...heldKeys, event.code]
   }
-  KEYS_PRESSED.push(event.code)
+  pressedAtFrame.set(event.code, getScriptFrame())
 }
 
 const keyupListener = (event: KeyboardEvent) => {
-  DOWN = DOWN.filter((key) => key !== event.code)
+  heldKeys = heldKeys.filter((key) => key !== event.code)
 }
 
 export const attachKeyDownListeners = () => {
