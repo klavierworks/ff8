@@ -1,7 +1,7 @@
 use crate::charaone::parse::{Face, Pose, Vertex};
 
 const ROTATION_SCALE: f64 = 180.0 / 2048.0;
-const COORD_NEGATIVE_THRESHOLD: u16 = 61440; // 65536 - 4096
+const COORD_SCALE: f64 = 256.0;
 
 pub struct BonePose {
     pub x: f64,
@@ -70,12 +70,7 @@ pub fn formatted_vertex(vertex: &Vertex) -> [f64; 3] {
 }
 
 fn sanitise_coord(value: u16) -> f64 {
-    let signed = if value > COORD_NEGATIVE_THRESHOLD {
-        value as i32 - 65536
-    } else {
-        value as i32
-    };
-    signed as f64 / 256.0
+    value as i16 as f64 / COORD_SCALE
 }
 
 pub struct FormattedFace {
