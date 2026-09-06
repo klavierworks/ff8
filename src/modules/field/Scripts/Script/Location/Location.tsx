@@ -85,6 +85,7 @@ const Location = ({ scriptController, useScriptStateStore }: LocationProps) => {
       },
     },
     linePoints ?? [],
+    { shouldRequireFacing: true },
   )
 
   if (!linePoints || !isLineOn) {

@@ -22,17 +22,11 @@ export const buildCongaSeedHistory = (
     history.unshift({
       angle: leaderAngle,
       isClimbingLadder: false,
-      position: next.clone(),
+      position: next.position.clone(),
       speed: WALK_MOVEMENT_SPEED,
     })
-    position.copy(next)
-
-    if (triangle === undefined) {
-      triangle = walkmeshController.getTriangleForPosition(position) ?? undefined
-      continue
-    }
-    const permittedTriangles = [triangle, ...walkmeshController.getAdjacentTriangles(triangle)]
-    triangle = walkmeshController.getTriangleForPosition(position, permittedTriangles, false) ?? triangle
+    position.copy(next.position)
+    triangle = next.triangleId ?? triangle
   }
 
   return history

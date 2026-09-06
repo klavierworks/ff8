@@ -1,14 +1,17 @@
 import { useFrame } from '@react-three/fiber'
 import { useRef, useState } from 'react'
-import { Vector3 } from 'three'
+import { Object3D, Vector3 } from 'three'
 
 import useGlobalStore from '../../../../store'
+import { numberToFloatingPoint } from '../../../../utils'
 import { getPlayerEntity } from './Model/modelUtils'
 import createMovementController from './MovementController/MovementController'
+import createRotationController from './RotationController/RotationController'
+import { ScriptStateStore } from './state'
 
 export type Side = 'LEFT' | 'RIGHT' | undefined
 
-const DEFAULT_TRIGGER_RADIUS = 0.02
+const _closestPoint = new Vector3()
 
 const getPointSideOfLine = (lineStart: VectorLike, lineEnd: VectorLike, point: VectorLike): Side => {
   const crossZ =
@@ -35,8 +38,45 @@ const getClosestPointOnSegmentXY = (point: VectorLike, segmentStart: VectorLike,
   const deltaX = point.x - closestX
   const deltaY = point.y - closestY
   return {
+    closestPoint: _closestPoint.set(closestX, closestY, 0),
     distanceSquared: deltaX * deltaX + deltaY * deltaY,
     isInSegment: t >= 0 && t <= 1,
+  }
+}
+
+const getTriggerRadius = (player: Object3D) => {
+  const useScriptStateStore = player.userData.useScriptStateStore as ScriptStateStore | undefined
+
+  return numberToFloatingPoint(useScriptStateStore?.getState().pushRadius ?? 0)
+}
+
+const isPlayerFacingPoint = (player: Object3D, playerPosition: VectorLike, point: VectorLike) => {
+  const towardsX = point.x - playerPosition.x
+  const towardsY = point.y - playerPosition.y
+  if (towardsX === 0 && towardsY === 0) {
+    return true
+  }
+
+  const rotationController = player.userData.rotationController as ReturnType<typeof createRotationController>
+  const facingDirection = rotationController.getCurrentDirection()
+
+  return facingDirection.x * towardsX + facingDirection.y * towardsY > 0
+}
+
+const getIntersectionState = (
+  player: Object3D,
+  playerPosition: Vector3,
+  line: VectorLike[],
+  shouldRequireFacing: boolean,
+) => {
+  const { closestPoint, distanceSquared, isInSegment } = getClosestPointOnSegmentXY(playerPosition, line[0], line[1])
+  const triggerRadius = getTriggerRadius(player)
+  const isInRange = isInSegment && distanceSquared < triggerRadius * triggerRadius
+
+  return {
+    isInRange,
+    isTouching: isInRange && (!shouldRequireFacing || isPlayerFacingPoint(player, playerPosition, closestPoint)),
+    side: getPointSideOfLine(line[0], line[1], playerPosition),
   }
 }
 
@@ -54,10 +94,11 @@ const useIntersection = (
     onTouchOn?: (fromSide: Side) => void
   },
   line: VectorLike[],
-  radius: number = DEFAULT_TRIGGER_RADIUS,
+  { shouldRequireFacing = false }: { shouldRequireFacing?: boolean } = {},
 ) => {
   const hasInitializedRef = useRef(false)
   const wasInRangeRef = useRef(false)
+  const wasTouchingRef = useRef(false)
   const [playerPosition] = useState(new Vector3())
   const isUserControllable = useGlobalStore((state) => state.isUserControllable)
 
@@ -78,32 +119,34 @@ const useIntersection = (
     }
 
     player.getWorldPosition(playerPosition)
-    const side = getPointSideOfLine(line[0], line[1], playerPosition)
+    const { isInRange, isTouching, side } = getIntersectionState(player, playerPosition, line, shouldRequireFacing)
     if (!side) {
       return
     }
 
-    const { distanceSquared, isInSegment } = getClosestPointOnSegmentXY(playerPosition, line[0], line[1])
-    const isInRange = isInSegment && distanceSquared <= radius * radius
-
     if (!hasInitializedRef.current) {
       hasInitializedRef.current = true
       wasInRangeRef.current = isInRange
+      wasTouchingRef.current = isTouching
       onInitialized?.(side)
       return
     }
 
-    if (isInRange === wasInRangeRef.current) {
-      return
+    if (isTouching !== wasTouchingRef.current) {
+      wasTouchingRef.current = isTouching
+      if (isTouching) {
+        onTouchOn?.(side)
+      } else {
+        onTouchOff?.(side)
+      }
     }
-    wasInRangeRef.current = isInRange
 
-    if (isInRange) {
-      onTouchOn?.(side)
-      onAcross?.()
-      return
+    if (isInRange !== wasInRangeRef.current) {
+      wasInRangeRef.current = isInRange
+      if (isInRange) {
+        onAcross?.()
+      }
     }
-    onTouchOff?.(side)
   })
 }
 

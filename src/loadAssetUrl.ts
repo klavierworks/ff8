@@ -5,8 +5,37 @@
 
 type UrlLoaders = Record<string, () => Promise<string>>
 
+const MAX_LOAD_ATTEMPTS = 3
+
 const resolvedUrls = new Map<string, string>()
 const pendingUrls = new Map<string, Promise<unknown>>()
+const failureCounts = new Map<string, number>()
+
+const recordFailure = (key: string, error: unknown) => {
+  const attempts = (failureCounts.get(key) ?? 0) + 1
+  failureCounts.set(key, attempts)
+  console.error(`Failed to load asset ${key} (attempt ${attempts} of ${MAX_LOAD_ATTEMPTS})`, error)
+}
+
+// The rejection is deliberately swallowed: the thrown promise must settle for Suspense to
+// re-render, and that re-render is what drives the retry.
+const startLoad = (loaders: UrlLoaders, key: string) => {
+  const pending = loaders[key]()
+    .then((url) => {
+      resolvedUrls.set(key, url)
+      failureCounts.delete(key)
+    })
+    .catch((error) => {
+      recordFailure(key, error)
+    })
+    .finally(() => {
+      pendingUrls.delete(key)
+    })
+  pendingUrls.set(key, pending)
+  return pending
+}
+
+const getLoad = (loaders: UrlLoaders, key: string) => pendingUrls.get(key) ?? startLoad(loaders, key)
 
 export const loadAssetUrl = (loaders: UrlLoaders, key: string | undefined): string => {
   if (!key || !loaders[key]) {
@@ -16,14 +45,10 @@ export const loadAssetUrl = (loaders: UrlLoaders, key: string | undefined): stri
   if (resolved !== undefined) {
     return resolved
   }
-  let pending = pendingUrls.get(key)
-  if (!pending) {
-    pending = loaders[key]().then((url) => {
-      resolvedUrls.set(key, url)
-    })
-    pendingUrls.set(key, pending)
+  if ((failureCounts.get(key) ?? 0) >= MAX_LOAD_ATTEMPTS) {
+    throw new Error(`Gave up loading asset ${key} after ${MAX_LOAD_ATTEMPTS} attempts`)
   }
-  throw pending
+  throw getLoad(loaders, key)
 }
 
 // Fire-and-forget url resolution for preloading outside of render (never suspends).
@@ -36,8 +61,10 @@ export const preloadAssetUrl = (loaders: UrlLoaders, key: string | undefined, on
     onReady(resolved)
     return
   }
-  loaders[key]().then((url) => {
-    resolvedUrls.set(key, url)
-    onReady(url)
+  getLoad(loaders, key).then(() => {
+    const url = resolvedUrls.get(key)
+    if (url !== undefined) {
+      onReady(url)
+    }
   })
 }

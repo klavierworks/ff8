@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { Mesh } from 'three'
 
 import useGlobalStore from '../../../../store'
-import { vectorToFloatingPoint } from '../../../../utils'
+import { getGatewayDestination, vectorToFloatingPoint } from '../../../../utils'
 import { FieldData } from '../../Field'
 import LineBlock from '../../LineBlock/LineBlock'
 import useIntersection, { Side } from '../../Scripts/Script/useIntersection'
@@ -16,8 +16,11 @@ const Gateway = ({
 }) => {
   const lineRef = useRef<Mesh>(null)
   const formattedGateway: FormattedGateway = useMemo(() => {
+    const { position, triangle } = getGatewayDestination(gateway.destinationPoint)
+
     return {
-      destination: vectorToFloatingPoint(gateway.destinationPoint),
+      destination: position,
+      destinationTriangle: triangle,
       sourceLine: gateway.sourceLine.map(vectorToFloatingPoint),
       target: gateway.target,
     }

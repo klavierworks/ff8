@@ -7,10 +7,9 @@ import { Suspense, useEffect, useState } from 'react'
 
 import MAP_NAMES from '../../constants/maps'
 import useGlobalStore from '../../store'
-import { getInitialEntrance } from '../../utils'
 import Background from './Background/Background'
 import Camera from './Camera/Camera'
-import { getFieldData } from './fieldUtils'
+import { getFieldData, getRequestedSpawn } from './fieldUtils'
 import Gateways from './Gateways/Gateways'
 import LoadingController from './LoadingController'
 import { awaitFadesync, triggerFadeout } from './Scripts/Script/common'
@@ -126,13 +125,15 @@ const FieldLoader = (props: FieldLoaderProps) => {
       Object.values(backgroundAnimations).forEach((animation) => animation.stop())
       Object.values(layerTints).forEach((tint) => tint.progress.stop())
 
+      const spawn = getRequestedSpawn(data, pendingCharacterPosition, pendingCharacterTriangle)
+
       useGlobalStore.setState({
         ...(data
           ? {
               availableMessages: data.text,
               cameraFocusHeight: data.cameraFocusHeight,
-              characterPosition: pendingCharacterPosition ?? getInitialEntrance(data!),
-              characterSpawnTriangle: pendingCharacterTriangle,
+              characterPosition: spawn.position,
+              characterSpawnTriangle: spawn.triangle,
               fieldData: data,
               fieldDirection: data.controlDirection,
             }

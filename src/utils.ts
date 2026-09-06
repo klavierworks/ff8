@@ -29,16 +29,20 @@ export const getInitialField = () => {
   return initialField
 }
 
+export const getGatewayDestination = (destinationPoint: VectorLike) => ({
+  position: new Vector3(numberToFloatingPoint(destinationPoint.x), numberToFloatingPoint(destinationPoint.y), 0),
+  triangle: destinationPoint.z,
+})
+
 export const getInitialEntrance = (initialField: FieldData) => {
   const entrances = gateways.filter((gateway) => gateway.target === initialField.id)
 
   if (entrances.length === 0) {
     console.warn('No entrances found for this map... ')
-    return new Vector3(0, 0, 0)
+    return { position: new Vector3(0, 0, 0), triangle: undefined }
   }
 
-  const entrance = entrances[0].destinationPoint
-  return vectorToFloatingPoint(entrance)
+  return getGatewayDestination(entrances[0].destinationPoint)
 }
 
 const intersectionRaycaster = new Raycaster()

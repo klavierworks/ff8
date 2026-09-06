@@ -1289,12 +1289,17 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const angle = STACK.pop() as number
     await rotationController.turnToFaceAngle(angle, 'gentle')
   },
-  MACCEL: ({ STACK }) => {
-    STACK.pop() as number
-    STACK.pop() as number
-    STACK.pop() as number
-    STACK.pop() as number
-    STACK.pop() as number
+  MACCEL: async ({ movementController, STACK }) => {
+    const targetSpeed = STACK.pop() as number
+    const distanceToStopAnimationFromTarget = STACK.pop() as number
+    const lastThree = STACK.splice(-3)
+    const target = new Vector3(...(lastThree.map(numberToFloatingPoint) as [number, number, number]))
+
+    await movementController.moveToPoint(target, {
+      distanceToStopAnimationFromTarget,
+      isFacingTarget: false,
+      targetSpeed,
+    })
   },
   MAPFADEOFF: () => {
     useGlobalStore.setState({ isMapFadeEnabled: false })

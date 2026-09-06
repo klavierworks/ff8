@@ -2,6 +2,8 @@ import { useFrame } from '@react-three/fiber'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Object3D, PerspectiveCamera, Scene, Vector3 } from 'three'
 
+import type WalkmeshMovementController from '../../../WalkMesh/WalkmeshMovement'
+
 import useGlobalStore from '../../../../../store'
 import { checkForIntersections } from '../../../../../utils'
 import createMovementController from '../MovementController/MovementController'
@@ -28,6 +30,25 @@ type useControlsProps = {
 }
 
 const desiredPosition = new Vector3(0, 0, 0)
+
+const resolveSpawnOnWalkmesh = (
+  walkmeshController: WalkmeshMovementController,
+  position: undefined | Vector3,
+  triangleId: number | undefined,
+) => {
+  if (!position) {
+    return triangleId === undefined ? null : { position: walkmeshController.getTriangleCentre(triangleId), triangleId }
+  }
+
+  const onNamedTriangle =
+    triangleId === undefined ? null : walkmeshController.getPositionOnTriangle(position, triangleId)
+  if (onNamedTriangle) {
+    return { position: onNamedTriangle, triangleId }
+  }
+
+  const onWalkmesh = walkmeshController.getPositionOnWalkmesh(position)
+  return onWalkmesh ? { position: onWalkmesh, triangleId: undefined } : null
+}
 
 const useControls = ({
   characterHeight,
@@ -65,18 +86,20 @@ const useControls = ({
     if (!isActive) {
       return
     }
-    if (!walkmeshController || !initialFieldPosition || isTransitioningMap) {
+    if (!walkmeshController || isTransitioningMap) {
+      return
+    }
+    if (!initialFieldPosition && spawnTriangle === undefined) {
       return
     }
 
-    const initialPosition = new Vector3(initialFieldPosition.x, initialFieldPosition.y, initialFieldPosition.z)
-    const newPosition =
-      spawnTriangle !== undefined
-        ? walkmeshController.getTriangleCentre(spawnTriangle)
-        : walkmeshController.getPositionOnWalkmesh(initialPosition)
-    console.log('Placing character at', newPosition, 'from initial position', initialPosition)
-    if (newPosition) {
-      movementController.setPosition(newPosition)
+    const initialPosition = initialFieldPosition
+      ? new Vector3(initialFieldPosition.x, initialFieldPosition.y, initialFieldPosition.z)
+      : undefined
+    const spawn = resolveSpawnOnWalkmesh(walkmeshController, initialPosition, spawnTriangle)
+    console.log('Placing character at', spawn, 'from initial position', initialPosition)
+    if (spawn) {
+      movementController.setPosition(spawn.position, spawn.triangleId)
     } else {
       console.error('Tried to set character position to an invalid position', initialPosition)
     }
@@ -204,16 +227,12 @@ const useControls = ({
       const moveDistance = speed * delta
       desiredPosition.copy(currentPosition).add(meshForward.multiplyScalar(moveDistance))
 
-      const newPosition = walkmeshController.getNextPositionOnWalkmesh(
+      const { position: newPosition, triangleId } = walkmeshController.getNextPositionOnWalkmesh(
         POSITION_VECTOR.set(currentPosition.x, currentPosition.y, currentPosition.z),
         meshForward,
         moveDistance,
         movementController.getState().position.walkmeshTriangle ?? undefined,
       )
-
-      if (!newPosition) {
-        return
-      }
 
       const pushRadius = useScriptStateStore.getState().pushRadius
       const touchedEntities = getInteractiveEntities(scene).filter((entity) =>
@@ -230,7 +249,7 @@ const useControls = ({
         return
       }
 
-      movementController.setPosition(newPosition)
+      movementController.setPosition(newPosition, triangleId ?? undefined)
       movementController.setHasMoved(true)
 
       const movementSpeed = isWalking ? 2560 : 7929

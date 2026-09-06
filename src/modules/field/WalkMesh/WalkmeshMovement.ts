@@ -13,6 +13,11 @@ const _flank = new Vector3()
 const _probe = new Vector3()
 const _up = new Vector3(0, 0, 1)
 
+export type WalkmeshStep = {
+  position: Vector3
+  triangleId: null | number
+}
+
 type PathNode = {
   entryPoint?: Vector3
   f: number
@@ -133,19 +138,19 @@ class WalkmeshMovementController {
     moveDistance: number,
     currentTriangleId?: number,
     isAllowedToCrossBlockedTriangles = false,
-  ): Vector3 {
+  ): WalkmeshStep {
     const triangleId =
       currentTriangleId ??
       this.getTriangleForPosition(currentPosition, undefined, isAllowedToCrossBlockedTriangles) ??
       undefined
     if (triangleId === undefined) {
-      return currentPosition.clone()
+      return { position: currentPosition.clone(), triangleId: null }
     }
 
     _heading.copy(moveDirection)
     _heading.z = 0
     if (_heading.lengthSq() < 1e-12) {
-      return currentPosition.clone()
+      return { position: currentPosition.clone(), triangleId }
     }
     _heading.normalize()
 
@@ -196,9 +201,9 @@ class WalkmeshMovementController {
     const finalY = fromY + _heading.y * moveDistance
     const destination = this.traverseToTarget(triangleId, finalX, finalY, isAllowedToCrossBlockedTriangles)
     if (destination.isBlocked) {
-      return currentPosition.clone()
+      return { position: currentPosition.clone(), triangleId }
     }
-    return new Vector3(finalX, finalY, destination.z)
+    return { position: new Vector3(finalX, finalY, destination.z), triangleId: destination.triangleId }
   }
 
   public getPlaneHeightOnTriangle(x: number, y: number, triangleId: number): null | number {

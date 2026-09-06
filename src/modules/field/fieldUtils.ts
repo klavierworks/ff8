@@ -2,7 +2,8 @@ import { Scene, Vector3 } from 'three'
 
 import MAP_NAMES from '../../constants/maps'
 import useGlobalStore from '../../store'
-import { RawFieldData } from './Field'
+import { getInitialEntrance } from '../../utils'
+import { FieldData, RawFieldData } from './Field'
 import { OPCODES } from './Scripts/constants'
 import { MEMORY, restoreMemory } from './Scripts/Script/handlers'
 import { getPlayerEntity } from './Scripts/Script/Model/modelUtils'
@@ -67,6 +68,20 @@ export const getFieldData = async (fieldId: string) => {
   }
 
   return withMappedOpcodes
+}
+
+export const getRequestedSpawn = (
+  fieldData: FieldData,
+  pendingPosition: undefined | Vector3,
+  pendingTriangle: number | undefined,
+) => {
+  if (pendingPosition) {
+    return { position: pendingPosition, triangle: pendingTriangle }
+  }
+  if (pendingTriangle !== undefined) {
+    return { position: undefined, triangle: pendingTriangle }
+  }
+  return getInitialEntrance(fieldData)
 }
 
 type SaveData = {

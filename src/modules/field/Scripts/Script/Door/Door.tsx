@@ -60,6 +60,7 @@ const Door = ({ doors, script, scriptController, useScriptStateStore }: DoorProp
       onTouchOn: handleIntersect,
     },
     linePoints,
+    { shouldRequireFacing: true },
   )
 
   if (!linePoints || !isDoorOn) {

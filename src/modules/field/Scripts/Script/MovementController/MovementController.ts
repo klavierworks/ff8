@@ -5,11 +5,12 @@ import type WalkmeshMovementController from '../../../WalkMesh/WalkmeshMovement'
 
 import PromiseSignal from '../../../../../PromiseSignal'
 import { framesToSeconds, TARGET_FPS } from '../../../../../timing'
-import { numberToFloatingPoint } from '../../../../../utils'
+import { floatingPointToNumber, numberToFloatingPoint } from '../../../../../utils'
 import { isTouching } from '../common'
 import JumpCurve from './JumpCurve'
 
 const NATIVE_SPEED_TO_TS_PER_FRAME = 1 / (256 * 4096)
+const FIELD_MOVEMENT_SCALE = 20
 
 type MoveOptions = {
   customMovementTarget: undefined | Vector3
@@ -20,7 +21,24 @@ type MoveOptions = {
   isAnimationEnabled: boolean
   isClimbingLadder: boolean
   isFacingTarget: boolean
+  targetSpeed: number | undefined
   userControlledSpeed: number | undefined
+}
+
+type SpeedRamp = {
+  current: number
+  target: number
+}
+
+// Scaling the step by the distance still to run makes the speed land exactly on
+// the target as the entity arrives, however long the move is.
+const calculateRampedSpeed = (ramp: SpeedRamp, remainingDistance: number, elapsedFrames: number) => {
+  const nativeDistance = floatingPointToNumber(remainingDistance)
+  const difference = FIELD_MOVEMENT_SCALE * (ramp.target - ramp.current)
+  const stepPerFrame = nativeDistance > 0 ? Math.trunc(difference / nativeDistance) : difference
+  const speed = ramp.current + stepPerFrame * elapsedFrames
+
+  return ramp.target > ramp.current ? Math.min(speed, ramp.target) : Math.max(speed, ramp.target)
 }
 
 const createMovementController = (id: number, walkmeshController: WalkmeshMovementController) => {
@@ -61,6 +79,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       isFacingTarget: true,
       isPaused: false,
       signal: undefined as PromiseSignal | undefined,
+      speedRamp: undefined as SpeedRamp | undefined,
       targetObject: undefined as Object3D | undefined,
       userControlledSpeed: undefined as number | undefined,
       walkmeshTriangle: null as null | number,
@@ -114,6 +133,23 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
     })
   }
 
+  const applySpeedRamp = (remainingDistance: number, delta: number) => {
+    const { speedRamp } = getState().position
+    if (!speedRamp) {
+      return
+    }
+
+    setState({
+      position: {
+        ...getState().position,
+        speedRamp: {
+          ...speedRamp,
+          current: calculateRampedSpeed(speedRamp, remainingDistance, delta * TARGET_FPS),
+        },
+      },
+    })
+  }
+
   // Placement is instant, not a movement. Routing it through waypoints let a
   // MOVE opcode later in the same script tick overwrite the waypoint before the
   // next tick consumed it, leaving the entity parked on the -999 sentinel.
@@ -135,6 +171,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         isFacingTarget: false,
         isPaused: true,
         signal: undefined,
+        speedRamp: undefined,
         walkmeshTriangle: triangle,
         waypoints: undefined,
       },
@@ -166,6 +203,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       isAnimationEnabled: true,
       isClimbingLadder: false,
       isFacingTarget: true,
+      targetSpeed: undefined,
       userControlledSpeed: undefined,
     }
 
@@ -177,6 +215,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       isAnimationEnabled,
       isClimbingLadder,
       isFacingTarget,
+      targetSpeed,
       userControlledSpeed,
     } = {
       ...defaultOptions,
@@ -198,6 +237,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         isFacingTarget,
         isPaused: false,
         signal,
+        speedRamp: targetSpeed === undefined ? undefined : { current: getState().movementSpeed, target: targetSpeed },
         targetObject,
         userControlledSpeed,
         walkmeshTriangle: getState().position.walkmeshTriangle,
@@ -302,6 +342,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       },
       position: {
         ...getState().position,
+        speedRamp: undefined,
         waypoints: undefined,
       },
     })
@@ -435,13 +476,8 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
 
     const { current: currentPosition, duration, targetObject, waypoints } = position
 
-    const movementSpeed = getMovementSpeed()
-
     const positionGoal = waypoints?.[0]
     if (positionGoal) {
-      const speedPerSecond = movementSpeed * NATIVE_SPEED_TO_TS_PER_FRAME * TARGET_FPS
-      const maxDistance = speedPerSecond * delta
-
       // Walkmesh moves arrive on planar (XY) distance — Z is owned by the floor,
       // so a script target Z that differs from the walkmesh would otherwise make
       // the 3D distance never drop below a step and the move never complete
@@ -450,6 +486,11 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         ? currentPosition.distanceTo(positionGoal)
         : Math.hypot(positionGoal.x - currentPosition.x, positionGoal.y - currentPosition.y)
 
+      applySpeedRamp(remainingDistance, delta)
+
+      const speedPerSecond = getMovementSpeed() * NATIVE_SPEED_TO_TS_PER_FRAME * TARGET_FPS
+      const maxDistance = speedPerSecond * delta
+
       const isTouchingTarget = targetObject ? isTouching(id, targetObject, scene) : false
       if (isTouchingTarget) {
         resolvePendingPositionSignal()
@@ -457,6 +498,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
           position: {
             ...getState().position,
             isPaused: true,
+            speedRamp: undefined,
             userControlledSpeed: undefined,
             walkmeshTriangle:
               walkmeshController.getTriangleForPosition(positionGoal, undefined, true) ??
@@ -478,6 +520,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
           position: {
             ...getState().position,
             isPaused: true,
+            speedRamp: undefined,
             userControlledSpeed: undefined,
             walkmeshTriangle:
               walkmeshController.getTriangleForPosition(positionGoal, undefined, true) ??
@@ -493,20 +536,19 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         const direction = new Vector3().subVectors(positionGoal, currentPosition)
         direction.z = 0
         direction.normalize()
-        const newPosition = walkmeshController.getNextPositionOnWalkmesh(
+        const step = walkmeshController.getNextPositionOnWalkmesh(
           currentPosition,
           direction,
           maxDistance,
           getState().position.walkmeshTriangle ?? undefined,
           position.isAllowedToCrossBlockedTriangles,
         )
-        currentPosition.copy(newPosition)
-        const triangle = walkmeshController.getTriangleForPosition(currentPosition, undefined, true)
-        if (triangle !== null && triangle !== undefined && triangle !== getState().position.walkmeshTriangle) {
+        currentPosition.copy(step.position)
+        if (step.triangleId !== null && step.triangleId !== getState().position.walkmeshTriangle) {
           setState({
             position: {
               ...getState().position,
-              walkmeshTriangle: triangle,
+              walkmeshTriangle: step.triangleId,
             },
           })
         }
@@ -607,6 +649,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         isFacingTarget: true,
         isPaused: false,
         signal: undefined,
+        speedRamp: undefined,
         userControlledSpeed: undefined,
         walkmeshTriangle: null,
       },
@@ -633,9 +676,12 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
   const getMovementSpeed = () => {
     const {
       movementSpeed,
-      position: { userControlledSpeed },
+      position: { speedRamp, userControlledSpeed },
     } = getState()
-    return userControlledSpeed !== undefined ? userControlledSpeed : movementSpeed
+    if (userControlledSpeed !== undefined) {
+      return userControlledSpeed
+    }
+    return speedRamp ? speedRamp.current : movementSpeed
   }
 
   const setUserControlledSpeed = (speed: number | undefined) => {
