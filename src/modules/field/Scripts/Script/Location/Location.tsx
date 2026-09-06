@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Mesh } from 'three'
 
 import { CONTROLS_MAP } from '../../../../../constants/controls'
@@ -19,6 +19,8 @@ const Location = ({ scriptController, useScriptStateStore }: LocationProps) => {
   const linePoints = useScriptStateStore((state) => state.linePoints)
 
   const lineRef = useRef<Mesh>(null)
+  const isTouchRunningRef = useRef(false)
+  const isPushRunningRef = useRef(false)
 
   const hasValidTalkMethod = useMemo(() => {
     const talkMethod = scriptController.script.methods.find((method) => method.methodId === 'talk')
@@ -27,6 +29,41 @@ const Location = ({ scriptController, useScriptStateStore }: LocationProps) => {
     }
     return isValidActionableMethod(talkMethod)
   }, [scriptController])
+
+  const runRepeatingMethod = useCallback(
+    (methodId: string, isRunningRef: React.MutableRefObject<boolean>) => {
+      const method = scriptController.script.methods.find((candidate) => candidate.methodId === methodId)
+      if (isRunningRef.current || !isValidActionableMethod(method)) {
+        return
+      }
+
+      isRunningRef.current = true
+      scriptController.triggerMethod(methodId).finally(() => {
+        isRunningRef.current = false
+      })
+    },
+    [scriptController],
+  )
+
+  const isUserControllable = useGlobalStore((state) => state.isUserControllable)
+
+  const intersectionRef = useIntersection(
+    isLineOn && isUserControllable,
+    {
+      onAcross: () => {
+        scriptController.triggerMethod('across')
+      },
+      onFacing: () => runRepeatingMethod('push', isPushRunningRef),
+      onRange: () => runRepeatingMethod('touch', isTouchRunningRef),
+      onTouchOff: () => {
+        scriptController.triggerMethod('touchoff')
+      },
+      onTouchOn: () => {
+        scriptController.triggerMethod('touchon')
+      },
+    },
+    linePoints ?? [],
+  )
 
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -37,12 +74,11 @@ const Location = ({ scriptController, useScriptStateStore }: LocationProps) => {
       const isPlayerAbleToTalk =
         isUserControllable && isTalkable && !hasActiveTalkMethod && hasValidTalkMethod && !hasActiveText
 
-      if (!isPlayerAbleToTalk || !lineRef.current) {
+      if (!isPlayerAbleToTalk || !lineRef.current || !intersectionRef.current.isWithinInteractCone) {
         return
       }
 
       event.stopImmediatePropagation()
-      console.log(event.code, CONTROLS_MAP)
       if (event.code !== CONTROLS_MAP.confirm) {
         return
       }
@@ -52,41 +88,17 @@ const Location = ({ scriptController, useScriptStateStore }: LocationProps) => {
         useGlobalStore.setState({ hasActiveTalkMethod: false })
       })
     },
-    [hasValidTalkMethod, scriptController, useScriptStateStore],
+    [hasValidTalkMethod, intersectionRef, scriptController, useScriptStateStore],
   )
 
-  const isUserControllable = useGlobalStore((state) => state.isUserControllable)
+  useEffect(() => {
+    if (!isLineOn) {
+      return
+    }
 
-  useIntersection(
-    isLineOn && isUserControllable,
-    {
-      onAcross: () => {
-        scriptController.triggerMethod('across')
-      },
-      onTouchOff: () => {
-        window.removeEventListener('keydown', onKeyDown)
-        scriptController.triggerMethod('touchoff')
-      },
-      onTouchOn: () => {
-        window.addEventListener('keydown', onKeyDown)
-        scriptController.triggerMethod('touchon')
-
-        const touchMethod = scriptController.script.methods.find((method) => method.methodId === 'touch')
-        const hasValidTouchMethod = isValidActionableMethod(touchMethod)
-        if (hasValidTouchMethod) {
-          scriptController.triggerMethod('touch')
-          return
-        }
-        const pushMethod = scriptController.script.methods.find((method) => method.methodId === 'push')
-        const hasValidPushMethod = isValidActionableMethod(pushMethod)
-        if (hasValidPushMethod) {
-          scriptController.triggerMethod('push')
-        }
-      },
-    },
-    linePoints ?? [],
-    { shouldRequireFacing: true },
-  )
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isLineOn, onKeyDown])
 
   if (!linePoints || !isLineOn) {
     return null

@@ -241,7 +241,7 @@ const INITIAL_STATE: GlobalState = {
     96: 1,
     109: 1,
   },
-  party: [0, 1],
+  party: [0, 1, 2],
   partyMembersFollowing: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   pendingCharacterPosition: undefined,
   pendingCharacterTriangle: undefined,

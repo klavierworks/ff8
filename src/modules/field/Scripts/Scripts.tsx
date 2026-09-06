@@ -16,12 +16,15 @@ const Scripts = ({ doors, models, scripts, sounds }: ScriptsProps) => {
   const fieldId = useGlobalStore((state) => state.fieldId)
 
   const formattedDoors: Door[] = useMemo(() => {
-    const doorScripts = scripts.filter((script) => script.name.startsWith('Door'))
+    const doorScripts = scripts.filter((script) => script.type === 'door')
 
-    return doors.map((door, index) => ({
-      ...door,
-      name: doorScripts[index]?.name || `UNMATCHED_DOOR`,
-    }))
+    return doors.flatMap((door) => {
+      const doorScript = doorScripts[door.doorID]
+      if (!doorScript) {
+        return []
+      }
+      return [{ ...door, name: doorScript.name }]
+    })
   }, [doors, scripts])
 
   const [mainScripts, ...otherScripts] = useMemo(() => {

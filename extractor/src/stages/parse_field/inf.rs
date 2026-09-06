@@ -46,6 +46,7 @@ pub struct Door {
     #[serde(rename = "doorID")]
     pub door_id: u8,
     pub line: [Vertex; 2],
+    pub behaviour_mode: u8,
 }
 
 #[derive(Serialize)]
@@ -204,7 +205,12 @@ fn read_doors(reader: &Reader, layout: &Layout) -> Result<Vec<Door>> {
             reader.vertex_at(base)?,
             reader.vertex_at(base + VERTEX_SIZE)?,
         ];
-        doors.push(Door { door_id, line });
+        let behaviour_mode = reader.u8_at(base + 2 * VERTEX_SIZE + 2)?;
+        doors.push(Door {
+            door_id,
+            line,
+            behaviour_mode,
+        });
     }
     Ok(doors)
 }

@@ -67,9 +67,6 @@ const readInteractiveEntity = (object: Object3D): InteractiveEntity | null => {
   }
 
   const state = useScriptStateStore.getState()
-  if (!state.isVisible) {
-    return null
-  }
 
   return {
     isPushable: state.isPushable,

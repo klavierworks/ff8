@@ -11,6 +11,23 @@ import { ScriptStateStore } from './state'
 
 export type Side = 'LEFT' | 'RIGHT' | undefined
 
+type IntersectionHandlers = {
+  onAcross?: (side: Side) => void
+  onFacing?: () => void
+  onInitialized?: (spawnSide: Side) => void
+  onRange?: () => void
+  onTouchOff?: (side: Side) => void
+  onTouchOn?: (fromSide: Side) => void
+}
+
+type IntersectionState = {
+  isFacing: boolean
+  isInRange: boolean
+  isWithinInteractCone: boolean
+}
+
+const INTERACT_CONE_COSINE = Math.cos(Math.PI / 4)
+
 const _closestPoint = new Vector3()
 
 const getPointSideOfLine = (lineStart: VectorLike, lineEnd: VectorLike, point: VectorLike): Side => {
@@ -50,55 +67,44 @@ const getTriggerRadius = (player: Object3D) => {
   return numberToFloatingPoint(useScriptStateStore?.getState().pushRadius ?? 0)
 }
 
-const isPlayerFacingPoint = (player: Object3D, playerPosition: VectorLike, point: VectorLike) => {
+const getFacingCosine = (player: Object3D, playerPosition: VectorLike, point: VectorLike) => {
   const towardsX = point.x - playerPosition.x
   const towardsY = point.y - playerPosition.y
-  if (towardsX === 0 && towardsY === 0) {
-    return true
+  const length = Math.hypot(towardsX, towardsY)
+  if (length === 0) {
+    return 1
   }
 
   const rotationController = player.userData.rotationController as ReturnType<typeof createRotationController>
   const facingDirection = rotationController.getCurrentDirection()
 
-  return facingDirection.x * towardsX + facingDirection.y * towardsY > 0
+  return (facingDirection.x * towardsX + facingDirection.y * towardsY) / length
 }
 
-const getIntersectionState = (
-  player: Object3D,
-  playerPosition: Vector3,
-  line: VectorLike[],
-  shouldRequireFacing: boolean,
-) => {
+const getIntersectionState = (player: Object3D, playerPosition: Vector3, line: VectorLike[]) => {
   const { closestPoint, distanceSquared, isInSegment } = getClosestPointOnSegmentXY(playerPosition, line[0], line[1])
   const triggerRadius = getTriggerRadius(player)
   const isInRange = isInSegment && distanceSquared < triggerRadius * triggerRadius
+  const facingCosine = isInRange ? getFacingCosine(player, playerPosition, closestPoint) : -1
 
   return {
+    isFacing: facingCosine > 0,
     isInRange,
-    isTouching: isInRange && (!shouldRequireFacing || isPlayerFacingPoint(player, playerPosition, closestPoint)),
+    isWithinInteractCone: facingCosine > INTERACT_CONE_COSINE,
     side: getPointSideOfLine(line[0], line[1], playerPosition),
   }
 }
 
 const useIntersection = (
   isActive = true,
-  {
-    onAcross,
-    onInitialized,
-    onTouchOff,
-    onTouchOn,
-  }: {
-    onAcross?: () => void
-    onInitialized?: (spawnSide: Side) => void
-    onTouchOff?: (side: Side) => void
-    onTouchOn?: (fromSide: Side) => void
-  },
+  { onAcross, onFacing, onInitialized, onRange, onTouchOff, onTouchOn }: IntersectionHandlers,
   line: VectorLike[],
   { shouldRequireFacing = false }: { shouldRequireFacing?: boolean } = {},
 ) => {
   const hasInitializedRef = useRef(false)
-  const wasInRangeRef = useRef(false)
   const wasTouchingRef = useRef(false)
+  const previousSideRef = useRef<Side>(undefined)
+  const stateRef = useRef<IntersectionState>({ isFacing: false, isInRange: false, isWithinInteractCone: false })
   const [playerPosition] = useState(new Vector3())
   const isUserControllable = useGlobalStore((state) => state.isUserControllable)
 
@@ -119,21 +125,25 @@ const useIntersection = (
     }
 
     player.getWorldPosition(playerPosition)
-    const { isInRange, isTouching, side } = getIntersectionState(player, playerPosition, line, shouldRequireFacing)
+    const { isFacing, isInRange, isWithinInteractCone, side } = getIntersectionState(player, playerPosition, line)
     if (!side) {
       return
     }
 
+    const isTouching = shouldRequireFacing ? isFacing : isInRange
+    const wasTouching = wasTouchingRef.current
+    const previousSide = previousSideRef.current
+    stateRef.current = { isFacing, isInRange, isWithinInteractCone }
+    wasTouchingRef.current = isTouching
+    previousSideRef.current = side
+
     if (!hasInitializedRef.current) {
       hasInitializedRef.current = true
-      wasInRangeRef.current = isInRange
-      wasTouchingRef.current = isTouching
       onInitialized?.(side)
       return
     }
 
-    if (isTouching !== wasTouchingRef.current) {
-      wasTouchingRef.current = isTouching
+    if (isTouching !== wasTouching) {
       if (isTouching) {
         onTouchOn?.(side)
       } else {
@@ -141,13 +151,20 @@ const useIntersection = (
       }
     }
 
-    if (isInRange !== wasInRangeRef.current) {
-      wasInRangeRef.current = isInRange
-      if (isInRange) {
-        onAcross?.()
-      }
+    if (!isInRange) {
+      return
     }
+
+    if (side !== previousSide) {
+      onAcross?.(side)
+    }
+    if (isFacing) {
+      onFacing?.()
+    }
+    onRange?.()
   })
+
+  return stateRef
 }
 
 export default useIntersection

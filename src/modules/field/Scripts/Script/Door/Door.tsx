@@ -1,12 +1,10 @@
-import { useMemo, useRef, useState } from 'react'
-import { Mesh } from 'three'
+import { useMemo, useState } from 'react'
 
-import { vectorToFloatingPoint } from '../../../../../utils'
-import LineBlock from '../../../LineBlock/LineBlock'
 import { Script } from '../../types'
 import createScriptController from '../ScriptController/ScriptController'
 import { ScriptStateStore } from '../state'
-import useIntersection, { Side } from '../useIntersection'
+import { Side } from '../useIntersection'
+import DoorLine from './DoorLine/DoorLine'
 
 type DoorProps = {
   doors: Door[]
@@ -20,15 +18,13 @@ const Door = ({ doors, script, scriptController, useScriptStateStore }: DoorProp
 
   const [isDoorOpen, setIsDoorOpen] = useState(false)
 
-  const door = useMemo(() => {
-    const entry = doors.find((door) => door.name === script.name)!
-    if (!entry) {
+  const doorLines = useMemo(() => {
+    const entries = doors.filter((door) => door.name === script.name)
+    if (entries.length === 0) {
       console.warn(`Door with name ${script.name} not found in doors array.`)
     }
-    return entry
+    return entries
   }, [doors, script.name])
-
-  const hitboxRef = useRef<Mesh>(null)
 
   const [playerOpenedFromSide, setPlayerOpenedFromSide] = useState<Side>()
   const handleIntersect = async (entrySide: Side) => {
@@ -42,6 +38,10 @@ const Door = ({ doors, script, scriptController, useScriptStateStore }: DoorProp
   }
 
   const handleExit = async (entrySide: Side) => {
+    // // I feel like I saw the doors close in game? There's a whole 6 types of doors in the engine (based on the mode flag on the door)
+    // but all doors in the field are 0, ie: "open only". This feels like I'm missing something – nearly all doors have a 'close' script
+    return
+
     if (entrySide !== playerOpenedFromSide) {
       return
     }
@@ -51,32 +51,19 @@ const Door = ({ doors, script, scriptController, useScriptStateStore }: DoorProp
     await scriptController.triggerMethod('close')
   }
 
-  const linePoints = useMemo(() => door && door.line.map(vectorToFloatingPoint), [door])
-
-  useIntersection(
-    isDoorOn,
-    {
-      onTouchOff: handleExit,
-      onTouchOn: handleIntersect,
-    },
-    linePoints,
-    { shouldRequireFacing: true },
-  )
-
-  if (!linePoints || !isDoorOn) {
-    return null
-  }
-
   return (
-    <LineBlock
-      color={isDoorOpen ? 'green' : 'red'}
-      lineBlockRef={hitboxRef}
-      name={`door-${script.name}`}
-      points={linePoints}
-      userData={{
-        isSolid: !isDoorOpen,
-      }}
-    />
+    <>
+      {doorLines.map((door, index) => (
+        <DoorLine
+          door={door}
+          isDoorOn={isDoorOn}
+          isDoorOpen={isDoorOpen}
+          key={`${door.name}-${index}`}
+          onTouchOff={handleExit}
+          onTouchOn={handleIntersect}
+        />
+      ))}
+    </>
   )
 }
 
