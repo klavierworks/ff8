@@ -9,7 +9,6 @@ import createHeadRotationController from '../HeadRotationController/HeadRotation
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
 import { ScriptStateStore } from '../state'
-import { createModelDepthUniform, getViewDepth } from './modelDepth'
 import { applyModelMaterial } from './modelMaterial'
 import { createPaletteOffsetUniform, getPaletteOffset } from './modelPalette'
 import useControls from './useControls'
@@ -66,7 +65,6 @@ const Model = ({
   const ModelComponent = components[modelName] ?? components['d000']
   const [meshGroup, setMeshGroup] = useState<Group>()
 
-  const [modelViewDepth] = useState(createModelDepthUniform)
   const [paletteOffset] = useState(createPaletteOffsetUniform)
 
   const convertMaterialsToBasic = useCallback(
@@ -78,12 +76,12 @@ const Model = ({
           meshBasicMaterial.userData.originalColor = child.material.color.clone()
           meshBasicMaterial.map = child.material.map
           meshBasicMaterial.side = DoubleSide
-          applyModelMaterial(meshBasicMaterial, modelViewDepth, paletteOffset)
+          applyModelMaterial(meshBasicMaterial, paletteOffset)
           child.material = meshBasicMaterial
         }
       })
     },
-    [modelViewDepth, paletteOffset],
+    [paletteOffset],
   )
 
   const modelColors = useGlobalStore((state) => state.fieldData?.modelColors)
@@ -202,14 +200,6 @@ const Model = ({
 
     const floorZ = walkmeshController.getPlaneHeightOnTriangle(current.x, current.y, triangleId)
     animationGroupRef.current.position.z = floorZ !== null ? floorZ - current.z : 0
-  })
-
-  useFrame(({ camera }) => {
-    if (!animationGroupRef.current) {
-      return
-    }
-
-    modelViewDepth.value = getViewDepth(animationGroupRef.current, camera)
   })
 
   useFollower({
