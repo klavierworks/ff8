@@ -34,6 +34,8 @@ CLAUDE.md
 
 # Local Netlify folder
 .netlify
+
+sweep
 public/worldmap
 public/combined
 

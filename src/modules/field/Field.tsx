@@ -6,12 +6,14 @@ import { useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useState } from 'react'
 
 import MAP_NAMES from '../../constants/maps'
-import useGlobalStore from '../../store'
+import useGlobalStore, { createEmptyParticleEmitters } from '../../store'
 import Background from './Background/Background'
 import Camera from './Camera/Camera'
 import { getFieldData, getRequestedSpawn } from './fieldUtils'
 import Gateways from './Gateways/Gateways'
 import LoadingController from './LoadingController'
+import Particles from './Particles/Particles'
+import { ParticleData } from './Particles/particleSimulation'
 import { awaitFadesync, triggerFadeout } from './Scripts/Script/common'
 import { MEMORY } from './Scripts/Script/handlers'
 import { useFragmentedGLTFLoader } from './Scripts/Script/Model/useFragmentedGltfLoader'
@@ -21,6 +23,7 @@ import { Script } from './Scripts/types'
 import WalkMesh from './WalkMesh/WalkMesh'
 
 export type FieldData = Omit<RawFieldData, 'scripts' | 'tiles'> & {
+  particles: ParticleData | undefined
   scripts: Script[]
   tiles: {
     blendType: number
@@ -69,6 +72,7 @@ const Field = ({ data }: FieldProps) => {
             <Camera data={data} />
             <Scripts doors={data.doors} models={data.models} scripts={data.scripts} sounds={data.sounds} />
             <Background data={data} />
+            {data.particles && <Particles data={data.particles} fieldId={data.id} />}
             <Gateways gateways={data.gateways} />
           </>
         )}
@@ -180,6 +184,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
         lockedTriangles: [],
 
         messageStyles: {},
+        particleEmitters: createEmptyParticleEmitters(),
         pendingCharacterPosition: undefined,
         pendingCharacterTriangle: undefined,
         pendingFieldId: undefined,

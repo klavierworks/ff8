@@ -4,6 +4,12 @@ import { PSX_CONTROLS_MAP } from '../../../../constants/controls'
 import LerpValue from '../../../../LerpValue'
 import useGlobalStore from '../../../../store'
 import { checkForIntersectingMeshes } from '../../Gateways/gatewayUtils'
+import {
+  EMITTER_MODE_ENTITY_FLAG,
+  EMITTER_MODE_OFF,
+  EMITTER_MODE_PATH,
+  EMITTER_SLOT_COUNT,
+} from '../../Particles/particleSimulation'
 import { getScriptFrame, nextScriptFrame } from '../../scriptClock'
 import { getScriptEntity } from './Model/modelUtils'
 import { openMessage } from './utils'
@@ -187,6 +193,24 @@ export const setCameraAndLayerFocus = async (object: Object3D, duration: number)
     await nextScriptFrame()
   }
 }
+
+const EMITTER_SLOT_MASK = EMITTER_SLOT_COUNT - 1
+
+const setParticleEmitter = (slot: number, mode: number) => {
+  const target = slot & EMITTER_SLOT_MASK
+  const particleEmitters = useGlobalStore
+    .getState()
+    .particleEmitters.map((current, index) => (index === target ? mode : current))
+
+  useGlobalStore.setState({ particleEmitters })
+}
+
+export const enableParticleEmitter = (slot: number) => setParticleEmitter(slot, EMITTER_MODE_PATH)
+
+export const disableParticleEmitter = (slot: number) => setParticleEmitter(slot, EMITTER_MODE_OFF)
+
+export const bindParticleEmitterToEntity = (slot: number, entityId: number) =>
+  setParticleEmitter(slot, EMITTER_MODE_ENTITY_FLAG | entityId)
 
 export const triggerFadeout = () => {
   const { fadeSpring } = useGlobalStore.getState()

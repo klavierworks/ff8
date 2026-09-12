@@ -6,6 +6,7 @@ import { create } from 'zustand'
 import MAP_NAMES from './constants/maps'
 import LerpValue from './LerpValue'
 import { FieldData } from './modules/field/Field'
+import { EMITTER_MODE_OFF, EMITTER_SLOT_COUNT } from './modules/field/Particles/particleSimulation'
 import createSFXController from './modules/field/Scripts/Script/SFXController/SFXController'
 import WalkmeshMovementController from './modules/field/WalkMesh/WalkmeshMovement'
 
@@ -119,8 +120,9 @@ type GlobalState = {
 
   ownedCards: Record<number, number>
 
-  party: number[]
+  particleEmitters: number[]
 
+  party: number[]
   partyMembersFollowing: number[]
   pendingCharacterPosition: undefined | Vector3
   pendingCharacterTriangle: number | undefined
@@ -138,6 +140,8 @@ type GlobalState = {
   vehicleId: number
   walkmeshController: undefined | WalkmeshMovementController
 }
+
+export const createEmptyParticleEmitters = () => new Array<number>(EMITTER_SLOT_COUNT).fill(EMITTER_MODE_OFF)
 
 const INITIAL_STATE: GlobalState = {
   activeCameraId: 0,
@@ -241,6 +245,7 @@ const INITIAL_STATE: GlobalState = {
     96: 1,
     109: 1,
   },
+  particleEmitters: createEmptyParticleEmitters(),
   party: [0, 1, 2],
   partyMembersFollowing: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   pendingCharacterPosition: undefined,

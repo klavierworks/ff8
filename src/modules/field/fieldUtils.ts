@@ -4,6 +4,7 @@ import MAP_NAMES from '../../constants/maps'
 import useGlobalStore from '../../store'
 import { getInitialEntrance } from '../../utils'
 import { FieldData, RawFieldData } from './Field'
+import { ParticleData } from './Particles/particleSimulation'
 import { OPCODES } from './Scripts/constants'
 import { MEMORY, restoreMemory } from './Scripts/Script/handlers'
 import { getPlayerEntity } from './Scripts/Script/Model/modelUtils'
@@ -43,6 +44,19 @@ const getFormattedTiles = (tiles: RawFieldData['tiles']) => {
 
 const FIELD_DATA = import.meta.glob<{ default: RawFieldData }>('/extractor/data/converted/field/mapdata/*/data.json')
 
+// Only the fields that ship a .pmd have a particles.json, so the lookup is allowed to miss.
+const FIELD_PARTICLES = import.meta.glob<{ default: ParticleData }>(
+  '/extractor/data/converted/field/mapdata/*/particles.json',
+)
+
+const getFieldParticles = async (fieldId: string) => {
+  const loadParticles = FIELD_PARTICLES[`/extractor/data/converted/field/mapdata/${fieldId}/particles.json`]
+  if (!loadParticles) {
+    return undefined
+  }
+  return (await loadParticles()).default
+}
+
 export const getFieldData = async (fieldId: string) => {
   const loadFieldData = FIELD_DATA[`/extractor/data/converted/field/mapdata/${fieldId}/data.json`]
   if (!loadFieldData) {
@@ -52,6 +66,7 @@ export const getFieldData = async (fieldId: string) => {
 
   const withMappedOpcodes = {
     ...data,
+    particles: await getFieldParticles(fieldId),
     scripts: data.scripts.map((script) => {
       return {
         ...script,

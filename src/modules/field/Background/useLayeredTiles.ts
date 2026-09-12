@@ -1,13 +1,14 @@
 import { useMemo } from 'react'
 
+import useFieldSprite from '../useFieldSprite'
 import { buildTileGroups } from './buildTileGroups'
-import useTilesTexture from './useTilesTexture'
 
 const useLayeredTiles = (tiles: Tile[], filename: string, layerWrap: LayerWrap[]) => {
-  const tilesTexture = useTilesTexture(filename)
+  const tilesTexture = useFieldSprite(filename)
 
   const layers = useMemo(() => {
     const image = tilesTexture.image as { height: number; width: number }
+    console.log(image.width, image.height)
     return buildTileGroups(tiles, image.width, image.height, layerWrap)
   }, [layerWrap, tiles, tilesTexture])
 

@@ -7,6 +7,7 @@ mod inf;
 mod maplist;
 mod model_list;
 mod mrt;
+mod particles;
 mod pcb;
 mod rat;
 mod scripts;
@@ -15,6 +16,7 @@ mod text;
 mod walkmesh;
 
 use crate::stage::{Context, Stage};
+use crate::utils::tim_clut;
 use anyhow::{Context as _, Result};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
@@ -148,11 +150,20 @@ fn process_field(fs_path: &Path, out_root: &Path) -> Result<()> {
         )?;
     }
 
-    // Particle data (.pmd config / .pmp texture) — export the raw decompressed bytes when
-    // present; empty fields carry only a 4-byte placeholder.
-    for extension in ["pmd", "pmp"] {
-        if let Some(data) = archive.file(extension).filter(|bytes| bytes.len() > 4) {
-            fs::write(out_dir.join(format!("{name}.{extension}")), data)?;
+    // particles.json + <name>_particles.png — the field's .pmd emitter/sprite configuration
+    // and the .pmp sprite sheet it draws from. Fields without particles carry a 4-byte
+    // placeholder in place of either file.
+    if let (Some(pmd), Some(pmp)) = (archive.file("pmd"), archive.file("pmp")) {
+        match particles::parse_particles(pmd, pmp) {
+            Ok((field_particles, texture)) => {
+                write_json(&out_dir.join("particles.json"), &field_particles)?;
+                tim_clut::write_png(&out_dir.join(format!("{name}_particles.png")), &texture)?;
+            }
+            Err(error) => {
+                if pmd.len() > 4 && pmp.len() > 4 {
+                    eprintln!("  {name}: particles skipped: {error:#}");
+                }
+            }
         }
     }
 

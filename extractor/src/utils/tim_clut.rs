@@ -115,7 +115,7 @@ fn u32_at(bytes: &[u8], offset: usize) -> Option<usize> {
     ]) as usize)
 }
 
-fn bgr555(word: u16) -> [u8; 4] {
+pub fn bgr555(word: u16) -> [u8; 4] {
     let scale = |value: u16| ((value as f32 / 31.0) * 255.0) as u8;
     [
         scale(word & 0x1F),

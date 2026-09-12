@@ -1,7 +1,10 @@
 import { BufferAttribute, BufferGeometry } from 'three'
 
+import { PSX_BLEND_MODES } from '../../../constants/blending'
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../constants/constants'
-import { getLayerIdFromTile, TILE_BLENDS_TO_THREEJS, TILE_PADDING, TILE_SIZE, TILES_PER_COLUMN } from './tileUtils'
+import { VIEW_UNITS_PER_DEPTH_SLOT } from '../../../constants/depth'
+import { numberToFloatingPoint } from '../../../utils'
+import { getLayerIdFromTile, TILE_PADDING, TILE_SIZE, TILES_PER_COLUMN } from './tileUtils'
 
 const UV_INSET = 0.5
 
@@ -89,7 +92,7 @@ export const buildTileGroups = (
     const { geometry, tileDepths, tilePositions } = buildGroupGeometry(groupTiles, atlasWidth, atlasHeight)
 
     return {
-      blendType: TILE_BLENDS_TO_THREEJS[sample.blendType as keyof typeof TILE_BLENDS_TO_THREEJS],
+      blendType: PSX_BLEND_MODES[sample.blendType as keyof typeof PSX_BLEND_MODES],
       geometry,
       id,
       layerID: sample.layerID,
@@ -144,7 +147,8 @@ export const writeLayerPositions = (
   const unitsPerPixelPerDepth = (2 * fovHalfTan) / SCREEN_HEIGHT
 
   for (let i = 0; i < tileDepths.length; i += 1) {
-    const depth = (cameraLength * tileDepths[i]) / 1000
+    // A tile's Z is a depth-sort slot index, not a distance — one slot spans four units of view depth.
+    const depth = cameraLength * numberToFloatingPoint(tileDepths[i] * VIEW_UNITS_PER_DEPTH_SLOT)
     const unitsPerPixel = unitsPerPixelPerDepth * depth
 
     let screenX = tilePositions[i * 2] + offsetX

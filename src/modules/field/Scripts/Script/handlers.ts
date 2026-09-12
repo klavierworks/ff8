@@ -15,11 +15,15 @@ import { addCardToCollection, getOwnedCardCount, removeCardFromCollection } from
 import { floatingPointToNumber, numberToFloatingPoint, vectorToFloatingPoint } from '../../../../utils'
 import useWorldmapStore from '../../../worldmap/worldmapStore'
 import { nextScriptFrame, waitForScriptFrames } from '../../scriptClock'
+import { SHADE_FORM_SLOTS } from '../constants'
 import { Opcode, OpcodeObj, Script } from '../types'
 import { createAnimationController } from './AnimationController/AnimationController'
 import {
   awaitFadesync,
+  bindParticleEmitterToEntity,
+  disableParticleEmitter,
   displayMessage,
+  enableParticleEmitter,
   isKeyDown,
   isTouching,
   KEY_FLAGS,
@@ -37,7 +41,14 @@ import createRotationController from './RotationController/RotationController'
 import createSFXController from './SFXController/SFXController'
 import { preloadSound } from './SFXController/webAudio'
 import createScriptState, { ScriptState } from './state'
-import { closeMessage, enableMessageToClose, openMessage, remoteExecute, remoteExecutePartyMember } from './utils'
+import {
+  closeMessage,
+  enableMessageToClose,
+  openMessage,
+  remoteExecute,
+  remoteExecutePartyMember,
+  scaleShadeFormValue,
+} from './utils'
 
 const dummiedCommand = () => undefined
 const unusedCommand = () => undefined
@@ -1544,13 +1555,14 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   },
   OPENEYES: unusedCommand,
   PARTICLEOFF: ({ STACK }) => {
-    STACK.pop() as number
+    disableParticleEmitter(STACK.pop() as number)
   },
   PARTICLEON: ({ STACK }) => {
-    STACK.pop() as number
+    enableParticleEmitter(STACK.pop() as number)
   },
-  PARTICLESET: ({ STACK }) => {
-    STACK.pop() as number
+  // Runs the emitter from this entity's position instead of the path baked into the field.
+  PARTICLESET: ({ script, STACK }) => {
+    bindParticleEmitterToEntity(STACK.pop() as number, script.groupId)
   },
   PCOPYINFO: unusedCommand,
   // Pause the script while this character does a quick, combat-style turn to
@@ -2196,17 +2208,24 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
 
     sfxController.setVolume(channel, volume, duration)
   },
-  SHADEFORM: ({ STACK }) => {
-    STACK.splice(-8)
+  // The shade slots are stored per entity but never sampled by the renderer, so
+  // these three only move state around, exactly as the original does.
+  SHADEFORM: ({ setState, STACK }) => {
+    const parameters = STACK.splice(-8).map(scaleShadeFormValue)
+
+    setState({ shadeForm: [...parameters.slice(4), ...parameters.slice(0, 4)] })
   },
-  SHADELEVEL: ({ STACK }) => {
-    // const shadeLevel =
+  SHADELEVEL: ({ setState, STACK }) => {
+    setState({ shadeLevel: STACK.pop() as number })
+  },
+  SHADESET: ({ setState, STACK }) => {
+    const level = scaleShadeFormValue(STACK.pop() as number)
+
+    setState({ shadeForm: new Array(SHADE_FORM_SLOTS).fill(level) })
+  },
+  SHADETIMER: ({ STACK }) => {
     STACK.pop() as number
   },
-  SHADESET: ({ STACK }) => {
-    STACK.pop() as number
-  },
-  SHADETIMER: unusedCommand,
   SHAKE: ({ STACK }) => {
     //const lastFour =
     STACK.splice(-4)

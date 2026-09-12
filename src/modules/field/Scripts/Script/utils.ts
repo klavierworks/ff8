@@ -131,6 +131,8 @@ export const enableMessageToClose = (id: string) => {
 
 export const convert256ToRadians = (value: number) => ((value % 256) / 256) * 2 * Math.PI
 
+export const scaleShadeFormValue = (value: number) => Math.trunc(value / 4)
+
 export const isValidActionableMethod = (method?: ScriptMethod) => {
   if (!method) {
     return false

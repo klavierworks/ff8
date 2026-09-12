@@ -38,6 +38,10 @@ export type ScriptState = {
   pendingBackgroundMusicSrc?: string
 
   pushRadius: number
+
+  shadeForm: number[]
+  shadeLevel: number
+
   spuValue: number
 
   talkRadius: number
@@ -92,6 +96,9 @@ const createScriptState = (script: Script) => {
     pendingBackgroundMusic: undefined,
     pendingBackgroundMusicSrc: undefined,
     pushRadius: 48,
+
+    shadeForm: [12, 12, 12, 12, 12, 12, 12, 12],
+    shadeLevel: 96,
 
     spuValue: 0,
     talkRadius: 128,

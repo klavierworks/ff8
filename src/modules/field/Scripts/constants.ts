@@ -1,3 +1,5 @@
+export const SHADE_FORM_SLOTS = 8
+
 export const OPCODES = [
   'NOP',
   'CAL',

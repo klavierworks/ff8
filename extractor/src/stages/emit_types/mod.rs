@@ -83,6 +83,7 @@ fn emit_field(converted: &Path, types_dir: &Path) -> Result<usize> {
         ("data.json", "FieldData"),
         ("encounters.json", "FieldEncounters"),
         ("font.json", "FieldFont"),
+        ("particles.json", "FieldParticles"),
         ("walkmeshAccess.json", "WalkmeshAccess"),
     ];
     let mut count = 0;
