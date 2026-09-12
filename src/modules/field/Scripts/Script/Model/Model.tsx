@@ -151,6 +151,7 @@ const Model = ({
   const [characterDimensions] = useState<Vector3>(new Vector3())
 
   useControls({
+    animationController,
     characterHeight: characterDimensions.y,
     isActive: isLeadCharacter,
     movementController,
@@ -203,6 +204,7 @@ const Model = ({
   })
 
   useFollower({
+    animationController,
     isActive: !!isFollower,
     movementController,
     partyMemberId,

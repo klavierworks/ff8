@@ -12,6 +12,25 @@ import JumpCurve from './JumpCurve'
 const NATIVE_SPEED_TO_TS_PER_FRAME = 1 / (256 * 4096)
 const FIELD_MOVEMENT_SCALE = 20
 
+export type LadderSegmentResult = 'completed' | 'reversed'
+
+// The engine's ladder movers (`+572` modes 3 and 4) do not use the speed words
+// at all: every phase is a linear interpolation over a fixed frame count, and
+// the player's pad drives the counter forwards and backwards during the climb.
+type LadderSegment = {
+  end: Vector3
+  frame: number
+  frameCount: number
+  lastDirection: number
+  options: LadderSegmentOptions
+  start: Vector3
+}
+
+type LadderSegmentOptions = {
+  getDirection?: () => number
+  onDirectionChange?: (direction: number) => void
+}
+
 type MoveOptions = {
   customMovementTarget: undefined | Vector3
   distanceToStopAnimationFromTarget: number
@@ -85,8 +104,10 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       walkmeshTriangle: null as null | number,
       waypoints: undefined as undefined | Vector3[],
     },
-    speedBeforeClimbingLadder: 0,
   }))
+
+  let ladderSegment: LadderSegment | undefined
+  let ladderResult: LadderSegmentResult | undefined
 
   const resolvePendingPositionSignal = () => {
     const { position } = getState()
@@ -425,12 +446,123 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       },
     })
 
-  const setIsClimbingLadder = (isClimbingLadder: boolean, speed?: number) =>
+  const setIsClimbingLadder = (isClimbingLadder: boolean) =>
     setState({
       isClimbingLadder,
-      movementSpeed: isClimbingLadder ? (speed ?? 22) * 100 : getState().speedBeforeClimbingLadder,
-      speedBeforeClimbingLadder: isClimbingLadder ? getState().movementSpeed : 0,
+      position: {
+        ...getState().position,
+        isClimbingLadder,
+      },
     })
+
+  // Followers replay the leader's recorded ladder positions verbatim, the way
+  // the engine writes the trail entry straight into the follower's coordinates.
+  const setLadderPosition = (position: Vector3) => {
+    resolvePendingPositionSignal()
+
+    setState({
+      hasBeenPlaced: true,
+      position: {
+        ...getState().position,
+        current: getState().position.current.copy(position),
+        isPaused: true,
+        speedRamp: undefined,
+        waypoints: undefined,
+      },
+    })
+  }
+
+  // A ladder leaves the walkmesh entirely, so the triangle it started on is
+  // meaningless by the time it ends and Model.tsx would snap the mesh to that
+  // triangle's plane extrapolated far outside itself.
+  const refreshWalkmeshTriangle = () => {
+    setState({
+      position: {
+        ...getState().position,
+        walkmeshTriangle: walkmeshController.getTriangleForPosition(getState().position.current, undefined, true),
+      },
+    })
+  }
+
+  const finishLadderSegment = (result: LadderSegmentResult) => {
+    if (!ladderSegment) {
+      return
+    }
+    ladderSegment = undefined
+    ladderResult = result
+  }
+
+  const getLadderResult = () => ladderResult
+
+  // The approach, dismount and settle phases feed the party trail on every
+  // frame, but the climb feeds it only on frames the counter actually moved:
+  // stopping halfway up a ladder has to stop the line behind you dead, or it
+  // keeps eating the gap while the leader hangs there.
+  const getHasLadderAdvanced = () => ladderSegment !== undefined && ladderSegment.lastDirection !== 0
+
+  const applyLadderFrame = (segment: LadderSegment) => {
+    const progress = segment.frameCount > 0 ? Math.min(1, segment.frame / segment.frameCount) : 1
+    getState().position.current.lerpVectors(segment.start, segment.end, progress)
+  }
+
+  const moveAlongLadder = (start: Vector3, end: Vector3, frameCount: number, options: LadderSegmentOptions = {}) => {
+    finishLadderSegment('completed')
+    resolvePendingPositionSignal()
+
+    setState({
+      position: {
+        ...getState().position,
+        isPaused: false,
+        speedRamp: undefined,
+        waypoints: undefined,
+      },
+    })
+
+    ladderResult = undefined
+    ladderSegment = {
+      end: end.clone(),
+      frame: 0,
+      frameCount: Math.max(0, frameCount),
+      lastDirection: 0,
+      options,
+      start: start.clone(),
+    }
+  }
+
+  const tickLadder = (delta: number) => {
+    const segment = ladderSegment
+    if (!segment) {
+      return false
+    }
+    if (getState().position.isPaused) {
+      return true
+    }
+
+    const direction = segment.options.getDirection ? segment.options.getDirection() : 1
+    if (direction !== segment.lastDirection) {
+      segment.lastDirection = direction
+      segment.options.onDirectionChange?.(direction)
+    }
+
+    segment.frame += direction * delta * TARGET_FPS
+
+    if (direction < 0 && segment.frame <= 0) {
+      segment.frame = 0
+      applyLadderFrame(segment)
+      finishLadderSegment('reversed')
+      return true
+    }
+
+    if (segment.frame >= segment.frameCount) {
+      segment.frame = segment.frameCount
+      applyLadderFrame(segment)
+      finishLadderSegment('completed')
+      return true
+    }
+
+    applyLadderFrame(segment)
+    return true
+  }
 
   // A move that leaves the walkmesh still has to keep the triangle current:
   // Model.tsx snaps the mesh to that triangle's plane, so a triangle left over
@@ -463,6 +595,11 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
   }
 
   const tick = (entity: Object3D, delta: number, scene: Scene) => {
+    if (tickLadder(delta)) {
+      applyPositionToEntity(entity)
+      return
+    }
+
     const { jump, offset, position } = getState()
 
     if (position.isPaused && offset.isPaused) {
@@ -628,6 +765,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
   const reset = () => {
     resolvePendingOffsetSignal()
     resolvePendingPositionSignal()
+    finishLadderSegment('completed')
 
     setState((state) => ({
       hasBeenPlaced: false,
@@ -653,7 +791,6 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         userControlledSpeed: undefined,
         walkmeshTriangle: null,
       },
-      speedBeforeClimbingLadder: 0,
     }))
   }
 
@@ -696,22 +833,27 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
   return {
     disableFootsteps,
     enableFootsteps,
+    getHasLadderAdvanced,
+    getLadderResult,
     getMovementPosition,
     getMovementSpeed,
     getPosition,
     getState,
     isMoving,
     jumpToPosition,
+    moveAlongLadder,
     moveToObject,
     moveToOffset,
     moveToPoint,
     pause,
+    refreshWalkmeshTriangle,
     reset,
     resetFootsteps,
     resume,
     setFootsteps,
     setHasMoved,
     setIsClimbingLadder,
+    setLadderPosition,
     setMovementSpeed,
     setOffset,
     setPosition,

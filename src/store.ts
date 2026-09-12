@@ -3,6 +3,7 @@ import type { Object3D, Vector3 } from 'three'
 
 import { create } from 'zustand'
 
+import { LADDER_CLIMB_SPEED } from './constants/ladders'
 import MAP_NAMES from './constants/maps'
 import LerpValue from './LerpValue'
 import { FieldData } from './modules/field/Field'
@@ -40,6 +41,7 @@ type GlobalState = {
     startRed: number
     type: 'additive' | 'subtractive'
   }
+  congaTrailHead: number
   congaWaypointHistory: CongaHistory[]
   currentLocationPlaceName: number
 
@@ -62,6 +64,7 @@ type GlobalState = {
   inventory: Record<number, number>
 
   isCardGameActive: boolean
+  isCongaTrailStretched: boolean
   isDebugMode: boolean
   isLagunaDream: boolean
   isLoading: boolean
@@ -77,6 +80,7 @@ type GlobalState = {
 
   isTransitioningColorOverlay: boolean
   isUserControllable: boolean
+  ladderClimbSpeed: number
   layerScrollAdjustments: Record<
     number,
     {
@@ -174,6 +178,7 @@ const INITIAL_STATE: GlobalState = {
     startRed: 0,
     type: 'additive',
   },
+  congaTrailHead: 0,
   congaWaypointHistory: [],
   currentLocationPlaceName: 0,
   currentMessages: [],
@@ -195,6 +200,7 @@ const INITIAL_STATE: GlobalState = {
   inventory: {},
 
   isCardGameActive: false,
+  isCongaTrailStretched: false,
   isDebugMode: false,
   isLagunaDream: false,
   isLoading: false,
@@ -212,6 +218,7 @@ const INITIAL_STATE: GlobalState = {
   isTransitioningColorOverlay: false,
   isUserControllable: false,
 
+  ladderClimbSpeed: LADDER_CLIMB_SPEED,
   layerScrollAdjustments: {},
 
   layerScrollOffsets: {},

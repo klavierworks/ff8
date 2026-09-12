@@ -1,7 +1,7 @@
 import { AnimationAction, AnimationClip, AnimationMixer, Object3D } from 'three'
 import { create } from 'zustand'
 
-import { framesToSeconds } from '../../../../../timing'
+import { framesToSeconds, TARGET_FPS } from '../../../../../timing'
 import createMovementController from '../MovementController/MovementController'
 import { applyAnimationAtTime } from './animationUtils'
 
@@ -246,6 +246,9 @@ export const createAnimationController = (id: number | string) => {
   }
 
   const pauseAnimation = (shouldPause: boolean) => {
+    if (getState().isPaused === shouldPause) {
+      return
+    }
     setState({ isPaused: shouldPause })
   }
 
@@ -376,12 +379,50 @@ export const createAnimationController = (id: number | string) => {
     })
   }
 
-  const playLadderAnimation = async () => {
-    return playAnimation(getSavedAnimation().ladderClimbId, {
+  const getAnimationFrameCount = (clipId: number) => {
+    const clip = getState().clips[clipId]
+    if (!clip) {
+      return 0
+    }
+    return Math.round(clip.duration * TARGET_FPS) + 1
+  }
+
+  const continueLadderAnimation = (direction: number, isLooping: boolean) => {
+    const { activeAnimation } = getState()
+    if (!activeAnimation || !currentRunState) {
+      return false
+    }
+
+    setState({
+      activeAnimation: {
+        ...activeAnimation,
+        direction,
+        isLooping,
+        shouldHoldLastFrame: !isLooping,
+      },
+    })
+    currentRunState.direction = direction
+    currentRunState.isComplete = false
+    return true
+  }
+
+  // The engine only rewinds the model's frame counter when the requested
+  // animation id differs from the one already playing, so a mount that runs
+  // straight into the climb loop on the same clip carries on from the frame it
+  // reached instead of snapping back to the start.
+  const playLadderAnimation = (animationId: number, direction: number, isLooping: boolean) => {
+    const { activeAnimation } = getState()
+    const isSameClip = activeAnimation?.isFromLadder && activeAnimation.clipId === animationId
+    if (isSameClip && continueLadderAnimation(direction, isLooping)) {
+      return
+    }
+
+    playAnimation(animationId, {
+      direction,
       isFromLadder: true,
-      isLooping: true,
+      isLooping,
       needsRealtimeZAdjustment: false,
-      shouldHoldLastFrame: false,
+      shouldHoldLastFrame: !isLooping,
     })
   }
 
@@ -393,6 +434,10 @@ export const createAnimationController = (id: number | string) => {
   }
 
   const movementAnimationTick = (movementController: ReturnType<typeof createMovementController>) => {
+    if (movementController.getState().isClimbingLadder) {
+      return
+    }
+
     const isMoving = movementController.isMoving()
     const isAnimatedMove = isMoving && movementController.getState().position.isAnimationEnabled
 
@@ -421,6 +466,7 @@ export const createAnimationController = (id: number | string) => {
   }
 
   return {
+    getAnimationFrameCount,
     getIsSafeToMoveOn,
     getMovementAnimationPhase,
     getSavedAnimation,

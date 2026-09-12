@@ -35,6 +35,7 @@ declare global {
   type CongaHistory = {
     angle: number
     isClimbingLadder: boolean
+    ladderAnimation?: { direction: number; id: number }
     position: Vector3
     speed: number
   }

@@ -36,7 +36,7 @@ import {
 import createHeadRotationController from './HeadRotationController/HeadRotationController'
 import { getPartyMemberModelComponent, getScriptEntity } from './Model/modelUtils'
 import createMovementController from './MovementController/MovementController'
-import { handleLadder } from './MovementController/utils'
+import { getIsLadderPlayerDriven, handleDirectLadder, handleLadder } from './MovementController/utils'
 import createRotationController from './RotationController/RotationController'
 import createSFXController from './SFXController/SFXController'
 import { preloadSound } from './SFXController/webAudio'
@@ -1154,33 +1154,59 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     })
   },
   LADDERANIME: ({ animationController, currentOpcode, STACK }) => {
-    const animationId = currentOpcode.param
-    const startFrame = STACK.pop() as number
-    const endFrame = STACK.pop() as number
+    const bottomAnimationId = currentOpcode.param
+    const climbAnimationId = STACK.pop() as number
+    const topAnimationId = STACK.pop() as number
 
-    animationController.setLadderAnimation(animationId, startFrame, endFrame)
+    animationController.setLadderAnimation(bottomAnimationId, climbAnimationId, topAnimationId)
   },
-  LADDERDOWN: ({ currentOpcode, STACK }) => {
-    console.log(currentOpcode.param)
-    STACK.splice(-4)
-  },
-  LADDERDOWN2: async ({ animationController, movementController, STACK }) => {
-    const end = vectorToFloatingPoint(STACK.splice(-3))
-    const middle = vectorToFloatingPoint(STACK.splice(-3)) // middle, not used
-    vectorToFloatingPoint(STACK.splice(-3))
+  LADDERDOWN: async ({ animationController, currentState, movementController, STACK }) => {
+    const animationId = STACK.pop() as number
+    const target = vectorToFloatingPoint(STACK.splice(-3))
 
-    await handleLadder(animationController, movementController, middle, end, false)
+    await handleDirectLadder(animationController, movementController, {
+      animationId,
+      isPlayerDriven: getIsLadderPlayerDriven(currentState.partyMemberId),
+      isUp: false,
+      target,
+    })
   },
-  LADDERUP: ({ currentOpcode, STACK }) => {
-    console.log(currentOpcode.param)
-    STACK.splice(-4)
-  },
-  LADDERUP2: async ({ animationController, movementController, STACK }) => {
-    const end = vectorToFloatingPoint(STACK.splice(-3))
-    const middle = vectorToFloatingPoint(STACK.splice(-3)) // middle, not used
-    vectorToFloatingPoint(STACK.splice(-3))
+  LADDERDOWN2: async ({ animationController, currentState, movementController, STACK }) => {
+    const target = vectorToFloatingPoint(STACK.splice(-3))
+    const exit = vectorToFloatingPoint(STACK.splice(-3))
+    const approach = vectorToFloatingPoint(STACK.splice(-3))
 
-    await handleLadder(animationController, movementController, middle, end, true)
+    await handleLadder(animationController, movementController, {
+      approach,
+      exit,
+      isPlayerDriven: getIsLadderPlayerDriven(currentState.partyMemberId),
+      isUp: false,
+      target,
+    })
+  },
+  LADDERUP: async ({ animationController, currentState, movementController, STACK }) => {
+    const animationId = STACK.pop() as number
+    const target = vectorToFloatingPoint(STACK.splice(-3))
+
+    await handleDirectLadder(animationController, movementController, {
+      animationId,
+      isPlayerDriven: getIsLadderPlayerDriven(currentState.partyMemberId),
+      isUp: true,
+      target,
+    })
+  },
+  LADDERUP2: async ({ animationController, currentState, movementController, STACK }) => {
+    const target = vectorToFloatingPoint(STACK.splice(-3))
+    const exit = vectorToFloatingPoint(STACK.splice(-3))
+    const approach = vectorToFloatingPoint(STACK.splice(-3))
+
+    await handleLadder(animationController, movementController, {
+      approach,
+      exit,
+      isPlayerDriven: getIsLadderPlayerDriven(currentState.partyMemberId),
+      isUp: true,
+      target,
+    })
   },
   LASTIN: ({ STACK }) => {
     STACK.pop() as number
@@ -2438,8 +2464,9 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   UNKNOWN14: ({ STACK }) => {
     STACK.pop() as number
   },
+  // Sets the ladder climb rate: field units covered per frame, engine default 28
   UNKNOWN15: ({ STACK }) => {
-    STACK.pop() as number
+    useGlobalStore.setState({ ladderClimbSpeed: STACK.pop() as number })
   },
   // Sets draw point ID
   UNKNOWN16: ({ STACK }) => {

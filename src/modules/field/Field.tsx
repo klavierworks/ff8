@@ -5,6 +5,7 @@ import namedic from '@data/menu/namedic.json'
 import { useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useState } from 'react'
 
+import { LADDER_CLIMB_SPEED } from '../../constants/ladders'
 import MAP_NAMES from '../../constants/maps'
 import useGlobalStore, { createEmptyParticleEmitters } from '../../store'
 import Background from './Background/Background'
@@ -163,6 +164,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
           startRed: 0,
           type: 'additive',
         },
+        congaTrailHead: 0,
         congaWaypointHistory: [],
         currentMessages: [],
         fieldId: pendingFieldId,
@@ -170,6 +172,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
         globalMeshTint: [128, 128, 128],
         hasActiveTalkMethod: false,
         hasMoved: false,
+        isCongaTrailStretched: false,
         isLoadingSavedGame: false,
 
         isMapFadeEnabled: true,
@@ -177,6 +180,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
         isRunEnabled: true,
         isUserControllable: pendingFieldId !== 'start0',
 
+        ladderClimbSpeed: LADDER_CLIMB_SPEED,
         layerScrollAdjustments: {},
         layerScrollOffsets: {},
         layerTints: {},

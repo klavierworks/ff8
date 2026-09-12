@@ -6,10 +6,12 @@ import type WalkmeshMovementController from '../../../WalkMesh/WalkmeshMovement'
 
 import useGlobalStore from '../../../../../store'
 import { checkForIntersections } from '../../../../../utils'
+import { createAnimationController } from '../AnimationController/AnimationController'
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
 import { ScriptStateStore } from '../state'
 import { convert256ToRadians } from '../utils'
+import { CONGA_HISTORY_LENGTH, WALK_MOVEMENT_SPEED } from './followerUtils'
 import { hasScriptMethod, isWithinPushRange } from './interactionUtils'
 import { getInteractiveEntities, getPlayerEntity, InteractiveEntity } from './modelUtils'
 import useKeyboardControls from './useKeyboardControls'
@@ -22,6 +24,7 @@ export const SPEED = {
 const COLLIDABLE_REFRESH_FRAMES = 30
 
 type useControlsProps = {
+  animationController: ReturnType<typeof createAnimationController>
   characterHeight: number
   isActive: boolean
   movementController: ReturnType<typeof createMovementController>
@@ -30,6 +33,17 @@ type useControlsProps = {
 }
 
 const desiredPosition = new Vector3(0, 0, 0)
+const LADDER_TRAIL_POSITION = new Vector3()
+
+// The trail entry carries whatever ladder animation the leader is playing, so a
+// follower replaying that entry mounts, climbs and dismounts in the same order.
+const getLadderTrailAnimation = (animationController: ReturnType<typeof createAnimationController>) => {
+  const { activeAnimation } = animationController.getState()
+  if (!activeAnimation?.isFromLadder) {
+    return undefined
+  }
+  return { direction: activeAnimation.direction, id: activeAnimation.clipId }
+}
 
 const resolveSpawnOnWalkmesh = (
   walkmeshController: WalkmeshMovementController,
@@ -51,6 +65,7 @@ const resolveSpawnOnWalkmesh = (
 }
 
 const useControls = ({
+  animationController,
   characterHeight,
   isActive,
   movementController,
@@ -284,20 +299,22 @@ const useControls = ({
       }
       useGlobalStore.setState((state) => {
         state.hasMoved = true
+        state.congaTrailHead += 1
 
         state.congaWaypointHistory.push({
           angle: rotationController.getState().angle.get(),
           isClimbingLadder,
+          ladderAnimation: getLadderTrailAnimation(animationController),
           position: newPosition.clone(),
           speed: movementSpeed,
         })
-        if (state.congaWaypointHistory.length > 100) {
+        if (state.congaWaypointHistory.length > CONGA_HISTORY_LENGTH) {
           state.congaWaypointHistory.shift()
         }
         return state
       })
     },
-    [movementController, rotationController],
+    [animationController, movementController, rotationController],
   )
 
   useFrame(({ scene }, delta) => {
@@ -313,6 +330,12 @@ const useControls = ({
 
     if (isClimbingLadder) {
       movementController.setUserControlledSpeed(undefined)
+      const isFeedingTrail =
+        useGlobalStore.getState().isPlayerClimbingLadder && movementController.getHasLadderAdvanced()
+      if (isFeedingTrail) {
+        const { x, y, z } = movementController.getPosition()
+        handleUpdateCongaWaypoint(LADDER_TRAIL_POSITION.set(x, y, z), WALK_MOVEMENT_SPEED)
+      }
       return
     }
     const camera = scene.getObjectByName('sceneCamera') as PerspectiveCamera
