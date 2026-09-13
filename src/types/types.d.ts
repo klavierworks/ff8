@@ -61,7 +61,6 @@ declare global {
     name: string
   }
   interface ExecuteScriptEventDetail {
-    isGuaranteed: boolean
     key: string
     priority: number
     scriptLabel: number

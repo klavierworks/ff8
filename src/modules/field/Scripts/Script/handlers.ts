@@ -1716,22 +1716,19 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const partyMemberIndex = currentOpcode.param as number
     const label = STACK.pop() as number
     const priority = STACK.pop() as number
-    console.log('PREQ', partyMemberIndex, label, priority)
     remoteExecutePartyMember(scene, partyMemberIndex, label, priority)
   },
   PREQEW: async ({ currentOpcode, scene, STACK }) => {
     const partyMemberIndex = currentOpcode.param as number
     const label = STACK.pop() as number
     const priority = STACK.pop() as number
-    console.log('start preqew', partyMemberIndex, label, priority)
-    await remoteExecutePartyMember(scene, partyMemberIndex, label, priority, true)
-    console.log('end preqew', partyMemberIndex, label, priority)
+    await remoteExecutePartyMember(scene, partyMemberIndex, label, priority)
   },
   PREQSW: async ({ currentOpcode, scene, STACK }) => {
     const partyMemberIndex = currentOpcode.param as number
     const label = STACK.pop() as number
     const priority = STACK.pop() as number
-    await remoteExecutePartyMember(scene, partyMemberIndex, label, priority, true, 'start')
+    await remoteExecutePartyMember(scene, partyMemberIndex, label, priority, 'start')
   },
   PSHAC: ({ currentOpcode, STACK }) => {
     STACK.push(currentOpcode.param)
@@ -1929,20 +1926,18 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   // All scripts have a unique label, not sure why other IDs are required in game...
   REQ: ({ STACK }) => {
     const label = STACK.pop() as number
-    const priority = STACK.pop()
+    const priority = STACK.pop() as number
     remoteExecute(label, priority)
   },
-  REQEW: async ({ script, STACK }) => {
+  REQEW: async ({ STACK }) => {
     const label = STACK.pop() as number
-    const priority = STACK.pop()
-
-    console.log('REQEW', script.name, label, priority)
-    await remoteExecute(label, priority, true)
+    const priority = STACK.pop() as number
+    await remoteExecute(label, priority)
   },
   REQSW: async ({ STACK }) => {
     const label = STACK.pop() as number
-    const priority = STACK.pop()
-    await remoteExecute(label, priority, true, 'start')
+    const priority = STACK.pop() as number
+    await remoteExecute(label, priority, 'start')
   },
   // Removes GFs from character. Unsure if stashes details in memory for recall
   RESETGF: ({ STACK }) => {

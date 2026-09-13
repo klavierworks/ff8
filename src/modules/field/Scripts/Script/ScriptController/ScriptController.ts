@@ -16,7 +16,6 @@ type QueueItem = {
   activeOpcodeIndex: number
   hasStarted: boolean
   isAwaiting: boolean
-  isGuaranteed: boolean
   isLooping: boolean
   method: ScriptMethod
   priority: number
@@ -29,8 +28,14 @@ type WaitMode = 'end' | 'start'
 // Engine per-entity opcode budget per tick (16 in the original).
 const MAX_OPCODES_PER_TICK = 16
 
-// Below every priority slot a script can ask for.
+// An entity's event methods are dispatched into fixed slots of its priority
+// bank, counting down from slot 7 for method index 2 (talk, or a door's open)
+// to slot 2 for method index 7 (touchon).
+const EVENT_METHOD_SLOT_BASE = 9
+
 const DEFAULT_METHOD_RANK = -1
+
+const getEventMethodPriority = (methodIndex: number) => EVENT_METHOD_SLOT_BASE - methodIndex
 
 const createScriptController = ({
   animationController,
@@ -57,57 +62,44 @@ const createScriptController = ({
   const TEMP_STACK: Record<number, number> = {}
 
   const { getState, setState } = create(() => ({
-    isProcessingAQueueItem: false,
     queue: [] as QueueItem[],
     script,
   }))
 
-  const triggerMethodByIndex = async (
-    methodIndex: number,
-    priority = 10,
-    isGuaranteed = false,
-    waitMode: WaitMode = 'end',
-  ) => {
+  const triggerMethodByIndex = async (methodIndex: number, priority: number, waitMode: WaitMode = 'end') => {
     const method = script.methods[methodIndex]
     if (!method) {
       console.trace(`Method with index ${methodIndex} not found in script for ${script.groupId}`)
       return
     }
-    await triggerMethod(method.methodId, priority, true, isGuaranteed, waitMode)
+    await triggerMethod(method.methodId, priority, waitMode)
   }
 
-  const triggerMethod = async (
-    methodId: string,
-    priority = 10,
-    canDuplicate = false,
-    isGuaranteed = false,
-    waitMode: WaitMode = 'end',
-  ) => {
-    const method = script.methods.find((method) => method.methodId === methodId)
-    if (!method) {
+  const triggerMethod = async (methodId: string, priority?: number, waitMode: WaitMode = 'end') => {
+    const methodIndex = script.methods.findIndex((method) => method.methodId === methodId)
+    if (methodIndex === -1) {
       console.warn(`Method with id ${methodId} not found in script for ${script.groupId}`)
       return
     }
 
-    const currentQueue = getState().queue
-    if (!canDuplicate && currentQueue.find((item) => item.method.methodId === methodId)) {
-      return
-    }
+    const method = script.methods[methodIndex]
+    const prioritySlot = priority ?? getEventMethodPriority(methodIndex)
+    const uniqueId = `${script.groupId}-${methodId}--${prioritySlot}-${Date.now()}`
 
-    const uniqueId = `${script.groupId}-${methodId}--${priority}-${Date.now()}`
-    const isLooping = method.methodId === 'default'
-
-    addToQueue({
+    const wasAccepted = addToQueue({
       activeOpcodeIndex: 0,
       hasStarted: false,
       isAwaiting: false,
-      isGuaranteed,
-      isLooping,
+      isLooping: method.methodId === 'default',
       method,
-      priority,
+      priority: prioritySlot,
       queuedAtFrame: getScriptFrame(),
       uniqueId,
     })
+
+    if (!wasAccepted) {
+      return
+    }
 
     const eventName = waitMode === 'start' ? 'scriptStart' : 'scriptEnd'
     return new Promise<void>((resolve) => {
@@ -123,23 +115,18 @@ const createScriptController = ({
 
   const getRank = (item: QueueItem) => (item.isLooping ? DEFAULT_METHOD_RANK : item.priority)
 
-  // An entity owns a 16-slot priority bank and always executes the highest
-  // occupied slot, so a request takes over only when it outranks the script
-  // already running; otherwise it waits behind it, and the interrupted script
-  // resumes from the opcode it was on. The default method ranks below every
-  // slot because it loops forever — anything queued behind it would starve.
   const addToQueue = (newItem: QueueItem) => {
     const currentQueue = getState().queue
 
-    const survivingItems = newItem.isGuaranteed
-      ? currentQueue
-      : currentQueue.filter((item) => item.method.methodId !== newItem.method.methodId || item.isGuaranteed)
+    if (currentQueue.some((item) => item.priority === newItem.priority)) {
+      return false
+    }
 
-    const [runningItem, ...pendingItems] = survivingItems
+    const [runningItem, ...pendingItems] = currentQueue
 
     if (!runningItem || getRank(newItem) > getRank(runningItem)) {
-      setState({ queue: [newItem, ...survivingItems] })
-      return
+      setState({ queue: [newItem, ...currentQueue] })
+      return true
     }
 
     const insertAtIndex = pendingItems.findIndex((item) => getRank(item) < getRank(newItem))
@@ -149,6 +136,7 @@ const createScriptController = ({
         : [...pendingItems.slice(0, insertAtIndex), newItem, ...pendingItems.slice(insertAtIndex)]
 
     setState({ queue: [runningItem, ...orderedPendingItems] })
+    return true
   }
 
   const removeQueueItem = (uniqueId: string) => {

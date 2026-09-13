@@ -5,12 +5,7 @@ import { ScriptMethod } from '../types'
 import { getPartyMemberModelComponent } from './Model/modelUtils'
 import createScriptController from './ScriptController/ScriptController'
 
-export const remoteExecute = async (
-  scriptLabel: number,
-  priority = 10,
-  isGuaranteed = false,
-  waitMode: 'end' | 'start' = 'end',
-) =>
+export const remoteExecute = async (scriptLabel: number, priority: number, waitMode: 'end' | 'start' = 'end') =>
   new Promise<void>((resolve) => {
     const key = Math.random().toString(36).substring(7)
 
@@ -27,7 +22,6 @@ export const remoteExecute = async (
     document.dispatchEvent(
       new CustomEvent('executeScript', {
         detail: {
-          isGuaranteed,
           key,
           priority,
           scriptLabel,
@@ -41,8 +35,7 @@ export const remoteExecutePartyMember = async (
   scene: Scene,
   partyMemberIndex: number,
   scriptLabel: number,
-  priority = 10,
-  isGuaranteed = false,
+  priority: number,
   waitMode: 'end' | 'start' = 'end',
 ) => {
   const actor = getPartyMemberModelComponent(scene, partyMemberIndex)
@@ -57,7 +50,7 @@ export const remoteExecutePartyMember = async (
     console.warn(`Script controller not found for party member ${partyMemberIndex}`)
     return
   }
-  await scriptController.triggerMethodByIndex(scriptLabel, priority, isGuaranteed, waitMode)
+  await scriptController.triggerMethodByIndex(scriptLabel, priority, waitMode)
 }
 
 export const openMessage = (

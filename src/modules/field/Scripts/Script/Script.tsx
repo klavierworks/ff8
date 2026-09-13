@@ -135,7 +135,7 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
     }
 
     const handleExecutionRequest = async ({
-      detail: { isGuaranteed, key, priority, scriptLabel, waitMode },
+      detail: { key, priority, scriptLabel, waitMode },
     }: {
       detail: ExecuteScriptEventDetail
     }) => {
@@ -144,7 +144,7 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
         return
       }
       try {
-        await scriptController.triggerMethod(matchingMethod.methodId, priority, true, isGuaranteed, waitMode)
+        await scriptController.triggerMethod(matchingMethod.methodId, priority, waitMode)
         document.dispatchEvent(new CustomEvent('scriptFinished', { detail: { key } }))
       } catch (error) {
         console.error('Error executing script:', error)
