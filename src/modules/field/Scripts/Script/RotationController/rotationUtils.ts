@@ -1,5 +1,7 @@
 import { Vector3 } from 'three'
-import { clamp } from 'three/src/math/MathUtils.js'
+import { clamp, euclideanModulo } from 'three/src/math/MathUtils.js'
+
+export const normaliseAngle = (angle: number) => euclideanModulo(angle, 256)
 
 export const getShortestRouteToAngle = (targetAngle: number, currentAngle: number) => {
   const angleDifference = Math.abs(currentAngle - targetAngle)
@@ -19,6 +21,12 @@ export const getDirectionToVector = (target: Vector3, currentPosition: VectorLik
   const targetDirection = target.clone().sub(currentPosition).normalize()
   return targetDirection
 }
+
+export const getAngleToVector = (target: VectorLike, currentPosition: VectorLike) =>
+  normaliseAngle((Math.atan2(target.x - currentPosition.x, currentPosition.y - target.y) * 256) / (Math.PI * 2))
+
+export const getDirectionForAngle = (angle: number) =>
+  new Vector3(0, -1, 0).applyAxisAngle(new Vector3(0, 0, 1), (angle * Math.PI) / 128)
 
 const projectVectorOntoPlane = (vector: Vector3, planeNormal: Vector3) => {
   const normalizedPlaneNormal = planeNormal.clone().normalize()

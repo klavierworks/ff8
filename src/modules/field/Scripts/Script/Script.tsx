@@ -181,14 +181,20 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
       return
     }
 
-    movementController.tick(entityRef.current, delta, scene)
+    movementController.tick(entityRef.current, delta, scene, rotationController.getCurrentAngle())
 
     entityRef.current.quaternion.identity()
     const meshUp = _meshUp.set(0, 0, 1).applyQuaternion(entityRef.current.quaternion).normalize()
 
-    const { isFacingTarget, waypoints } = movementController.getState().position
+    // Walkmesh moves carry a heading that a turn limit may hold off the straight
+    // line to the target; free moves have none and still face the waypoint.
+    const { isFacingTarget, turn, waypoints } = movementController.getState().position
     if (waypoints && isFacingTarget) {
-      rotationController.turnToFaceVector(waypoints[0], 0)
+      if (turn) {
+        rotationController.turnToFaceAngle(turn.heading, 0)
+      } else {
+        rotationController.turnToFaceVector(waypoints[0], 0)
+      }
     }
 
     const isTalkingToPlayer = scriptController.isTalkingToPlayer()

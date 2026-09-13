@@ -5,6 +5,7 @@ import namedic from '@data/menu/namedic.json'
 import { useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useState } from 'react'
 
+import { CAMERA_SHAKE_OFF } from '../../constants/camera'
 import { LADDER_CLIMB_SPEED } from '../../constants/ladders'
 import MAP_NAMES from '../../constants/maps'
 import useGlobalStore, { createEmptyParticleEmitters } from '../../store'
@@ -154,6 +155,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
 
         cameraFocusSpring: undefined,
         cameraScrollOffset: {} as CameraScrollTransition,
+        cameraShake: CAMERA_SHAKE_OFF,
         colorOverlay: {
           duration: 0,
           endBlue: 0,

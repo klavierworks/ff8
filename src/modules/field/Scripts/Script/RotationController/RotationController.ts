@@ -6,6 +6,7 @@ import LerpValue from '../../../../../LerpValue'
 import { framesToMs } from '../../../../../timing'
 import createMovementController from '../MovementController/MovementController'
 import {
+  getDirectionForAngle,
   getDirectionToVector,
   getShortestRouteToAngle,
   radiansToUnit,
@@ -57,17 +58,9 @@ const createRotationController = (
     setState({ limits: [min, max] })
   }
 
-  const getCurrentDirection = () => {
-    const currentAngle = getState().angle.get()
-    const radians = (currentAngle * Math.PI) / 128
+  const getCurrentAngle = () => getState().angle.get()
 
-    const meshUp = new Vector3(0, 0, 1)
-    const zeroDirection = new Vector3(0, -1, 0)
-
-    const direction = zeroDirection.clone().applyAxisAngle(meshUp, radians)
-
-    return direction
-  }
+  const getCurrentDirection = () => getDirectionForAngle(getCurrentAngle())
 
   const turnToFaceAngle = async (
     angle: number,
@@ -140,6 +133,7 @@ const createRotationController = (
   }
 
   return {
+    getCurrentAngle,
     getCurrentDirection,
     getState,
     setLimits,

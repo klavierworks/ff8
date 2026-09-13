@@ -12,6 +12,7 @@ import { FieldData } from '../Field'
 import useScrollTransition from '../useScrollTransition'
 import { calculateFOV, getBoundaries, getCameraDirections, getCameraRangeIndex } from './cameraUtils'
 import Focus from './Focus/Focus'
+import useScreenShake from './useScreenShake'
 
 type CameraProps = {
   data: FieldData
@@ -38,6 +39,7 @@ const Camera = ({ data }: CameraProps) => {
   const camera = useThree(({ scene }) => scene.getObjectByName('sceneCamera') as PerspectiveCamera)
 
   const scrollSpring = useScrollTransition('camera')
+  const shake = useScreenShake()
 
   const isDebugMode = useGlobalStore((state) => state.isDebugMode)
   useEffect(() => {
@@ -151,15 +153,18 @@ const Camera = ({ data }: CameraProps) => {
       finalPanY = scrollY
     }
 
-    if (finalPanX === 0 && finalPanY === 0) {
+    const viewOffsetX = finalPanX - shake.x.get()
+    const viewOffsetY = finalPanY - shake.y.get()
+
+    if (viewOffsetX === 0 && viewOffsetY === 0) {
       camera.clearViewOffset()
       moveableCamera.clearViewOffset()
       return
     }
 
-    camera.setViewOffset(SCREEN_WIDTH, SCREEN_HEIGHT, finalPanX, finalPanY, SCREEN_WIDTH, SCREEN_HEIGHT)
+    camera.setViewOffset(SCREEN_WIDTH, SCREEN_HEIGHT, viewOffsetX, viewOffsetY, SCREEN_WIDTH, SCREEN_HEIGHT)
     camera.updateProjectionMatrix()
-    moveableCamera.setViewOffset(SCREEN_WIDTH, SCREEN_HEIGHT, finalPanX, finalPanY, SCREEN_WIDTH, SCREEN_HEIGHT)
+    moveableCamera.setViewOffset(SCREEN_WIDTH, SCREEN_HEIGHT, viewOffsetX, viewOffsetY, SCREEN_WIDTH, SCREEN_HEIGHT)
     moveableCamera.updateProjectionMatrix()
   })
 

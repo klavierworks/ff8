@@ -521,6 +521,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const lastThree = STACK.splice(-3)
     const target = new Vector3(...(lastThree.map(numberToFloatingPoint) as [number, number, number]))
 
+    movementController.setTurnRateLimit(0)
     await movementController.moveToPoint(target, {
       distanceToStopAnimationFromTarget,
       isAnimationEnabled: false,
@@ -1332,6 +1333,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const lastThree = STACK.splice(-3)
     const target = new Vector3(...(lastThree.map(numberToFloatingPoint) as [number, number, number]))
 
+    movementController.setTurnRateLimit(0)
     await movementController.moveToPoint(target, {
       distanceToStopAnimationFromTarget,
       isFacingTarget: false,
@@ -1460,10 +1462,9 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     STACK.splice(-2)
   },
 
-  // ?
-  MLIMIT: ({ STACK }) => {
-    // unknown
-    STACK.pop() as number
+  // MLIMIT: cap the per-frame turn rate of subsequent walkmesh moves
+  MLIMIT: ({ movementController, STACK }) => {
+    movementController.setTurnRateLimit(STACK.pop() as number)
   },
 
   MOVE: async ({ movementController, STACK }) => {
@@ -1901,6 +1902,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const lastThree = STACK.splice(-3)
     const target = new Vector3(...(lastThree.map(numberToFloatingPoint) as [number, number, number]))
 
+    movementController.setTurnRateLimit(0)
     await movementController.moveToPoint(target, {
       distanceToStopAnimationFromTarget,
       isAllowedToLeaveWalkmesh: true,
@@ -2253,10 +2255,17 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     STACK.pop() as number
   },
   SHAKE: ({ STACK }) => {
-    //const lastFour =
-    STACK.splice(-4)
+    const [xAmplitude, xDuration, yAmplitude, yDuration] = STACK.splice(-4)
+
+    useGlobalStore.setState({
+      cameraShake: { isActive: true, xAmplitude, xDuration, yAmplitude, yDuration },
+    })
   },
-  SHAKEOFF: () => {},
+  SHAKEOFF: () => {
+    useGlobalStore.setState((state) => ({
+      cameraShake: { ...state.cameraShake, isActive: false },
+    }))
+  },
   SHOW: ({ setState }) => {
     setState({ isPushable: true, isTalkable: true, isVisible: true })
   },

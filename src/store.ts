@@ -3,6 +3,7 @@ import type { Object3D, Vector3 } from 'three'
 
 import { create } from 'zustand'
 
+import { CAMERA_SHAKE_OFF } from './constants/camera'
 import { LADDER_CLIMB_SPEED } from './constants/ladders'
 import MAP_NAMES from './constants/maps'
 import LerpValue from './LerpValue'
@@ -29,6 +30,7 @@ type GlobalState = {
   cameraFocusSpring: LerpValue | undefined
 
   cameraScrollOffset: CameraScrollTransition
+  cameraShake: CameraShake
   characterPosition: undefined | Vector3
   characterSpawnTriangle: number | undefined
   colorOverlay: {
@@ -166,6 +168,7 @@ const INITIAL_STATE: GlobalState = {
 
   cameraFocusSpring: undefined,
   cameraScrollOffset: {} as CameraScrollTransition,
+  cameraShake: CAMERA_SHAKE_OFF,
   characterPosition: undefined,
   characterSpawnTriangle: undefined,
   colorOverlay: {

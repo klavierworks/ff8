@@ -32,6 +32,14 @@ declare global {
     startY: number
   }
 
+  type CameraShake = {
+    isActive: boolean
+    xAmplitude: number
+    xDuration: number
+    yAmplitude: number
+    yDuration: number
+  }
+
   type CongaHistory = {
     angle: number
     isClimbingLadder: boolean

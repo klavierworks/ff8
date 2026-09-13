@@ -7,10 +7,17 @@ import PromiseSignal from '../../../../../PromiseSignal'
 import { framesToSeconds, TARGET_FPS } from '../../../../../timing'
 import { floatingPointToNumber, numberToFloatingPoint } from '../../../../../utils'
 import { isTouching } from '../common'
+import {
+  getAngleToVector,
+  getDirectionForAngle,
+  getShortestRouteToAngle,
+  normaliseAngle,
+} from '../RotationController/rotationUtils'
 import JumpCurve from './JumpCurve'
 
 const NATIVE_SPEED_TO_TS_PER_FRAME = 1 / (256 * 4096)
 const FIELD_MOVEMENT_SCALE = 20
+const TURN_UNITS_PER_REVOLUTION = 256
 
 export type LadderSegmentResult = 'completed' | 'reversed'
 
@@ -49,6 +56,14 @@ type SpeedRamp = {
   target: number
 }
 
+// The engine limits the movement heading against the entity's facing and writes
+// the facing back from it, so a move seeds its heading from wherever the entity
+// is already looking rather than from the direction of the target.
+type Turn = {
+  accumulator: number
+  heading: number
+}
+
 // Scaling the step by the distance still to run makes the speed land exactly on
 // the target as the entity arrives, however long the move is.
 const calculateRampedSpeed = (ramp: SpeedRamp, remainingDistance: number, elapsedFrames: number) => {
@@ -58,6 +73,29 @@ const calculateRampedSpeed = (ramp: SpeedRamp, remainingDistance: number, elapse
   const speed = ramp.current + stepPerFrame * elapsedFrames
 
   return ramp.target > ramp.current ? Math.min(speed, ramp.target) : Math.max(speed, ramp.target)
+}
+
+// MLIMIT caps how far the movement heading may swing toward the target each
+// frame. The accumulator sums the clamped turns, so weaving nets out to nothing
+// but a one-way spiral does not: a mover that has spent a whole revolution on
+// clamped turns is circling a target it cannot turn tightly enough to reach, and
+// drops the limit rather than orbiting forever.
+const applyTurnRateLimit = (turn: Turn, desiredHeading: number, limitPerFrame: number) => {
+  if (limitPerFrame <= 0 || Math.abs(turn.accumulator) > TURN_UNITS_PER_REVOLUTION) {
+    return { accumulator: turn.accumulator, heading: desiredHeading }
+  }
+
+  const shortestTurn = getShortestRouteToAngle(desiredHeading, turn.heading) - turn.heading
+  if (Math.abs(shortestTurn) < limitPerFrame) {
+    return { accumulator: turn.accumulator, heading: desiredHeading }
+  }
+
+  const step = Math.sign(shortestTurn) * limitPerFrame
+
+  return {
+    accumulator: turn.accumulator + step,
+    heading: normaliseAngle(turn.heading + step),
+  }
 }
 
 const createMovementController = (id: number, walkmeshController: WalkmeshMovementController) => {
@@ -100,10 +138,12 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       signal: undefined as PromiseSignal | undefined,
       speedRamp: undefined as SpeedRamp | undefined,
       targetObject: undefined as Object3D | undefined,
+      turn: undefined as Turn | undefined,
       userControlledSpeed: undefined as number | undefined,
       walkmeshTriangle: null as null | number,
       waypoints: undefined as undefined | Vector3[],
     },
+    turnRateLimit: 0,
   }))
 
   let ladderSegment: LadderSegment | undefined
@@ -154,6 +194,15 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
     })
   }
 
+  // MLIMIT is a byte in the engine, and scripts do pass values above 255 (one
+  // passes 360, which the truncation turns into 104). Zero leaves the mover
+  // re-aiming straight at its target every frame.
+  const setTurnRateLimit = (limit: number) => {
+    setState({
+      turnRateLimit: limit & 0xff,
+    })
+  }
+
   const applySpeedRamp = (remainingDistance: number, delta: number) => {
     const { speedRamp } = getState().position
     if (!speedRamp) {
@@ -193,6 +242,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         isPaused: true,
         signal: undefined,
         speedRamp: undefined,
+        turn: undefined,
         walkmeshTriangle: triangle,
         waypoints: undefined,
       },
@@ -260,6 +310,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         signal,
         speedRamp: targetSpeed === undefined ? undefined : { current: getState().movementSpeed, target: targetSpeed },
         targetObject,
+        turn: undefined,
         userControlledSpeed,
         walkmeshTriangle: getState().position.walkmeshTriangle,
         waypoints: [target],
@@ -364,6 +415,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       position: {
         ...getState().position,
         speedRamp: undefined,
+        turn: undefined,
         waypoints: undefined,
       },
     })
@@ -467,6 +519,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         current: getState().position.current.copy(position),
         isPaused: true,
         speedRamp: undefined,
+        turn: undefined,
         waypoints: undefined,
       },
     })
@@ -514,6 +567,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         ...getState().position,
         isPaused: false,
         speedRamp: undefined,
+        turn: undefined,
         waypoints: undefined,
       },
     })
@@ -583,6 +637,26 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
     })
   }
 
+  const updateTurn = (target: Vector3, facingAngle: number, delta: number) => {
+    const { position, turnRateLimit } = getState()
+    const turn = position.turn ?? { accumulator: 0, heading: normaliseAngle(facingAngle) }
+
+    const nextTurn = applyTurnRateLimit(
+      turn,
+      getAngleToVector(target, position.current),
+      turnRateLimit * delta * TARGET_FPS,
+    )
+
+    setState({
+      position: {
+        ...position,
+        turn: nextTurn,
+      },
+    })
+
+    return nextTurn
+  }
+
   const applyPositionToEntity = (entity: Object3D) => {
     if (getState().position.current.x !== -999) {
       setState({
@@ -594,7 +668,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
     entity.position.set(x, y, z)
   }
 
-  const tick = (entity: Object3D, delta: number, scene: Scene) => {
+  const tick = (entity: Object3D, delta: number, scene: Scene, facingAngle: number) => {
     if (tickLadder(delta)) {
       applyPositionToEntity(entity)
       return
@@ -636,6 +710,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
             ...getState().position,
             isPaused: true,
             speedRamp: undefined,
+            turn: undefined,
             userControlledSpeed: undefined,
             walkmeshTriangle:
               walkmeshController.getTriangleForPosition(positionGoal, undefined, true) ??
@@ -658,6 +733,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
             ...getState().position,
             isPaused: true,
             speedRamp: undefined,
+            turn: undefined,
             userControlledSpeed: undefined,
             walkmeshTriangle:
               walkmeshController.getTriangleForPosition(positionGoal, undefined, true) ??
@@ -670,9 +746,8 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         currentPosition.add(direction.multiplyScalar(maxDistance))
         updateWalkmeshTriangleForFreeMove(currentPosition)
       } else {
-        const direction = new Vector3().subVectors(positionGoal, currentPosition)
-        direction.z = 0
-        direction.normalize()
+        const { heading } = updateTurn(positionGoal, facingAngle, delta)
+        const direction = getDirectionForAngle(heading)
         const step = walkmeshController.getNextPositionOnWalkmesh(
           currentPosition,
           direction,
@@ -788,9 +863,11 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         isPaused: false,
         signal: undefined,
         speedRamp: undefined,
+        turn: undefined,
         userControlledSpeed: undefined,
         walkmeshTriangle: null,
       },
+      turnRateLimit: 0,
     }))
   }
 
@@ -857,6 +934,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
     setMovementSpeed,
     setOffset,
     setPosition,
+    setTurnRateLimit,
     setUserControlledSpeed,
     stop,
     subscribe,
