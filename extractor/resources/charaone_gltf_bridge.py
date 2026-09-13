@@ -230,7 +230,15 @@ def assign_action(armature_obj, action):
         armature_obj.animation_data.action_slot = slot
 
 
-def create_action(animation):
+# A pose bone's `location` is read in the bone's own rest frame (Blender bones run along their
+# local +Y), but the model's root offset is an armature-space vector, so it has to be rotated
+# into the bone before it is keyed.
+def to_bone_space(armature_obj, bone_name, location):
+    bone = armature_obj.data.bones[bone_name]
+    return bone.matrix_local.to_3x3().inverted() @ Vector(location)
+
+
+def create_action(armature_obj, animation):
     if animation["name"] in bpy.data.actions:
         bpy.data.actions.remove(bpy.data.actions[animation["name"]])
     action = bpy.data.actions.new(name=animation["name"])
@@ -262,8 +270,9 @@ def create_action(animation):
             if bone_name not in curves:
                 continue
             if transform["location"] is not None:
+                location = to_bone_space(armature_obj, bone_name, transform["location"])
                 for i, curve in enumerate(curves[bone_name]["location"]):
-                    add_keyframe(curve, frame_number, transform["location"][i])
+                    add_keyframe(curve, frame_number, location[i])
             euler = Euler(transform["rotation"], "YXZ")
             for i, curve in enumerate(curves[bone_name]["rotation"]):
                 add_keyframe(curve, frame_number, euler[i])
@@ -367,7 +376,7 @@ def export_model(model, images):
     bones = model["bones"]
 
     original_armature = create_armature(bones, name + "_original_armature")
-    rest_action = create_action(model["rest_animation"])
+    rest_action = create_action(original_armature, model["rest_animation"])
     setup_keyframes(original_armature, model["rest_animation"], rest_action)
 
     target_armature = create_armature(bones, name + "_armature")
@@ -396,7 +405,7 @@ def export_model(model, images):
     bpy.data.objects.remove(original_armature, do_unlink=True)
 
     for animation in model["animations"]:
-        action = create_action(animation)
+        action = create_action(target_armature, animation)
         setup_keyframes(target_armature, animation, action)
 
     target_armature.data.pose_position = "POSE"
