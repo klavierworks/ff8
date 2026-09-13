@@ -14,6 +14,7 @@ import { cardGameController } from '../../../../UI/CardGame/CardGameController'
 import { addCardToCollection, getOwnedCardCount, removeCardFromCollection } from '../../../../UI/CardGame/collection'
 import { floatingPointToNumber, numberToFloatingPoint, vectorToFloatingPoint } from '../../../../utils'
 import useWorldmapStore from '../../../worldmap/worldmapStore'
+import { preloadField } from '../../fieldPreloader'
 import { nextScriptFrame, waitForScriptFrames } from '../../scriptClock'
 import { SHADE_FORM_SLOTS } from '../constants'
 import { Opcode, OpcodeObj, Script } from '../types'
@@ -1692,7 +1693,8 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     MEMORY[currentOpcode.param] = STACK.pop() as number
   },
   PREMAPJUMP: ({ STACK }) => {
-    STACK.splice(-4)
+    const [fieldId] = STACK.splice(-4)
+    preloadField(MAP_NAMES[fieldId])
   },
   PREMAPJUMP2: ({ STACK }) => {
     STACK.pop() as number
