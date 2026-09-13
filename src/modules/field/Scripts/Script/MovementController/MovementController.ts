@@ -19,6 +19,10 @@ const NATIVE_SPEED_TO_TS_PER_FRAME = 1 / (256 * 4096)
 const FIELD_MOVEMENT_SCALE = 20
 const TURN_UNITS_PER_REVOLUTION = 256
 
+// Field load seeds every entity's speed words with the walk speed, so an entity
+// that moves before its first MSPEED runs at a walk rather than a crawl.
+const DEFAULT_MOVEMENT_SPEED = (203_000 * FIELD_MOVEMENT_SCALE) >> 9
+
 export type LadderSegmentResult = 'completed' | 'reversed'
 
 // The engine's ladder movers (`+572` modes 3 and 4) do not use the speed words
@@ -116,7 +120,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       progress: 0,
       signal: undefined as PromiseSignal | undefined,
     },
-    movementSpeed: 2560,
+    movementSpeed: DEFAULT_MOVEMENT_SPEED,
     offset: {
       current: new Vector3(0, 0, 0),
       duration: 0,
@@ -846,7 +850,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       hasBeenPlaced: false,
       hasMoved: false,
       isClimbingLadder: false,
-      movementSpeed: 2560,
+      movementSpeed: DEFAULT_MOVEMENT_SPEED,
       offset: {
         ...state.offset,
         duration: 0,

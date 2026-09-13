@@ -2,6 +2,7 @@ import { Group, Object3D, Scene, Vector3 } from 'three'
 
 import useGlobalStore from '../../../../../store'
 import createMovementController from '../MovementController/MovementController'
+import createRotationController from '../RotationController/RotationController'
 import createScriptController from '../ScriptController/ScriptController'
 import { ScriptStateStore } from '../state'
 
@@ -17,6 +18,23 @@ export type InteractiveEntity = {
 
 export const getScriptEntity = (scene: Scene, scriptGroupId: number) => {
   return scene.getObjectByName(`entity--${scriptGroupId}`) as Group
+}
+
+export const getEntityPlacement = (scene: Scene, scriptGroupId: number) => {
+  const entity = getScriptEntity(scene, scriptGroupId)
+  if (!entity) {
+    return null
+  }
+
+  const movementController = entity.userData.movementController as ReturnType<typeof createMovementController>
+  const rotationController = entity.userData.rotationController as ReturnType<typeof createRotationController>
+  const { current, walkmeshTriangle } = movementController.getState().position
+
+  return {
+    angle: rotationController.getCurrentAngle(),
+    position: current.clone(),
+    walkmeshTriangle: walkmeshTriangle ?? undefined,
+  }
 }
 
 export const getPartyMemberModelComponent = (scene: Scene, partyMemberIndex: number): Group | null => {

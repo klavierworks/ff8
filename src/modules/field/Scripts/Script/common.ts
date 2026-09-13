@@ -137,6 +137,8 @@ const constructScrollTransition = (
   return transition
 }
 
+const CAMERA_SCROLL_SLOT = 0
+
 export const setCameraScroll = (
   x: number,
   y: number,
@@ -150,26 +152,37 @@ export const setCameraScroll = (
   useGlobalStore.setState({ cameraScrollOffset: transition })
 }
 
+export const getScrollTransition = (layerIndex: number) => {
+  const { cameraScrollOffset, layerScrollOffsets } = useGlobalStore.getState()
+
+  if (layerIndex === CAMERA_SCROLL_SLOT) {
+    return cameraScrollOffset
+  }
+  return layerScrollOffsets[layerIndex]
+}
+
 export const setLayerScroll = (
   layerIndex: number,
   x: number,
   y: number,
   duration: number,
   positioning: ScrollPositionMode,
-  shouldCameraRemainFocusedOnLayer = false,
   ease: ScrollEase = 'linear',
 ) => {
-  if (shouldCameraRemainFocusedOnLayer) {
-    setCameraScroll(-x, y, duration, 'camera', ease)
+  // Slot 0 of the -2/-3 scroll opcodes is the camera pan, not a parallax layer, so
+  // DSCROLL2(0, x, y) is the same request as DSCROLL(x, y) and moves the whole scene.
+  if (layerIndex === CAMERA_SCROLL_SLOT) {
+    setCameraScroll(x, y, duration, positioning, ease)
+    return
   }
 
-  const currentTransition = useGlobalStore.getState().layerScrollOffsets[layerIndex!]
+  const currentTransition = useGlobalStore.getState().layerScrollOffsets[layerIndex]
   const transition = constructScrollTransition(currentTransition, x, y, duration, positioning, ease)
 
   useGlobalStore.setState({
     layerScrollOffsets: {
       ...useGlobalStore.getState().layerScrollOffsets,
-      [layerIndex!]: transition,
+      [layerIndex]: transition,
     },
   })
 }
@@ -177,7 +190,7 @@ export const setLayerScroll = (
 export const setCameraAndLayerFocus = async (object: Object3D, duration: number) => {
   const { layerScrollOffsets } = useGlobalStore.getState()
   Object.keys(layerScrollOffsets).forEach((layerIndex) => {
-    setLayerScroll(Number(layerIndex), 0, 0, duration, 'camera', false)
+    setLayerScroll(Number(layerIndex), 0, 0, duration, 'camera')
   })
 
   setCameraScroll(0, 0, duration, 'camera')

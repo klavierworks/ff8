@@ -29,6 +29,9 @@ type WaitMode = 'end' | 'start'
 // Engine per-entity opcode budget per tick (16 in the original).
 const MAX_OPCODES_PER_TICK = 16
 
+// Below every priority slot a script can ask for.
+const DEFAULT_METHOD_RANK = -1
+
 const createScriptController = ({
   animationController,
   handlers,
@@ -118,32 +121,34 @@ const createScriptController = ({
     })
   }
 
+  const getRank = (item: QueueItem) => (item.isLooping ? DEFAULT_METHOD_RANK : item.priority)
+
+  // An entity owns a 16-slot priority bank and always executes the highest
+  // occupied slot, so a request takes over only when it outranks the script
+  // already running; otherwise it waits behind it, and the interrupted script
+  // resumes from the opcode it was on. The default method ranks below every
+  // slot because it loops forever — anything queued behind it would starve.
   const addToQueue = (newItem: QueueItem) => {
     const currentQueue = getState().queue
 
-    const frozenQueue = [...currentQueue]
-    const [activeItem] = frozenQueue
+    const survivingItems = newItem.isGuaranteed
+      ? currentQueue
+      : currentQueue.filter((item) => item.method.methodId !== newItem.method.methodId || item.isGuaranteed)
 
-    if (newItem.isGuaranteed || !activeItem || (frozenQueue.length === 1 && activeItem.isLooping)) {
-      setState({ queue: [newItem, ...currentQueue] })
+    const [runningItem, ...pendingItems] = survivingItems
+
+    if (!runningItem || getRank(newItem) > getRank(runningItem)) {
+      setState({ queue: [newItem, ...survivingItems] })
       return
     }
 
-    const [cleanActiveItem, ...cleanQueue] = frozenQueue.filter(
-      (item) => item.method.methodId !== newItem.method.methodId || item.isGuaranteed,
-    )
-    const insertAtIndex = cleanQueue.findIndex((item) => item.priority > newItem.priority)
-    const isTopPriority = insertAtIndex === -1
+    const insertAtIndex = pendingItems.findIndex((item) => getRank(item) < getRank(newItem))
+    const orderedPendingItems =
+      insertAtIndex === -1
+        ? [...pendingItems, newItem]
+        : [...pendingItems.slice(0, insertAtIndex), newItem, ...pendingItems.slice(insertAtIndex)]
 
-    if (isTopPriority) {
-      cleanQueue.unshift(newItem)
-    } else {
-      cleanQueue.splice(insertAtIndex, 0, newItem)
-    }
-
-    const updatedQueueItem = [cleanActiveItem, ...cleanQueue].filter(Boolean)
-
-    setState({ queue: updatedQueueItem })
+    setState({ queue: [runningItem, ...orderedPendingItems] })
   }
 
   const removeQueueItem = (uniqueId: string) => {

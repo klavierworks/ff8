@@ -25,6 +25,7 @@ import {
   disableParticleEmitter,
   displayMessage,
   enableParticleEmitter,
+  getScrollTransition,
   isKeyDown,
   isTouching,
   KEY_FLAGS,
@@ -35,7 +36,7 @@ import {
   wasKeyPressed,
 } from './common'
 import createHeadRotationController from './HeadRotationController/HeadRotationController'
-import { getPartyMemberModelComponent, getScriptEntity } from './Model/modelUtils'
+import { getEntityPlacement, getPartyMemberModelComponent, getScriptEntity } from './Model/modelUtils'
 import createMovementController from './MovementController/MovementController'
 import { getIsLadderPlayerDriven, handleDirectLadder, handleLadder } from './MovementController/utils'
 import createRotationController from './RotationController/RotationController'
@@ -553,8 +554,20 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       await nextScriptFrame()
     }
   },
-  COPYINFO: ({ STACK }) => {
-    STACK.pop() as number
+  // The engine also copies the source's live movement speed, but every MOVE
+  // opcode reseeds that from the entity's own MSPEED value, so the copied speed
+  // can never outlast the placement.
+  COPYINFO: ({ movementController, rotationController, scene, STACK }) => {
+    const sourceEntityId = STACK.pop() as number
+
+    const placement = getEntityPlacement(scene, sourceEntityId)
+    if (!placement) {
+      console.warn('No entity found to copy placement from', sourceEntityId, 'COPYINFO')
+      return
+    }
+
+    movementController.setPosition(placement.position, placement.walkmeshTriangle)
+    rotationController.turnToFaceAngle(placement.angle, 0)
   },
   CROSSMUSIC: ({ STACK }) => {
     const fadeFrames = STACK.pop() as number
@@ -575,7 +588,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
 
     const layerID = STACK.pop() as number
 
-    setLayerScroll(layerID, x, y, duration, 'camera', true, 'cosine')
+    setLayerScroll(layerID, x, y, duration, 'level', 'cosine')
   },
   // This is never used in a working map (only broken field bg2f_1a)
   CSCROLL3: async ({ STACK }) => {
@@ -588,8 +601,8 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     // Pop layer ID from stack
     const layerID = STACK.pop() as number
 
-    setLayerScroll(layerID, startX, startY, 0, 'camera', false, 'cosine')
-    setLayerScroll(layerID, endX, endY, duration, 'camera', false, 'cosine')
+    setLayerScroll(layerID, startX, startY, 0, 'level', 'cosine')
+    setLayerScroll(layerID, endX, endY, duration, 'level', 'cosine')
   },
   CSCROLLA: ({ scene, STACK }) => {
     const duration = STACK.pop() as number
@@ -2047,10 +2060,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   SCROLLSYNC2: async ({ STACK }) => {
     const layerID = STACK.pop() as number
 
-    while (
-      useGlobalStore.getState().layerScrollOffsets[layerID] &&
-      useGlobalStore.getState().layerScrollOffsets[layerID].isInProgress
-    ) {
+    while (getScrollTransition(layerID)?.isInProgress) {
       await nextScriptFrame()
     }
   },

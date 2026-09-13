@@ -13,7 +13,6 @@ type LayerProps = {
 
 const SHADE_NEUTRAL = 128
 const SCROLL_RATIO_FULL = 256
-const CAMERA_LAYER_ID = 0
 const _cameraPosition = new Vector3()
 
 const Layer = ({ layer, texture }: LayerProps) => {
@@ -24,7 +23,6 @@ const Layer = ({ layer, texture }: LayerProps) => {
 
   const camera = useThree(({ scene }) => scene.getObjectByName('sceneCamera') as PerspectiveCamera)
   const layerScroll = useCameraScroll('layer', renderID)
-  const cameraLayerScroll = useCameraScroll('layer', CAMERA_LAYER_ID)
 
   useFrame(() => {
     const mesh = meshRef.current
@@ -88,11 +86,8 @@ const Layer = ({ layer, texture }: LayerProps) => {
     const xRatio = controlledScroll?.xRatio ?? SCROLL_RATIO_FULL
     const yRatio = controlledScroll?.yRatio ?? SCROLL_RATIO_FULL
 
-    const cameraPanX = centerX + cameraLayerScroll.current.x
-    const cameraPanY = centerY + cameraLayerScroll.current.y
-
-    const parallaxX = cameraPanX * (1 - xRatio / SCROLL_RATIO_FULL)
-    const parallaxY = cameraPanY * (1 - yRatio / SCROLL_RATIO_FULL)
+    const parallaxX = centerX * (1 - xRatio / SCROLL_RATIO_FULL)
+    const parallaxY = centerY * (1 - yRatio / SCROLL_RATIO_FULL)
 
     const offsetX = (controlledScroll?.xOffset ?? 0) + parallaxX - layerScroll.current.x
     const offsetY = (controlledScroll?.yOffset ?? 0) + parallaxY - layerScroll.current.y
