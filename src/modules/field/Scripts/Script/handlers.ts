@@ -1,11 +1,16 @@
 import drawPoints from '@data/exe/draw-points.json'
 import magic from '@data/kernel/magic.json'
-import { Scene, Vector3 } from 'three'
+import { MathUtils, Scene, Vector3 } from 'three'
 
 import { musicController } from '../../../../audio/MusicController'
 import { MUSIC_IDS } from '../../../../constants/audio'
 import MAP_NAMES from '../../../../constants/maps'
-import { LAGUNA_CHARACTER_SLOTS, MAIN_CHARACTER_SLOTS } from '../../../../constants/party'
+import {
+  LAGUNA_CHARACTER_SLOTS,
+  MAIN_CHARACTER_SLOTS,
+  SEED_RANK_POINTS_MAX,
+  SEED_RANK_POINTS_MIN,
+} from '../../../../constants/party'
 import { SPEEDS } from '../../../../constants/speeds'
 import LerpValue from '../../../../LerpValue'
 import useGlobalStore from '../../../../store'
@@ -183,7 +188,11 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     STACK.pop() as number
   },
   ADDSEEDLEVEL: ({ STACK }) => {
-    STACK.pop() as number
+    const points = STACK.pop() as number
+
+    useGlobalStore.setState((state) => ({
+      seedRankPoints: MathUtils.clamp(state.seedRankPoints + points, SEED_RANK_POINTS_MIN, SEED_RANK_POINTS_MAX),
+    }))
   },
   // Set: unused, but manipulate stack. here for completeness
   ALLSEPOS: ({ STACK }) => {
@@ -1636,7 +1645,8 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   },
   // Enables changing party
   PHSENABLE: ({ STACK }) => {
-    STACK.pop() as number
+    const isEnabled = (STACK.pop() as number) !== 0
+    useGlobalStore.setState({ isPhsEnabled: isEnabled })
   },
   PHSPOWER: ({ STACK }) => {
     STACK.pop() as number
@@ -2005,8 +2015,8 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   SARALYOFF: dummiedCommand,
   SARALYON: dummiedCommand,
   SAVEENABLE: ({ STACK }) => {
-    // const isEnabled =
-    STACK.pop() as number
+    const isEnabled = STACK.pop() !== 0
+    useGlobalStore.setState({ isSavingEnabled: isEnabled })
   },
 
   SCROLLMODE2: ({ STACK }) => {
@@ -2484,7 +2494,10 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   UNKNOWN15: ({ STACK }) => {
     useGlobalStore.setState({ ladderClimbSpeed: STACK.pop() as number })
   },
-  // Sets draw point ID
+  // "SET_DRAWPOINT_ID"
+  // This entity's draw point id. The engine needs it stated separately because
+  // it colours one global sparkle from that point's drawn/empty state; here the
+  // same id is already in the entity's own DRAWPOINT call.
   UNKNOWN16: ({ STACK }) => {
     STACK.pop() as number
   },

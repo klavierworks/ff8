@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import type { Script, ScriptMethod } from '../../types'
 import type { OPCODE_HANDLERS } from '../handlers'
 
+import useGlobalStore from '../../../../../store'
 import { getScriptFrame } from '../../../scriptClock'
 import { createAnimationController } from '../AnimationController/AnimationController'
 import createHeadRotationController from '../HeadRotationController/HeadRotationController'
@@ -65,6 +66,8 @@ const createScriptController = ({
     queue: [] as QueueItem[],
     script,
   }))
+
+  const ownerFieldId = useGlobalStore.getState().fieldId
 
   const triggerMethodByIndex = async (methodIndex: number, priority: number, waitMode: WaitMode = 'end') => {
     const method = script.methods[methodIndex]
@@ -200,6 +203,11 @@ const createScriptController = ({
 
     let synchronousOpcodes = 0
     for (;;) {
+      // Ensure script exits if we change field
+      if (useGlobalStore.getState().fieldId !== ownerFieldId) {
+        return
+      }
+
       const item = getState().queue.find((queued) => queued.uniqueId === uniqueId)
       if (!item || getState().queue[0]?.uniqueId !== uniqueId) {
         if (item) {

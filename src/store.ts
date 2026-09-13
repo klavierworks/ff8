@@ -76,9 +76,11 @@ type GlobalState = {
   isMapSuspended: boolean
 
   isOfflineSupported: boolean
+  isPhsEnabled: boolean
   isPlayerClimbingLadder: boolean
 
   isRunEnabled: boolean
+  isSavingEnabled: boolean
 
   isTransitioningColorOverlay: boolean
   isUserControllable: boolean
@@ -135,6 +137,7 @@ type GlobalState = {
   pendingFieldId: (typeof MAP_NAMES)[number] | undefined
 
   playerMovementSpeed: number
+  seedRankPoints: number
   sleepingParty: number[]
   spuValue: number
   systemSfxController: ReturnType<typeof createSFXController>
@@ -214,9 +217,11 @@ const INITIAL_STATE: GlobalState = {
   isMapSuspended: false,
 
   isOfflineSupported: false,
+  isPhsEnabled: true,
   isPlayerClimbingLadder: false,
 
   isRunEnabled: true,
+  isSavingEnabled: true,
 
   isTransitioningColorOverlay: false,
   isUserControllable: false,
@@ -263,6 +268,7 @@ const INITIAL_STATE: GlobalState = {
   pendingFieldId: undefined,
 
   playerMovementSpeed: 0,
+  seedRankPoints: 0,
   sleepingParty: [],
   spuValue: 0,
   systemSfxController: createSFXController('world', []),
