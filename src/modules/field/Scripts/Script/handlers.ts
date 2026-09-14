@@ -2,6 +2,7 @@ import drawPoints from '@data/exe/draw-points.json'
 import magic from '@data/kernel/magic.json'
 import { MathUtils, Scene, Vector3 } from 'three'
 
+import { getConcertSegmentUrls } from '../../../../audio/concert'
 import { musicController } from '../../../../audio/MusicController'
 import { MUSIC_IDS } from '../../../../constants/audio'
 import MAP_NAMES from '../../../../constants/maps'
@@ -221,9 +222,11 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   ALLSEPOS: ({ STACK }) => {
     STACK.splice(-1)
   },
-  ALLSEPOSTRANS: ({ STACK }) => {
-    STACK.pop() as number // duration (not applied — MP3 stack has no global pan ramp)
-    STACK.pop() as number // pan (not applied)
+  ALLSEPOSTRANS: ({ sfxController, STACK }) => {
+    const pan = STACK.pop() as number
+    const duration = STACK.pop() as number
+
+    sfxController.setPan(undefined, pan, duration)
   },
   ALLSEVOL: ({ sfxController, STACK }) => {
     const volume = STACK.pop() as number
@@ -444,10 +447,12 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       },
     }))
   },
-  BGSHADESTOP: () => {},
+  BGSHADESTOP: ({ script }) => {
+    useGlobalStore.getState().layerTints[script.backgroundParamId]?.progress.stop()
+  },
   BLINKEYES: unusedCommand,
 
-  // Completely unknown. Mainly used in cmwood maps?
+  // Stubbed with DISPBAR / SETBAR / KILLBAR: no field HUD to draw a gauge on.
   BROKEN: ({ STACK }) => {
     STACK.splice(-8)
   },
@@ -542,8 +547,14 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     STACK.pop() as number
   },
   CHOICEMUSIC: ({ STACK }) => {
-    STACK.pop() as number
-    STACK.pop() as number
+    STACK.pop() // unused by the original
+    const mask = STACK.pop() as number
+
+    if (!musicController.getHasPendingMusic()) {
+      return
+    }
+
+    musicController.playConcertSegments(getConcertSegmentUrls(mask, useGlobalStore.getState().fieldId))
   },
   CLEAR: () => {
     MEMORY = {}
@@ -855,7 +866,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const volume = STACK.pop() as number // I think this is a volume value? 0 - 127
     musicController.dualMusic(volume)
   },
-  DYING: dummiedCommand, // resurrects dead members to 1hp
+  DYING: dummiedCommand,
   // I think the documentation here is incorrect. I believe this loads banks of sounds. It's used in
   // test maps with long sound lists before triggering effectplay2.
   EFFECTLOAD: ({ STACK }) => {
@@ -899,7 +910,9 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const pitch = STACK.pop() as number
     headController.disable(yaw, pitch, duration)
   },
-  FACEDIRINIT: () => {},
+  FACEDIRINIT: ({ headController }) => {
+    headController.resetToBindPose()
+  },
   FACEDIRLIMIT: ({ headController, STACK }) => {
     const yawLimit = STACK.pop() as number
     STACK.pop() // roll limit — unused (always 0 in the original)
@@ -1613,8 +1626,9 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const id = STACK.pop() as keyof typeof MUSIC_IDS
     musicController.preloadMusic(MUSIC_IDS[id])
   },
-  // This is used once. I think it restarts the track?
-  MUSICREPLAY: () => {},
+  MUSICREPLAY: () => {
+    musicController.replayMusic()
+  },
   // The argument was the PSX sequencer's resume offset. The PC build plays a
   // recording from the start, so all that is left is starting the track.
   MUSICSKIP: ({ STACK }) => {
@@ -1640,10 +1654,13 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     musicController.setVolume(channel, volume)
   },
   MUSICVOLFADE: ({ STACK }) => {
-    STACK.pop() as number // const startVolume =  //maybe?
-    STACK.pop() as number // const frames =  //maybe?
-    STACK.pop() as number // const endVolume =
-    STACK.pop() as number // ???
+    const endVolume = STACK.pop() as number
+    const startVolume = STACK.pop() as number
+    const duration = STACK.pop() as number
+    const channel = STACK.pop() as number
+
+    musicController.setVolume(channel, startVolume)
+    musicController.transitionVolume(channel, endVolume, duration)
   },
   MUSICVOLSYNC: () => {},
   MUSICVOLTRANS: ({ STACK }) => {

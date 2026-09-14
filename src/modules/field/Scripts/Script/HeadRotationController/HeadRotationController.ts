@@ -63,6 +63,12 @@ const createHeadRotationController = (
     })
   }
 
+  const resetToBindPose = () => {
+    const { pitch, yaw } = getState()
+    pitch.set(0)
+    yaw.set(0)
+  }
+
   const turnToFaceAngles = async (yawTarget: number, pitchTarget: number, speed: TurnSpeed) => {
     setState((state) => ({ interactionId: state.interactionId + 1, isActive: true }))
     const { limits, pitch, yaw } = getState()
@@ -150,6 +156,7 @@ const createHeadRotationController = (
   return {
     disable,
     getState,
+    resetToBindPose,
     setBone,
     setLimits,
     sync,

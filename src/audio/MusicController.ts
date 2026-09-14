@@ -16,6 +16,8 @@ type PreloadMusicOptions = {
 
 const loopStartByHowl = new WeakMap<Howl, number>()
 
+const createLoopingTrack = (url: string) => new Howl({ autoplay: true, loop: true, src: [url], volume: BASE_VOLUME })
+
 const applyLoopStart = (howl: Howl, loopStart: number) => {
   if (loopStart <= 0) {
     return
@@ -157,6 +159,34 @@ const MusicController = () => {
     preloadedSrc = undefined
   }
 
+  const replayMusic = () => {
+    if (!channel0) {
+      console.warn('No music on channel 0 to replay')
+      return
+    }
+    channel0.stop()
+    seekToLoopStartIfNeeded(channel0)
+    channel0.play()
+  }
+
+  const playConcertSegments = (urls: string[]) => {
+    const [firstUrl, secondUrl] = urls
+    if (!firstUrl) {
+      return
+    }
+
+    channel0?.stop()
+    channel1?.stop()
+    preloadedAudio = undefined
+    preloadedSrc = undefined
+
+    channel0 = createLoopingTrack(firstUrl)
+    channel0Src = firstUrl
+
+    channel1 = secondUrl ? createLoopingTrack(secondUrl) : undefined
+    channel1Src = secondUrl
+  }
+
   const getChannelAudio = (channelId: number) => {
     const audio = channelId === 0 ? channel0 : channel1
     if (!audio) {
@@ -207,7 +237,7 @@ const MusicController = () => {
   const playOverlayMusic = (url: string) => {
     channel0?.pause()
     overlayAudio?.stop()
-    overlayAudio = new Howl({ autoplay: true, loop: true, src: [url], volume: BASE_VOLUME })
+    overlayAudio = createLoopingTrack(url)
   }
 
   const stopOverlayMusic = () => {
@@ -237,9 +267,11 @@ const MusicController = () => {
     dualMusic,
     getHasPendingMusic,
     pauseChannel,
+    playConcertSegments,
     playMusic,
     playOverlayMusic,
     preloadMusic,
+    replayMusic,
     reset,
     restoreChannelVolumes,
     setBattleMusic,
