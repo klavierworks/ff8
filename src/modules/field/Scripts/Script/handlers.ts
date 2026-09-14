@@ -17,7 +17,7 @@ import useGlobalStore from '../../../../store'
 import { framesToMs, MS_PER_FRAME } from '../../../../timing'
 import { cardGameController } from '../../../../UI/CardGame/CardGameController'
 import { addCardToCollection, getOwnedCardCount, removeCardFromCollection } from '../../../../UI/CardGame/collection'
-import { floatingPointToNumber, numberToFloatingPoint, vectorToFloatingPoint } from '../../../../utils'
+import { floatingPointToNumber, numberToFloatingPoint, signExtend16, vectorToFloatingPoint } from '../../../../utils'
 import useWorldmapStore from '../../../worldmap/worldmapStore'
 import { preloadField } from '../../fieldPreloader'
 import { nextScriptFrame, waitForScriptFrames } from '../../scriptClock'
@@ -48,8 +48,14 @@ import {
   setDrawPointState,
 } from './DrawPoint/drawPointState'
 import { SPARKLE_BURST_FRAMES } from './DrawPoint/Sparkles/sparkleSimulation'
+import createFootstepController from './FootstepController/FootstepController'
 import createHeadRotationController from './HeadRotationController/HeadRotationController'
-import { getEntityPlacement, getPartyMemberModelComponent, getScriptEntity } from './Model/modelUtils'
+import {
+  getEntityPlacement,
+  getFootstepControllers,
+  getPartyMemberModelComponent,
+  getScriptEntity,
+} from './Model/modelUtils'
 import createMovementController from './MovementController/MovementController'
 import { getIsLadderPlayerDriven, handleDirectLadder, handleLadder } from './MovementController/utils'
 import createRotationController from './RotationController/RotationController'
@@ -81,6 +87,7 @@ type HandlerArgs = {
   currentOpcode: OpcodeObj
   currentOpcodeIndex: number
   currentState: Readonly<ScriptState>
+  footstepController: ReturnType<typeof createFootstepController>
   headController: ReturnType<typeof createHeadRotationController>
   movementController: ReturnType<typeof createMovementController>
   opcodes: OpcodeObj[]
@@ -280,7 +287,10 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     OPCODE_HANDLERS?.AASK?.(args)
   },
   AXIS: ({ STACK }) => {
-    STACK.splice(-2)
+    const duration = STACK.pop() as number
+    const targetAngle = STACK.pop() as number
+
+    useGlobalStore.getState().controlAxis.start(targetAngle, framesToMs(duration))
   },
   AXISSYNC: unusedCommand,
   BASEANIME: ({ animationController, currentOpcode, STACK }) => {
@@ -1025,21 +1035,34 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
 
   // SOUND
 
-  FOOTSTEP: ({ currentOpcode, STACK }) => {
-    const footstepSoundId = STACK.pop() as number //footstep pair ID?
-    console.log(currentOpcode.param, footstepSoundId)
-    // movementController.setFootsteps('FOOTSTEPS', footstepSoundId)
+  // Takes one sound per foot: the first on the stack, the second inline.
+  FOOTSTEP: ({ currentOpcode, footstepController, STACK }) => {
+    const firstFootSound = STACK.pop() as number
+    footstepController.setSounds(firstFootSound, currentOpcode.param)
   },
-  FOOTSTEPCOPY: dummiedCommand,
-  FOOTSTEPCUT: ({ movementController }) => {
-    movementController.resetFootsteps()
+  FOOTSTEPCOPY: ({ footstepController, scene }) => {
+    const { firstFoot, secondFoot } = footstepController.getState().sounds
+    const controllers = getFootstepControllers(scene)
+
+    if (firstFoot === undefined || secondFoot === undefined) {
+      controllers.forEach((controller) => controller.clearSounds())
+      return
+    }
+    controllers.forEach((controller) => controller.setSounds(firstFoot, secondFoot))
   },
-  FOOTSTEPOFF: ({ movementController }) => {
-    movementController.disableFootsteps()
+  // Drops the sound override back to the default pair rather than silencing the
+  // entity, which is what FOOTSTEPOFF does.
+  FOOTSTEPCUT: ({ footstepController }) => {
+    footstepController.clearSounds()
   },
-  FOOTSTEPOFFALL: () => {},
-  FOOTSTEPON: ({ movementController }) => {
-    movementController.enableFootsteps()
+  FOOTSTEPOFF: ({ footstepController }) => {
+    footstepController.disable()
+  },
+  FOOTSTEPOFFALL: ({ scene }) => {
+    getFootstepControllers(scene).forEach((controller) => controller.disable())
+  },
+  FOOTSTEPON: ({ footstepController }) => {
+    footstepController.enable()
   },
 
   // FAKED
@@ -1105,9 +1128,15 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     })
   },
 
-  // Initialises music system, not needed
-  INITSOUND: () => {},
-  INITTRACE: () => {},
+  INITSOUND: ({ sfxController }) => {
+    sfxController.reset()
+    musicController.restoreChannelVolumes()
+  },
+  // Clearing the trail is enough to rebuild it: the followers reseed from the
+  // leader's current position on the next frame.
+  INITTRACE: () => {
+    useGlobalStore.setState({ congaTrailHead: 0, congaWaypointHistory: [] })
+  },
   ISMEMBER: unusedCommand,
   ISPARTY: ({ STACK, TEMP_STACK }) => {
     const characterID = STACK.pop() as number
@@ -1165,9 +1194,10 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       sleepingParty: isEnteringDream ? [...state.party] : [],
     }))
   },
-  // Used once in the balamb basement. I think it might clear a ladder key?
+  // Only KEY(0) blocks; every other value releases, as does UCON.
   KEY: ({ STACK }) => {
-    STACK.pop() as number
+    const isBlocked = (STACK.pop() as number) === 0
+    useGlobalStore.setState({ isPlayerInputBlocked: isBlocked })
   },
   KEYON: ({ STACK, TEMP_STACK }) => {
     const isDown = isKeyDown(STACK.pop() as keyof typeof KEY_FLAGS)
@@ -1585,9 +1615,15 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   },
   // This is used once. I think it restarts the track?
   MUSICREPLAY: () => {},
+  // The argument was the PSX sequencer's resume offset. The PC build plays a
+  // recording from the start, so all that is left is starting the track.
   MUSICSKIP: ({ STACK }) => {
-    // const unknown =
     STACK.pop() as number
+
+    if (!musicController.getHasPendingMusic()) {
+      return
+    }
+    musicController.playMusic()
   },
   // This is an assumption
   MUSICSTATUS: ({ TEMP_STACK }) => {
@@ -2219,8 +2255,10 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     })
   },
   SETPARTY2: unusedCommand,
-  SETPC: ({ setState, STACK }) => {
+  // Assigning a character also starts its footsteps, without a FOOTSTEPON.
+  SETPC: ({ footstepController, setState, STACK }) => {
     const partyMemberId = STACK.pop() as number
+    footstepController.setCharacterId(partyMemberId)
     setState({
       partyMemberId,
     })
@@ -2229,9 +2267,9 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const placeName = STACK.pop() as number
     useGlobalStore.setState({ currentLocationPlaceName: placeName })
   },
-  SETROOTTRANS: ({ STACK }) => {
-    // unknown
-    STACK.pop() as number
+  SETROOTTRANS: ({ setState, STACK }) => {
+    const rootTranslation = signExtend16(STACK.pop() as number)
+    setState({ rootTranslation })
   },
   SETTIMER: ({ currentState, setState, STACK }) => {
     const time = STACK.pop() as number
@@ -2444,7 +2482,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     useGlobalStore.setState({ isUserControllable: false })
   },
   UCON: () => {
-    useGlobalStore.setState({ isUserControllable: true })
+    useGlobalStore.setState({ isPlayerInputBlocked: false, isUserControllable: true })
   },
   // @ts-expect-error Not in opcodes list
   UNKNOWN1: ({ STACK }) => {

@@ -104,11 +104,6 @@ const applyTurnRateLimit = (turn: Turn, desiredHeading: number, limitPerFrame: n
 
 const createMovementController = (id: number, walkmeshController: WalkmeshMovementController) => {
   const { getState, setState, subscribe } = create(() => ({
-    footsteps: {
-      isActive: false,
-      leftSound: undefined as Howl | undefined,
-      rightSound: undefined as Howl | undefined,
-    },
     hasBeenPlaced: false,
     hasMoved: false,
     id,
@@ -455,52 +450,6 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       },
     })
   }
-
-  const setFootsteps = () =>
-    setState((state) => ({
-      footsteps: {
-        ...state.footsteps,
-        leftSound: new Howl({
-          loop: false,
-          mute: false,
-          preload: true,
-          src: `/audio/footsteps/2.mp3`,
-          volume: 1,
-        }),
-        rightSound: new Howl({
-          loop: false,
-          mute: false,
-          preload: true,
-          src: `/audio/footsteps/3.mp3`,
-          volume: 1,
-        }),
-      },
-    }))
-
-  const enableFootsteps = () =>
-    setState((state) => ({
-      footsteps: {
-        ...state.footsteps,
-        isActive: true,
-      },
-    }))
-
-  const disableFootsteps = () =>
-    setState((state) => ({
-      footsteps: {
-        ...state.footsteps,
-        isActive: false,
-      },
-    }))
-
-  const resetFootsteps = () =>
-    setState({
-      footsteps: {
-        isActive: false,
-        leftSound: undefined,
-        rightSound: undefined,
-      },
-    })
 
   const setIsClimbingLadder = (isClimbingLadder: boolean) =>
     setState({
@@ -912,8 +861,6 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
   }
 
   return {
-    disableFootsteps,
-    enableFootsteps,
     getHasLadderAdvanced,
     getLadderResult,
     getMovementPosition,
@@ -929,9 +876,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
     pause,
     refreshWalkmeshTriangle,
     reset,
-    resetFootsteps,
     resume,
-    setFootsteps,
     setHasMoved,
     setIsClimbingLadder,
     setLadderPosition,

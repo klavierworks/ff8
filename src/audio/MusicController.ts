@@ -1,6 +1,7 @@
 import { Howl } from 'howler'
 import { create } from 'zustand'
 
+import { FULL_MUSIC_VOLUME } from '../constants/audio'
 import { framesToMs } from '../timing'
 
 const BASE_VOLUME = 0.4
@@ -181,6 +182,16 @@ const MusicController = () => {
     audio.volume((volume / 127) * BASE_VOLUME)
   }
 
+  const getHasPendingMusic = () => preloadedAudio !== undefined
+
+  // Bypasses getChannelAudio because an empty channel is expected here, not
+  // something to warn about.
+  const restoreChannelVolumes = () => {
+    const fullVolume = (FULL_MUSIC_VOLUME / 127) * BASE_VOLUME
+    channel0?.volume(fullVolume)
+    channel1?.volume(fullVolume)
+  }
+
   const transitionVolume = (channelId: number, volume: number, duration: number) => {
     const audio = getChannelAudio(channelId)
     if (!audio) {
@@ -224,11 +235,13 @@ const MusicController = () => {
   return {
     crossMusic,
     dualMusic,
+    getHasPendingMusic,
     pauseChannel,
     playMusic,
     playOverlayMusic,
     preloadMusic,
     reset,
+    restoreChannelVolumes,
     setBattleMusic,
     setVolume,
     stopOverlayMusic,

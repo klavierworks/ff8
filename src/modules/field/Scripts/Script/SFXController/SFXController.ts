@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 
+import { MAX_SFX_VOLUME, SFX_PAN_CENTRE } from '../../../../../constants/audio'
 import { FieldData } from '../../../Field'
 import loopPoints from './loop_points.json'
 import { getSoundFromId } from './utils'
@@ -90,10 +91,29 @@ const createSFXController = (id: number | string, sounds: FieldData['sounds']) =
     })
   }
 
+  const removeSourceFromChannel = (sourceNode: AudioSourceNode): void => {
+    const state = getState()
+    const withoutSource = (nodes: AudioSourceNode[]) => nodes.filter((node) => node !== sourceNode)
+
+    setState({
+      ...state,
+      channels: Object.fromEntries(Object.entries(state.channels).map(([key, nodes]) => [key, withoutSource(nodes)])),
+      generalChannel: withoutSource(state.generalChannel),
+    })
+  }
+
   const play = async (id: number, channel: number, volume: number, pan: number): Promise<void> => {
     try {
       const sourceNode = await createAudioSource(id, volume, pan, typedLoopPoints)
       addSourceToChannel(sourceNode, channel)
+
+      // Without this the channel lists grow for the lifetime of the field.
+      sourceNode.source.addEventListener('ended', () => {
+        if (sourceNode.isLooping) {
+          return
+        }
+        removeSourceFromChannel(sourceNode)
+      })
 
       playWithLoop(sourceNode, createLoopSource)
     } catch (error) {
@@ -155,9 +175,16 @@ const createSFXController = (id: number | string, sounds: FieldData['sounds']) =
     sources.forEach((source) => setPanForSource(source, pan, duration))
   }
 
+  const reset = (): void => {
+    setVolume(undefined, MAX_SFX_VOLUME)
+    setPan(undefined, SFX_PAN_CENTRE)
+    stop()
+  }
+
   return {
     play,
     playFieldSound,
+    reset,
     setPan,
     setVolume,
     stop,

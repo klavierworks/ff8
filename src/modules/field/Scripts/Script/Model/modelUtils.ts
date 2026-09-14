@@ -1,6 +1,7 @@
 import { Group, Object3D, Scene, Vector3 } from 'three'
 
 import useGlobalStore from '../../../../../store'
+import createFootstepController from '../FootstepController/FootstepController'
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
 import createScriptController from '../ScriptController/ScriptController'
@@ -95,6 +96,16 @@ const readInteractiveEntity = (object: Object3D): InteractiveEntity | null => {
     scriptController,
     talkRadius: state.talkRadius,
   }
+}
+
+export const getFootstepControllers = (scene: Scene) => {
+  const controllers: ReturnType<typeof createFootstepController>[] = []
+  scene.traverse((object) => {
+    if (object.name.startsWith('entity--') && object.userData.footstepController) {
+      controllers.push(object.userData.footstepController)
+    }
+  })
+  return controllers
 }
 
 export const getInteractiveEntities = (scene: Scene) => {

@@ -1,10 +1,16 @@
-import type { Howl } from 'howler'
-
 import { clamp } from 'three/src/math/MathUtils.js'
 
-export type Foot = 'left' | 'right'
+import {
+  FOOTSTEP_PAN_MAX_SCREEN_X,
+  FOOTSTEP_PAN_MIN_SCREEN_X,
+  FOOTSTEP_PAN_SCREEN_X_DIVISOR,
+  MAX_SFX_VOLUME,
+  SFX_PAN_CENTRE,
+} from '../../../../../constants/audio'
+import { SCREEN_WIDTH } from '../../../../../constants/constants'
+import { Foot } from '../FootstepController/FootstepController'
 
-export const getNextFoot = (previousFoot: Foot | undefined): Foot => (previousFoot === 'right' ? 'left' : 'right')
+export const getNextFoot = (previousFoot: Foot | undefined): Foot => (previousFoot === 'first' ? 'second' : 'first')
 
 export const hasFootPlanted = (previousPhase: number, phase: number): boolean => {
   const hasCrossedMidpoint = previousPhase < 0.5 && phase >= 0.5
@@ -12,24 +18,12 @@ export const hasFootPlanted = (previousPhase: number, phase: number): boolean =>
   return hasCrossedMidpoint || hasWrapped
 }
 
-const calculateFootstepVolume = (isWalking: boolean, distanceToCamera: number): number =>
-  clamp(0.1, (isWalking ? 0.5 : 1) * (2 - distanceToCamera), 0.3)
+export const calculateFootstepVolume = (isWalking: boolean, distanceToCamera: number): number =>
+  Math.max(0.1, (isWalking ? 0.5 : 1) * (2 - distanceToCamera)) * MAX_SFX_VOLUME
 
-export const triggerFootstep = ({
-  distanceToCamera,
-  foot,
-  isWalking,
-  leftSound,
-  rightSound,
-}: {
-  distanceToCamera: number
-  foot: Foot
-  isWalking: boolean
-  leftSound: Howl
-  rightSound: Howl
-}): void => {
-  const sound = foot === 'left' ? leftSound : rightSound
-  sound.seek(0)
-  sound.volume(calculateFootstepVolume(isWalking, distanceToCamera))
-  sound.play()
+export const calculateFootstepPan = (normalisedScreenX: number): number => {
+  const screenX = (normalisedScreenX * SCREEN_WIDTH) / 2
+  const clampedScreenX = clamp(screenX, FOOTSTEP_PAN_MIN_SCREEN_X, FOOTSTEP_PAN_MAX_SCREEN_X)
+
+  return clampedScreenX / FOOTSTEP_PAN_SCREEN_X_DIVISOR + SFX_PAN_CENTRE
 }

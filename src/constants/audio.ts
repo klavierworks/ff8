@@ -2,6 +2,21 @@
 
 export const MAX_SFX_VOLUME = 128
 
+export const SFX_PAN_CENTRE = 128
+
+export const FULL_MUSIC_VOLUME = 127
+
+// ─── Audio: footsteps ───
+
+export const FOOTSTEP_SOUNDS_MALE = { firstFoot: 3, secondFoot: 2 }
+export const FOOTSTEP_SOUNDS_FEMALE = { firstFoot: 54, secondFoot: 53 }
+
+export const FEMALE_FOOTSTEP_CHARACTER_IDS = [3, 4, 5, 7]
+
+export const FOOTSTEP_PAN_MIN_SCREEN_X = -512
+export const FOOTSTEP_PAN_MAX_SCREEN_X = 508
+export const FOOTSTEP_PAN_SCREEN_X_DIVISOR = 4
+
 export const MUSIC_IDS = {
   0: '/audio/Disc 1/11. The Loser.mp3', // The Loser
   1: '/audio/Disc 1/05. The Winner.mp3', // The Winner

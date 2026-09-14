@@ -7,6 +7,8 @@ export const numberToFloatingPoint = (value: number) => value / 4096
 
 export const floatingPointToNumber = (value: number) => value * 4096
 
+export const signExtend16 = (value: number) => (value << 16) >> 16
+
 export const vectorToFloatingPoint = (value: number[] | Vector3 | { x: number; y: number; z: number }) => {
   if (Array.isArray(value)) {
     return new Vector3(

@@ -7,6 +7,7 @@ import type { OPCODE_HANDLERS } from '../handlers'
 import useGlobalStore from '../../../../../store'
 import { getScriptFrame } from '../../../scriptClock'
 import { createAnimationController } from '../AnimationController/AnimationController'
+import createFootstepController from '../FootstepController/FootstepController'
 import createHeadRotationController from '../HeadRotationController/HeadRotationController'
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
@@ -21,6 +22,7 @@ type QueueItem = {
   method: ScriptMethod
   priority: number
   queuedAtFrame: number
+  tempStack: Record<number, number>
   uniqueId: string
 }
 
@@ -40,6 +42,7 @@ const getEventMethodPriority = (methodIndex: number) => EVENT_METHOD_SLOT_BASE -
 
 const createScriptController = ({
   animationController,
+  footstepController,
   handlers,
   headController,
   movementController,
@@ -50,6 +53,7 @@ const createScriptController = ({
   useScriptStateStore,
 }: {
   animationController: ReturnType<typeof createAnimationController>
+  footstepController: ReturnType<typeof createFootstepController>
   handlers: typeof OPCODE_HANDLERS
   headController: ReturnType<typeof createHeadRotationController>
   movementController: ReturnType<typeof createMovementController>
@@ -60,7 +64,6 @@ const createScriptController = ({
   useScriptStateStore: ReturnType<typeof createScriptState>
 }) => {
   const STACK: number[] = []
-  const TEMP_STACK: Record<number, number> = {}
 
   const { getState, setState } = create(() => ({
     queue: [] as QueueItem[],
@@ -78,7 +81,12 @@ const createScriptController = ({
     await triggerMethod(method.methodId, priority, waitMode)
   }
 
-  const triggerMethod = async (methodId: string, priority?: number, waitMode: WaitMode = 'end') => {
+  const triggerMethod = async (
+    methodId: string,
+    priority?: number,
+    waitMode: WaitMode = 'end',
+    initialTempStack: Record<number, number> = {},
+  ) => {
     const methodIndex = script.methods.findIndex((method) => method.methodId === methodId)
     if (methodIndex === -1) {
       console.warn(`Method with id ${methodId} not found in script for ${script.groupId}`)
@@ -97,6 +105,7 @@ const createScriptController = ({
       method,
       priority: prioritySlot,
       queuedAtFrame: getScriptFrame(),
+      tempStack: { ...initialTempStack },
       uniqueId,
     })
 
@@ -240,6 +249,7 @@ const createScriptController = ({
           currentOpcode: activeOpcode,
           currentOpcodeIndex: item.activeOpcodeIndex,
           currentState: useScriptStateStore.getState(),
+          footstepController,
           headController,
           movementController,
           opcodes: item.method.opcodes,
@@ -249,7 +259,7 @@ const createScriptController = ({
           setState: useScriptStateStore.setState,
           sfxController,
           STACK,
-          TEMP_STACK,
+          TEMP_STACK: item.tempStack,
         })
         isBlocking = result instanceof Promise
         nextIndex = await result
@@ -300,14 +310,9 @@ const createScriptController = ({
 
   const isTalkingToPlayer = () => getState().queue[0]?.method.methodId === 'talk'
 
-  const setTempVariable = (key: number, value: number) => {
-    TEMP_STACK[key] = value
-  }
-
   return {
     isTalkingToPlayer,
     script,
-    setTempVariable,
     tick,
     triggerMethod,
     triggerMethodByIndex,

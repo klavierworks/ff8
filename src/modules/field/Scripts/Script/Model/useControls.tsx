@@ -79,18 +79,11 @@ const useControls = ({
   const [hasPlacedCharacter, setHasPlacedCharacter] = useState(false)
 
   const isUserControllable = useGlobalStore((state) => state.isUserControllable)
+  const isPlayerInputBlocked = useGlobalStore((state) => state.isPlayerInputBlocked)
   const initialFieldPosition = useGlobalStore((state) => state.characterPosition)
   const spawnTriangle = useGlobalStore((state) => state.characterSpawnTriangle)
   const isTransitioningMap = useGlobalStore((state) => !!state.pendingFieldId)
   const walkmeshController = useGlobalStore((state) => state.walkmeshController)
-
-  useEffect(() => {
-    if (movementController.getState().footsteps.leftSound) {
-      return
-    }
-
-    movementController.setFootsteps()
-  }, [movementController])
 
   const characterHeightRef = useRef(characterHeight)
   useEffect(() => {
@@ -133,8 +126,6 @@ const useControls = ({
     isActive,
   ])
 
-  const controlDirection = useGlobalStore((state) => state.fieldDirection)
-
   const handleMovement = useCallback(() => {
     let x = 0
     let y = 0
@@ -160,8 +151,9 @@ const useControls = ({
 
     const angle = Math.round((radians / Math.PI) * 128) - 128 + 256
 
-    return angle + (controlDirection - 128)
-  }, [movementFlags, controlDirection])
+    const controlAxis = useGlobalStore.getState().controlAxis.get()
+    return angle + (controlAxis - 128)
+  }, [movementFlags])
 
   const [forwardDirection] = useState(new Vector3(0, -1, 0))
   const [upDirection] = useState(new Vector3(0, 0, 1))
@@ -199,7 +191,7 @@ const useControls = ({
   }, [])
   const handleFrame = useCallback(
     async (camera: PerspectiveCamera, scene: Scene, delta: number) => {
-      if (!isActive || !isUserControllable || !hasPlacedCharacter || isTransitioningMap) {
+      if (!isActive || !isUserControllable || isPlayerInputBlocked || !hasPlacedCharacter || isTransitioningMap) {
         return
       }
 
@@ -273,6 +265,7 @@ const useControls = ({
     [
       isActive,
       isUserControllable,
+      isPlayerInputBlocked,
       hasPlacedCharacter,
       isTransitioningMap,
       movementController,

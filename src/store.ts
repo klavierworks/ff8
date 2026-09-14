@@ -46,6 +46,8 @@ type GlobalState = {
   }
   congaTrailHead: number
   congaWaypointHistory: CongaHistory[]
+
+  controlAxis: LerpValue
   currentLocationPlaceName: number
 
   currentMessages: Message[]
@@ -81,6 +83,8 @@ type GlobalState = {
   isOfflineSupported: boolean
   isPhsEnabled: boolean
   isPlayerClimbingLadder: boolean
+
+  isPlayerInputBlocked: boolean
 
   isRunEnabled: boolean
   isSavingEnabled: boolean
@@ -191,6 +195,7 @@ const INITIAL_STATE: GlobalState = {
   },
   congaTrailHead: 0,
   congaWaypointHistory: [],
+  controlAxis: new LerpValue(0),
   currentLocationPlaceName: 0,
   currentMessages: [],
 
@@ -226,6 +231,7 @@ const INITIAL_STATE: GlobalState = {
   isOfflineSupported: false,
   isPhsEnabled: true,
   isPlayerClimbingLadder: false,
+  isPlayerInputBlocked: false,
 
   isRunEnabled: true,
   isSavingEnabled: true,

@@ -4,10 +4,13 @@ import { ComponentType, type JSX, lazy, useCallback, useEffect, useRef, useState
 import { Bone, Box3, Color, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, Vector3 } from 'three'
 
 import useGlobalStore from '../../../../../store'
+import { numberToFloatingPoint } from '../../../../../utils'
 import { createAnimationController } from '../AnimationController/AnimationController'
+import createFootstepController from '../FootstepController/FootstepController'
 import createHeadRotationController from '../HeadRotationController/HeadRotationController'
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
+import createSFXController from '../SFXController/SFXController'
 import { ScriptStateStore } from '../state'
 import { applyModelMaterial } from './modelMaterial'
 import { createPaletteOffsetUniform, getPaletteOffset } from './modelPalette'
@@ -18,10 +21,12 @@ import useTalkTrigger from './useTalkTrigger'
 
 type ModelProps = {
   animationController: ReturnType<typeof createAnimationController>
+  footstepController: ReturnType<typeof createFootstepController>
   headController: ReturnType<typeof createHeadRotationController>
   models: string[]
   movementController: ReturnType<typeof createMovementController>
   rotationController: ReturnType<typeof createRotationController>
+  sfxController: ReturnType<typeof createSFXController>
   useScriptStateStore: ScriptStateStore
 }
 
@@ -41,10 +46,12 @@ const POLY_COLOR_NEUTRAL = 128
 
 const Model = ({
   animationController,
+  footstepController,
   headController,
   models,
   movementController,
   rotationController,
+  sfxController,
   useScriptStateStore,
 }: ModelProps) => {
   const fieldId = useGlobalStore((state) => state.fieldId)!
@@ -146,7 +153,7 @@ const Model = ({
     }
   })
 
-  useFootsteps({ animationController, movementController })
+  useFootsteps({ animationController, footstepController, movementController, sfxController })
 
   const [characterDimensions] = useState<Vector3>(new Vector3())
 
@@ -172,6 +179,8 @@ const Model = ({
 
   const [boundingbox] = useState(new Box3())
 
+  const rootTranslation = useScriptStateStore((state) => state.rootTranslation)
+
   useFrame(() => {
     if (!animationGroupRef.current) {
       return
@@ -184,8 +193,10 @@ const Model = ({
       return
     }
 
+    const rootOffset = numberToFloatingPoint(rootTranslation)
+
     if (movementController.getState().jump.directLine || movementController.getState().position.isClimbingLadder) {
-      animationGroupRef.current.position.z = 0
+      animationGroupRef.current.position.z = rootOffset
       return
     }
 
@@ -195,12 +206,12 @@ const Model = ({
         ? walkmeshTriangle
         : walkmeshController.getTriangleForPosition(current)
     if (triangleId === null) {
-      animationGroupRef.current.position.z = 0
+      animationGroupRef.current.position.z = rootOffset
       return
     }
 
     const floorZ = walkmeshController.getPlaneHeightOnTriangle(current.x, current.y, triangleId)
-    animationGroupRef.current.position.z = floorZ !== null ? floorZ - current.z : 0
+    animationGroupRef.current.position.z = (floorZ !== null ? floorZ - current.z : 0) + rootOffset
   })
 
   useFollower({

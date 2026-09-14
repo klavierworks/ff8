@@ -8,6 +8,7 @@ import { Script as ScriptType } from '../types'
 import { createAnimationController } from './AnimationController/AnimationController'
 import Door from './Door/Door'
 import DrawPoint from './DrawPoint/DrawPoint'
+import createFootstepController from './FootstepController/FootstepController'
 import { OPCODE_HANDLERS } from './handlers'
 import createHeadRotationController from './HeadRotationController/HeadRotationController'
 import Location from './Location/Location'
@@ -49,10 +50,12 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
     [script.groupId, movementController, rotationController],
   )
   const sfxController = useMemo(() => createSFXController(script.groupId, sounds ?? []), [script.groupId, sounds])
+  const footstepController = useMemo(() => createFootstepController(script.groupId), [script.groupId])
   const scriptController = useMemo(
     () =>
       createScriptController({
         animationController,
+        footstepController,
         handlers: OPCODE_HANDLERS,
         headController,
         movementController,
@@ -64,6 +67,7 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
       }),
     [
       animationController,
+      footstepController,
       headController,
       movementController,
       rotationController,
@@ -227,6 +231,7 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
       ref={entityRef}
       userData={{
         animationController,
+        footstepController,
         hasBeenPlaced: false,
         movementController,
         partyMemberId,
@@ -246,10 +251,12 @@ const Script = ({ doors, isActive, models, onSetupCompleted, onStarted, script, 
           ) : (
             <Model
               animationController={animationController}
+              footstepController={footstepController}
               headController={headController}
               models={models}
               movementController={movementController}
               rotationController={rotationController}
+              sfxController={sfxController}
               useScriptStateStore={useScriptStateStore}
             />
           ))}

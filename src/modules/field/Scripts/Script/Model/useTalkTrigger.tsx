@@ -59,8 +59,7 @@ const useTalkTrigger = ({
       event.stopImmediatePropagation()
 
       useGlobalStore.setState({ hasActiveTalkMethod: true })
-      target.scriptController.setTempVariable(0, isTalk ? 0 : 1)
-      target.scriptController.triggerMethod('talk').then(() => {
+      target.scriptController.triggerMethod('talk', undefined, 'end', { 0: isTalk ? 0 : 1 }).then(() => {
         useGlobalStore.setState({ hasActiveTalkMethod: false })
       })
     }

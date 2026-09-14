@@ -127,9 +127,10 @@ const FieldLoader = (props: FieldLoaderProps) => {
         MEMORY[261] = 0
       }
 
-      const { backgroundAnimations, layerTints } = useGlobalStore.getState()
+      const { backgroundAnimations, controlAxis, layerTints } = useGlobalStore.getState()
       Object.values(backgroundAnimations).forEach((animation) => animation.stop())
       Object.values(layerTints).forEach((tint) => tint.progress.stop())
+      controlAxis.set(data?.controlDirection ?? 0)
 
       const spawn = getRequestedSpawn(data, pendingCharacterPosition, pendingCharacterTriangle)
 
@@ -179,6 +180,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
 
         isMapFadeEnabled: true,
 
+        isPlayerInputBlocked: false,
         isRunEnabled: true,
         isUserControllable: pendingFieldId !== 'start0',
 
