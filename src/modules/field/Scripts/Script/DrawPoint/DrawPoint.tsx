@@ -1,18 +1,24 @@
 import { Cylinder } from '@react-three/drei'
 
-import FF8DrawParticles from './FF8DrawParticles/FF8DrawParticles'
+import { DRAW_POINT_STATE_FULL } from '../../../../../constants/drawPoints'
+import useGlobalStore from '../../../../../store'
+import { ScriptStateStore } from '../state'
+import Sparkles from './Sparkles/Sparkles'
 
-const DrawPoint = () => {
+type DrawPointProps = {
+  useScriptStateStore: ScriptStateStore
+}
+
+const DrawPoint = ({ useScriptStateStore }: DrawPointProps) => {
+  const drawPointId = useScriptStateStore((state) => state.drawPointId)
+  const drawPointBurstKey = useScriptStateStore((state) => state.drawPointBurstKey)
+  const drawPointState = useGlobalStore((state) =>
+    drawPointId === undefined ? DRAW_POINT_STATE_FULL : state.drawPointStates[drawPointId],
+  )
+
   return (
     <>
-      <FF8DrawParticles
-        colour="rgb(218,70,192)"
-        count={30}
-        curveWidth={0.02}
-        height={0.04}
-        lineOpacity={1}
-        lineWidth={0.01}
-      />
+      <Sparkles burstKey={drawPointBurstKey} drawPointState={drawPointState} />
       <Cylinder
         args={[0.03, 0.03, 0.05]}
         position={[0, 0, 0.02]}

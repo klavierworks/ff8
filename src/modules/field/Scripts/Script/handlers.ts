@@ -40,6 +40,14 @@ import {
   triggerFadeout,
   wasKeyPressed,
 } from './common'
+import {
+  calculateDrawAmount,
+  getDrawPointState,
+  getIsDrawPointEmpty,
+  getSpentDrawPointState,
+  setDrawPointState,
+} from './DrawPoint/drawPointState'
+import { SPARKLE_BURST_FRAMES } from './DrawPoint/Sparkles/sparkleSimulation'
 import createHeadRotationController from './HeadRotationController/HeadRotationController'
 import { getEntityPlacement, getPartyMemberModelComponent, getScriptEntity } from './Model/modelUtils'
 import createMovementController from './MovementController/MovementController'
@@ -59,6 +67,14 @@ import {
 
 const dummiedCommand = () => undefined
 const unusedCommand = () => undefined
+
+const DRAW_POINT_MESSAGE_PLACEMENT: MessagePlacement = {
+  channel: 0,
+  height: 40,
+  width: 150,
+  x: 110,
+  y: 90,
+}
 
 type HandlerArgs = {
   animationController: ReturnType<typeof createAnimationController>
@@ -756,26 +772,30 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     setState({ isDoorOn: true })
   },
 
-  DRAWPOINT: async ({ sfxController, STACK }) => {
-    const drawPointId = STACK.pop() as number
-    const drawPoint = drawPoints[drawPointId - 1]!
-    const magicName = magic[drawPoint.magicId]?.name ?? ''
+  DRAWPOINT: async ({ setState, sfxController, STACK }) => {
+    const drawPointId = (STACK.pop() as number) - 1
+    setState({ drawPointId })
 
+    const drawPointState = getDrawPointState(drawPointId)
+    if (getIsDrawPointEmpty(drawPointState)) {
+      await openMessage('drawpoint', ['Found a draw point!\nNothing there...'], DRAW_POINT_MESSAGE_PLACEMENT, true)
+      return
+    }
+
+    const magicName = magic[drawPoints[drawPointId].magicId]?.name ?? ''
     await sfxController.play(66, 0, 127, 128)
     preloadSound(67)
-    await openMessage(
-      'drawpoint',
-      [`Found a draw point!\n${magicName} found.`],
-      {
-        channel: 0,
-        height: 40,
-        width: 150,
-        x: 110,
-        y: 90,
-      },
-      true,
-    )
+    await openMessage('drawpoint', [`Found a draw point!\n${magicName} found.`], DRAW_POINT_MESSAGE_PLACEMENT, true)
+
+    const amount = calculateDrawAmount(drawPointId, drawPointState)
     sfxController.play(67, 0, 127, 128)
+    setState((state) => ({ drawPointBurstKey: (state.drawPointBurstKey ?? 0) + 1 }))
+    await waitForScriptFrames(SPARKLE_BURST_FRAMES)
+
+    // The original never singularises this line, even when you draw exactly one.
+    await openMessage('drawpoint', [`Drew ${amount} ${magicName}s.`], DRAW_POINT_MESSAGE_PLACEMENT, true)
+
+    setDrawPointState(drawPointId, getSpentDrawPointState(drawPointId))
   },
   DSCROLL: ({ STACK }) => {
     const y = STACK.pop() as number
@@ -2495,11 +2515,11 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     useGlobalStore.setState({ ladderClimbSpeed: STACK.pop() as number })
   },
   // "SET_DRAWPOINT_ID"
-  // This entity's draw point id. The engine needs it stated separately because
-  // it colours one global sparkle from that point's drawn/empty state; here the
-  // same id is already in the entity's own DRAWPOINT call.
-  UNKNOWN16: ({ STACK }) => {
-    STACK.pop() as number
+  // This entity's draw point id, which picks the colour ramp its sparkle is drawn
+  // with. The engine colours one global sparkle from it; here each draw point entity
+  // colours its own.
+  UNKNOWN16: ({ setState, STACK }) => {
+    setState({ drawPointId: (STACK.pop() as number) - 1 })
   },
   // @ts-expect-error Not in opcodes list
   UNKNOWN17: ({ STACK }) => {

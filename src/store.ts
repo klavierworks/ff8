@@ -4,6 +4,7 @@ import type { Object3D, Vector3 } from 'three'
 import { create } from 'zustand'
 
 import { CAMERA_SHAKE_OFF } from './constants/camera'
+import { DRAW_POINT_COUNT, DRAW_POINT_STATE_FULL } from './constants/drawPoints'
 import { LADDER_CLIMB_SPEED } from './constants/ladders'
 import MAP_NAMES from './constants/maps'
 import LerpValue from './LerpValue'
@@ -48,6 +49,8 @@ type GlobalState = {
   currentLocationPlaceName: number
 
   currentMessages: Message[]
+
+  drawPointStates: number[]
 
   dualMusic: Howl | undefined
 
@@ -152,6 +155,8 @@ type GlobalState = {
 
 export const createEmptyParticleEmitters = () => new Array<number>(EMITTER_SLOT_COUNT).fill(EMITTER_MODE_OFF)
 
+export const createFullDrawPoints = () => new Array<number>(DRAW_POINT_COUNT).fill(DRAW_POINT_STATE_FULL)
+
 const INITIAL_STATE: GlobalState = {
   activeCameraId: 0,
   availableCharacters: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -188,6 +193,8 @@ const INITIAL_STATE: GlobalState = {
   congaWaypointHistory: [],
   currentLocationPlaceName: 0,
   currentMessages: [],
+
+  drawPointStates: createFullDrawPoints(),
 
   dualMusic: undefined,
 

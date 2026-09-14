@@ -13,6 +13,9 @@ export type ScriptState = {
 
   countdownTimer: number | undefined
 
+  drawPointBurstKey: number | undefined
+  drawPointId: number | undefined
+
   isDoorOn: boolean
   isDrawPoint: boolean
 
@@ -70,6 +73,9 @@ const createScriptState = (script: Script) => {
 
     countdownTimer: undefined,
     currentAnimationId: undefined,
+
+    drawPointBurstKey: undefined,
+    drawPointId: undefined,
 
     isDoorOn: true,
     isDrawPoint: false,
