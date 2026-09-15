@@ -23,10 +23,8 @@ type IntersectionHandlers = {
 type IntersectionState = {
   isFacing: boolean
   isInRange: boolean
-  isWithinInteractCone: boolean
+  isInteractable: boolean
 }
-
-const INTERACT_CONE_COSINE = Math.cos(Math.PI / 4)
 
 const _closestPoint = new Vector3()
 
@@ -57,7 +55,6 @@ const getClosestPointOnSegmentXY = (point: VectorLike, segmentStart: VectorLike,
   return {
     closestPoint: _closestPoint.set(closestX, closestY, 0),
     distanceSquared: deltaX * deltaX + deltaY * deltaY,
-    isInSegment: t >= 0 && t <= 1,
   }
 }
 
@@ -82,15 +79,14 @@ const getFacingCosine = (player: Object3D, playerPosition: VectorLike, point: Ve
 }
 
 const getIntersectionState = (player: Object3D, playerPosition: Vector3, line: VectorLike[]) => {
-  const { closestPoint, distanceSquared, isInSegment } = getClosestPointOnSegmentXY(playerPosition, line[0], line[1])
+  const { closestPoint, distanceSquared } = getClosestPointOnSegmentXY(playerPosition, line[0], line[1])
   const triggerRadius = getTriggerRadius(player)
-  const isInRange = isInSegment && distanceSquared < triggerRadius * triggerRadius
-  const facingCosine = isInRange ? getFacingCosine(player, playerPosition, closestPoint) : -1
+  const isInRange = distanceSquared < triggerRadius * triggerRadius
 
   return {
-    isFacing: facingCosine > 0,
+    isFacing: isInRange && getFacingCosine(player, playerPosition, closestPoint) > 0,
     isInRange,
-    isWithinInteractCone: facingCosine > INTERACT_CONE_COSINE,
+    isInteractable: isInRange,
     side: getPointSideOfLine(line[0], line[1], playerPosition),
   }
 }
@@ -104,12 +100,13 @@ const useIntersection = (
   const hasInitializedRef = useRef(false)
   const wasTouchingRef = useRef(false)
   const previousSideRef = useRef<Side>(undefined)
-  const stateRef = useRef<IntersectionState>({ isFacing: false, isInRange: false, isWithinInteractCone: false })
+  const stateRef = useRef<IntersectionState>({ isFacing: false, isInRange: false, isInteractable: false })
   const [playerPosition] = useState(new Vector3())
   const isUserControllable = useGlobalStore((state) => state.isUserControllable)
 
   useFrame(({ scene }) => {
     if (!isActive || !isUserControllable || !line?.[0] || !line?.[1]) {
+      stateRef.current = { isFacing: false, isInRange: false, isInteractable: false }
       return
     }
 
@@ -119,13 +116,13 @@ const useIntersection = (
     }
 
     const movementController = player.userData.movementController as ReturnType<typeof createMovementController>
-    const { hasBeenPlaced } = movementController.getState()
-    if (!hasBeenPlaced) {
+    if (!movementController.getState().hasBeenPlaced) {
       return
     }
 
     player.getWorldPosition(playerPosition)
-    const { isFacing, isInRange, isWithinInteractCone, side } = getIntersectionState(player, playerPosition, line)
+    const { isFacing, isInRange, isInteractable, side } = getIntersectionState(player, playerPosition, line)
+    stateRef.current = { isFacing, isInRange, isInteractable }
     if (!side) {
       return
     }
@@ -133,7 +130,6 @@ const useIntersection = (
     const isTouching = shouldRequireFacing ? isFacing : isInRange
     const wasTouching = wasTouchingRef.current
     const previousSide = previousSideRef.current
-    stateRef.current = { isFacing, isInRange, isWithinInteractCone }
     wasTouchingRef.current = isTouching
     previousSideRef.current = side
 

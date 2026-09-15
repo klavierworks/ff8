@@ -74,7 +74,7 @@ const Location = ({ scriptController, useScriptStateStore }: LocationProps) => {
       const isPlayerAbleToTalk =
         isUserControllable && isTalkable && !hasActiveTalkMethod && hasValidTalkMethod && !hasActiveText
 
-      if (!isPlayerAbleToTalk || !lineRef.current || !intersectionRef.current.isWithinInteractCone) {
+      if (!isPlayerAbleToTalk || !lineRef.current || !intersectionRef.current.isInteractable) {
         return
       }
 

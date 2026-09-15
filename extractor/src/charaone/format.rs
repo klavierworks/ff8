@@ -44,10 +44,12 @@ fn decode_rotation(low_byte: u8, high_byte_mask: u8, high_byte: u8, shift: u32) 
     combined
 }
 
+// The root offset turns about the vertical axis in the opposite sense to the rest of the
+// record: read as [y, -x, z] a character's scripted entrance arrives from behind them.
 pub fn root_location(coordinate_offset: &[u16; 3]) -> [f64; 3] {
     [
-        scale_offset(coordinate_offset[1]),
-        -scale_offset(coordinate_offset[0]),
+        -scale_offset(coordinate_offset[1]),
+        scale_offset(coordinate_offset[0]),
         scale_offset(coordinate_offset[2]),
     ]
 }
