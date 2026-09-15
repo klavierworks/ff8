@@ -3,6 +3,7 @@ import magic from '@data/kernel/magic.json'
 import { MathUtils, Scene, Vector3 } from 'three'
 
 import { musicController } from '../../../../audio/activeMusicController'
+import { battleTransitionController } from '../../../../BattleTransition/BattleTransitionController'
 import MAP_NAMES from '../../../../constants/maps'
 import {
   LAGUNA_CHARACTER_SLOTS,
@@ -302,7 +303,10 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     animationController.setIdleAnimations(standingAnimationId, walkingAnimationId, runningAnimationId)
   },
   BATTLE: async ({ STACK }) => {
-    STACK.splice(-2)
+    STACK.pop() as number
+    const encounterId = STACK.pop() as number
+
+    await battleTransitionController.play(encounterId)
   },
   BATTLECUT: dummiedCommand,
   BATTLEMODE: ({ STACK }) => {

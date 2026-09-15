@@ -5,6 +5,7 @@ import { EffectComposer } from '@react-three/postprocessing'
 import { useEffect, useState } from 'react'
 import { Scene } from 'three'
 
+import BattleTransition from './BattleTransition/BattleTransition'
 import ColorOverlay from './ColorOverlay/ColorOverlay'
 import { ASPECT_RATIO } from './constants/constants'
 import MAP_NAMES from './constants/maps'
@@ -104,6 +105,7 @@ const App = () => {
             <PerspectiveCamera aspect={ASPECT_RATIO} far={1000} name="sceneCamera" near={0.001} position={[0, 0, 0]} />
             <Entrypoint setWorldScene={setWorldScene} />
             <ColorOverlay />
+            <BattleTransition />
           </EffectComposer>
         </Canvas>
         <Canvas
