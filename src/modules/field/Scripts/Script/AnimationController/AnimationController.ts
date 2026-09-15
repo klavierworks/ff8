@@ -1,6 +1,7 @@
 import { AnimationAction, AnimationClip, AnimationMixer, Object3D } from 'three'
 import { create } from 'zustand'
 
+import { RUNNING_SPEED_THRESHOLD } from '../../../../../constants/speeds'
 import { framesToSeconds, TARGET_FPS } from '../../../../../timing'
 import createMovementController from '../MovementController/MovementController'
 import { applyAnimationAtTime } from './animationUtils'
@@ -268,12 +269,12 @@ export const createAnimationController = (id: number | string) => {
     return false
   }
 
-  const getMovementAnimationPhase = () => {
+  const getLocomotionAnimationPhase = () => {
     if (!currentRunState) {
       return undefined
     }
     const { activeAnimation } = getState()
-    if (!activeAnimation || !activeAnimation.isFromMovement) {
+    if (!activeAnimation || (!activeAnimation.isFromMovement && !activeAnimation.isFromLadder)) {
       return undefined
     }
     const span = activeAnimation.endTime - activeAnimation.startTime
@@ -458,7 +459,7 @@ export const createAnimationController = (id: number | string) => {
 
     if (!movementSpeed) {
       playMovementAnimation('standing')
-    } else if (movementSpeed >= 2696) {
+    } else if (movementSpeed >= RUNNING_SPEED_THRESHOLD) {
       playMovementAnimation('running')
     } else {
       playMovementAnimation('walking')
@@ -468,7 +469,7 @@ export const createAnimationController = (id: number | string) => {
   return {
     getAnimationFrameCount,
     getIsSafeToMoveOn,
-    getMovementAnimationPhase,
+    getLocomotionAnimationPhase,
     getSavedAnimation,
     getSavedAnimationId,
     getState,

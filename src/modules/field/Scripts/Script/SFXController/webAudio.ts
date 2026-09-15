@@ -1,19 +1,31 @@
-import { MAX_SFX_VOLUME } from '../../../../../constants/audio'
+import type { DecodedWave } from '../../../../../audio/wave/decodeWaveFile'
+
+import { decodeWaveFile } from '../../../../../audio/wave/decodeWaveFile'
+import {
+  FOOTSTEP_SOUNDS_FEMALE,
+  FOOTSTEP_SOUNDS_LADDER,
+  FOOTSTEP_SOUNDS_MALE,
+  MAX_SFX_VOLUME,
+} from '../../../../../constants/audio'
 import { getSoundFromId } from './utils'
 
-export interface AudioSourceNode {
-  buffer: AudioBuffer
+const SOUND_BASE_URL = '/audio/effects'
+const PRELOADED_SOUND_COUNT = 10
+
+// Preloaded on every map so a footfall never has to wait on a fetch.
+const FOOTSTEP_SOUND_IDS = [FOOTSTEP_SOUNDS_MALE, FOOTSTEP_SOUNDS_FEMALE, FOOTSTEP_SOUNDS_LADDER].flatMap(
+  ({ firstFoot, secondFoot }) => [firstFoot, secondFoot],
+)
+
+export type AudioSourceNode = {
   gainNode: GainNode
-  id: number
   isLooping: boolean
-  loopEnd: number | undefined
-  loopStart: number | undefined
   panNode: StereoPannerNode
   source: AudioBufferSourceNode
 }
 
 let audioContext: AudioContext | null = null
-let preloadedSoundBank: Record<number, AudioBuffer> = {}
+let soundBank = new Map<number, Promise<DecodedWave>>()
 let isUserActivationSetup = false
 
 const initializeAudioContext = async (): Promise<AudioContext> => {
@@ -54,67 +66,70 @@ export const setupUserActivation = (): void => {
   document.addEventListener('touchstart', activateAudio, { once: true })
 }
 
-const loadAudioBuffer = async (url: string): Promise<AudioBuffer> => {
+const fetchSound = async (index: number): Promise<DecodedWave> => {
   const context = await initializeAudioContext()
-
-  const response = await fetch(url)
+  const response = await fetch(`${SOUND_BASE_URL}/${index}.wav`)
   if (!response.ok) {
-    throw new Error(`Failed to fetch audio: ${response.status} ${response.statusText}`)
+    throw new Error(`Failed to fetch sound ${index}: ${response.status} ${response.statusText}`)
+  }
+  return decodeWaveFile(context, await response.arrayBuffer())
+}
+
+// Caching the pending decode means a sound asked for twice before it arrives is only fetched once.
+const loadSound = (index: number) => {
+  const cached = soundBank.get(index)
+  if (cached) {
+    return cached
   }
 
-  const arrayBuffer = await response.arrayBuffer()
-  return context.decodeAudioData(arrayBuffer)
+  const loading = fetchSound(index)
+  soundBank.set(index, loading)
+  loading.catch(() => soundBank.delete(index))
+  return loading
 }
 
 export const preloadSound = async (soundId: number) => {
-  const sound = getSoundFromId(soundId)
-  const src = `/audio/effects/${sound}.mp3`
-
   try {
-    const buffer = await loadAudioBuffer(src)
-    preloadedSoundBank[soundId] = buffer
+    await loadSound(getSoundFromId(soundId))
   } catch (error) {
     console.warn(`Failed to preload sound ${soundId}:`, error)
   }
 }
 
-export const preloadMapSoundBank = async (sounds: number[]): Promise<void> => {
+const getMapSoundsToPreload = (sounds: number[]): number[] => {
   if (!sounds?.length) {
-    return
+    return []
   }
 
-  preloadedSoundBank = {}
-
-  const soundsToLoad = sounds.slice(0, 10)
-
+  const soundsToLoad = sounds.slice(0, PRELOADED_SOUND_COUNT)
   if ((soundsToLoad[0] as unknown as string) === 'no sounds available') {
-    return
+    return []
   }
-  const loadPromises = soundsToLoad.map(preloadSound)
 
-  await Promise.allSettled(loadPromises)
+  return soundsToLoad
 }
 
-export const createAudioSource = async (
-  id: number,
-  volume: number,
-  pan: number,
-  loopPoints?: Record<number, [number, number]>,
-): Promise<AudioSourceNode> => {
-  const context = await initializeAudioContext()
+export const preloadMapSoundBank = async (sounds: number[]): Promise<void> => {
+  soundBank = new Map()
 
-  let buffer = preloadedSoundBank[id]
-  if (!buffer) {
-    const src = `/audio/effects/${id}.mp3`
-    buffer = await loadAudioBuffer(src)
-    preloadedSoundBank[id] = buffer
-  }
+  await Promise.allSettled([...FOOTSTEP_SOUND_IDS, ...getMapSoundsToPreload(sounds)].map(preloadSound))
+}
+
+export const createAudioSource = async (id: number, volume: number, pan: number): Promise<AudioSourceNode> => {
+  const context = await initializeAudioContext()
+  const { buffer, sampleLoop } = await loadSound(id)
 
   const source = context.createBufferSource()
   const gainNode = context.createGain()
   const panNode = context.createStereoPanner()
 
   source.buffer = buffer
+  if (sampleLoop) {
+    source.loop = true
+    source.loopStart = sampleLoop.start / buffer.sampleRate
+    source.loopEnd = sampleLoop.end / buffer.sampleRate
+  }
+
   gainNode.gain.value = Math.max(0, Math.min(1, volume / MAX_SFX_VOLUME))
   panNode.pan.value = Math.max(-1, Math.min(1, (pan - 128) / 128))
 
@@ -122,48 +137,43 @@ export const createAudioSource = async (
   gainNode.connect(panNode)
   panNode.connect(context.destination)
 
-  const loopPoint = loopPoints?.[id]
-  const loopStart = loopPoint ? loopPoint[0] / 1000 : undefined
-  const loopEnd = loopPoint ? loopPoint[1] / 1000 : undefined
-
   return {
-    buffer,
     gainNode,
-    id,
-    isLooping: false,
-    loopEnd,
-    loopStart,
+    isLooping: sampleLoop !== undefined,
     panNode,
     source,
   }
 }
 
-export const setVolumeForSource = (sourceNode: AudioSourceNode, volume: number, duration?: number): void => {
+// Browsers disagree on where a ramp with no preceding event starts, so the start value is pinned.
+const rampParameterTo = (parameter: AudioParam, context: BaseAudioContext, value: number, durationMs: number): void => {
+  const currentTime = context.currentTime
+  const currentValue = parameter.value
+  parameter.cancelScheduledValues(currentTime)
+  parameter.setValueAtTime(currentValue, currentTime)
+  parameter.linearRampToValueAtTime(value, currentTime + durationMs / 1000)
+}
+
+export const setVolumeForSource = (sourceNode: AudioSourceNode, volume: number, durationMs?: number): void => {
   const targetVolume = Math.max(0, Math.min(1, volume / MAX_SFX_VOLUME))
 
-  if (!duration) {
+  if (!durationMs) {
     sourceNode.gainNode.gain.value = targetVolume
     return
   }
 
-  const context = sourceNode.gainNode.context
-  const currentTime = context.currentTime
-  sourceNode.gainNode.gain.cancelScheduledValues(currentTime)
-  sourceNode.gainNode.gain.linearRampToValueAtTime(targetVolume, currentTime + duration / 1000)
+  rampParameterTo(sourceNode.gainNode.gain, sourceNode.gainNode.context, targetVolume, durationMs)
 }
 
-export const setPanForSource = (sourceNode: AudioSourceNode, pan: number, duration?: number): void => {
+export const setPanForSource = (sourceNode: AudioSourceNode, pan: number, durationMs?: number): void => {
   const targetPan = Math.max(-1, Math.min(1, (pan - 128) / 128))
 
-  if (!duration) {
+  if (!durationMs) {
     sourceNode.panNode.pan.value = targetPan
     return
   }
 
-  const context = sourceNode.panNode.context
-  const currentTime = context.currentTime
-  sourceNode.panNode.pan.cancelScheduledValues(currentTime)
-  sourceNode.panNode.pan.linearRampToValueAtTime(targetPan, currentTime + duration / 1000)
+  rampParameterTo(sourceNode.panNode.pan, sourceNode.panNode.context, targetPan, durationMs)
 }
 
 export const stopSource = (sourceNode: AudioSourceNode): void => {
@@ -177,27 +187,6 @@ export const stopSource = (sourceNode: AudioSourceNode): void => {
   }
 }
 
-export const playWithLoop = (
-  sourceNode: AudioSourceNode,
-  onLoopStart?: (originalSource: AudioSourceNode) => Promise<void>,
-): void => {
-  const { loopEnd, loopStart, source } = sourceNode
-
-  source.loop = false
-  source.start()
-  return
-  if (!loopStart || !loopEnd) {
-    source.loop = false
-    source.start()
-    return
-  }
-
-  console.log(`Playing intro for sound ${sourceNode.id}`)
-  source.start(0, 0, loopStart)
-
-  source.addEventListener('ended', () => {
-    if (!sourceNode.isLooping && onLoopStart) {
-      onLoopStart(sourceNode)
-    }
-  })
+export const playSource = (sourceNode: AudioSourceNode): void => {
+  sourceNode.source.start()
 }

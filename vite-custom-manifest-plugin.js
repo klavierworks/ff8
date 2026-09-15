@@ -1,7 +1,7 @@
 import { readdir, readFile, writeFile } from 'fs/promises';
 import { join, relative, sep } from 'path';
 
-const EXCLUDED_TOP_LEVEL_DIRS = new Set(['audio']);
+const EXCLUDED_PATH_PREFIXES = ['audio/effects/'];
 const EXCLUDED_FILENAMES = new Set(['custom-manifest.json', '_sw.js', '_headers', '_redirects']);
 
 export function customManifestPlugin() {
@@ -25,7 +25,7 @@ export function customManifestPlugin() {
         const excludedCount = allFiles.length - filePaths.length;
         console.log(
           `Custom manifest created with ${filePaths.length} files ` +
-            `(excluded ${excludedCount}: audio + ${excludedAnimations.size} animation GLBs + control files)`,
+            `(excluded ${excludedCount}: sound effects + ${excludedAnimations.size} animation GLBs + control files)`,
         );
       } catch (error) {
         console.error('Error generating custom manifest:', error);
@@ -37,8 +37,7 @@ export function customManifestPlugin() {
 function isExcluded(relativePath, excludedAnimations) {
   const normalized = relativePath.split(sep).join('/');
 
-  const topLevelDir = normalized.split('/')[0];
-  if (EXCLUDED_TOP_LEVEL_DIRS.has(topLevelDir)) {
+  if (EXCLUDED_PATH_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
     return true;
   }
 

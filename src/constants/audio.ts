@@ -6,16 +6,28 @@ export const SFX_PAN_CENTRE = 128
 
 export const FULL_MUSIC_VOLUME = 127
 
+// Scripts pass volumes with the top bit used for other flags.
+export const PSX_VOLUME_MASK = 0x7f
+
+// Headroom the engine leaves under the game's own 0-127 scale.
+export const MUSIC_BASE_VOLUME = 0.4
+
 // ─── Audio: footsteps ───
 
 export const FOOTSTEP_SOUNDS_MALE = { firstFoot: 3, secondFoot: 2 }
 export const FOOTSTEP_SOUNDS_FEMALE = { firstFoot: 54, secondFoot: 53 }
+export const FOOTSTEP_SOUNDS_LADDER = { firstFoot: 64, secondFoot: 63 }
 
 export const FEMALE_FOOTSTEP_CHARACTER_IDS = [3, 4, 5, 7]
 
 export const FOOTSTEP_PAN_MIN_SCREEN_X = -512
 export const FOOTSTEP_PAN_MAX_SCREEN_X = 508
 export const FOOTSTEP_PAN_SCREEN_X_DIVISOR = 4
+
+export const FOOTSTEP_VOLUME_MAX = 127
+export const FOOTSTEP_ATTENUATION_MIN = 8
+export const FOOTSTEP_ATTENUATION_MAX = 110
+export const FOOTSTEP_ATTENUATION_PER_WORLD_UNIT = 4096 / 96
 
 export const MUSIC_IDS = {
   0: '/audio/Disc 1/11. The Loser.mp3', // The Loser

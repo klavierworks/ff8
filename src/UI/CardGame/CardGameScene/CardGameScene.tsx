@@ -1,8 +1,7 @@
 import { invalidate } from '@react-three/fiber'
 import { useEffect } from 'react'
 
-import { musicController } from '../../../audio/MusicController'
-import { MUSIC_IDS } from '../../../constants/audio'
+import { musicController } from '../../../audio/activeMusicController'
 import { getScoreDigitRect, ICONS_SHEET_HEIGHT, ICONS_SHEET_WIDTH } from '../../../constants/cardGameAtlas'
 import {
   DISPLAY_PIXEL_ASPECT,
@@ -30,7 +29,7 @@ import TurnCursor from './TurnCursor/TurnCursor'
 
 const RESULT_BANNER = { draw: 'draw', loss: 'lose', win: 'win' } as const satisfies Record<GameResult, string>
 
-// "Shuffle or Boogie", the Triple Triad theme; the field track resumes when the scene unmounts.
+// "Shuffle or Boogie", the Triple Triad theme.
 const TRIAD_MUSIC_ID = 70
 
 const CardGameScene = () => {
@@ -38,7 +37,7 @@ const CardGameScene = () => {
   const { scores, selection, state } = useGame()
 
   useEffect(() => {
-    musicController.playOverlayMusic(MUSIC_IDS[TRIAD_MUSIC_ID])
+    musicController.playOverlayMusic(TRIAD_MUSIC_ID)
     return () => musicController.stopOverlayMusic()
   }, [])
 

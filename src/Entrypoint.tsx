@@ -2,7 +2,8 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { Scene } from 'three'
 
-import { musicController } from './audio/MusicController'
+import { musicController } from './audio/activeMusicController'
+import { registerMusicConsole } from './audio/musicConsole'
 import MAP_NAMES from './constants/maps'
 import FieldLoader from './modules/field/Field'
 import ScriptClock from './modules/field/ScriptClock/ScriptClock'
@@ -15,6 +16,10 @@ import { getInitialField } from './utils'
 useGlobalStore.setState({
   pendingFieldId: (getInitialField() ?? 'menu') as (typeof MAP_NAMES)[number],
 })
+
+if (import.meta.env.DEV) {
+  registerMusicConsole()
+}
 
 type EntrypointProps = {
   setWorldScene: (scene: Scene) => void

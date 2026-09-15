@@ -14,12 +14,14 @@ fn main() -> Result<()> {
     let context = Context {
         compressed_dir: source_dir.join("Data"),
         source_dir,
+        psx_dir: data_root.join("PSX"),
         uncompressed_dir: data_root.join("UNCOMPRESSED"),
         converted_dir: data_root.join("converted"),
     };
 
     let stages: Vec<Box<dyn Stage>> = vec![
         Box::new(stages::DecompressFs),
+        Box::new(stages::ExtractAudio),
         Box::new(stages::ParseKernel),
         Box::new(stages::ParseMenu),
         Box::new(stages::ParseExe),

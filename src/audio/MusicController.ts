@@ -1,10 +1,10 @@
 import { Howl } from 'howler'
-import { create } from 'zustand'
 
-import { FULL_MUSIC_VOLUME } from '../constants/audio'
+import { FULL_MUSIC_VOLUME, MUSIC_BASE_VOLUME, MUSIC_IDS, PSX_VOLUME_MASK } from '../constants/audio'
 import { framesToMs } from '../timing'
+import { getConcertSegmentUrls } from './concert'
 
-const BASE_VOLUME = 0.4
+const MUSIC_URLS: Record<number, string | undefined> = MUSIC_IDS
 
 type PreloadMusicOptions = {
   // Seconds into the track at which playback starts and where the looped
@@ -16,7 +16,8 @@ type PreloadMusicOptions = {
 
 const loopStartByHowl = new WeakMap<Howl, number>()
 
-const createLoopingTrack = (url: string) => new Howl({ autoplay: true, loop: true, src: [url], volume: BASE_VOLUME })
+const createLoopingTrack = (url: string) =>
+  new Howl({ autoplay: true, loop: true, src: [url], volume: MUSIC_BASE_VOLUME })
 
 const applyLoopStart = (howl: Howl, loopStart: number) => {
   if (loopStart <= 0) {
@@ -55,18 +56,22 @@ const MusicController = () => {
   // resume exactly where it left off when the overlay closes.
   let overlayAudio: Howl | undefined = undefined
 
-  const { setState } = create(() => ({
-    battleMusicId: 0,
-  }))
+  let battleMusicId = 0
 
-  const preloadMusic = (url: string, options?: PreloadMusicOptions) => {
+  const preloadMusic = (musicId: number, options?: PreloadMusicOptions) => {
+    const url = MUSIC_URLS[musicId]
+    if (!url) {
+      console.warn('No recording for music id', musicId)
+      return
+    }
+
     const loopStart = options?.loopStart ?? 0
     const howl = new Howl({
       autoplay: false,
       loop: true,
       preload: true,
       src: [url],
-      volume: BASE_VOLUME,
+      volume: MUSIC_BASE_VOLUME,
     })
     applyLoopStart(howl, loopStart)
     preloadedAudio = howl
@@ -106,7 +111,7 @@ const MusicController = () => {
       console.warn('No music preloaded for CROSSMUSIC')
       return
     }
-    const targetVolume = ((volume & 0x7f) / 127) * BASE_VOLUME
+    const targetVolume = ((volume & PSX_VOLUME_MASK) / FULL_MUSIC_VOLUME) * MUSIC_BASE_VOLUME
     const fadeMs = framesToMs(fadeFrames)
 
     if (preloadedSrc === channel0Src && channel0) {
@@ -137,7 +142,7 @@ const MusicController = () => {
   }
 
   const dualMusic = (volume: number) => {
-    setVolume(1, volume * BASE_VOLUME)
+    setVolume(1, volume * MUSIC_BASE_VOLUME)
 
     if (preloadedSrc === channel1Src) {
       channel1!.pause()
@@ -169,8 +174,8 @@ const MusicController = () => {
     channel0.play()
   }
 
-  const playConcertSegments = (urls: string[]) => {
-    const [firstUrl, secondUrl] = urls
+  const playConcert = (mask: number, fieldId: string | undefined) => {
+    const [firstUrl, secondUrl] = getConcertSegmentUrls(mask, fieldId)
     if (!firstUrl) {
       return
     }
@@ -209,7 +214,7 @@ const MusicController = () => {
     if (!audio) {
       return
     }
-    audio.volume((volume / 127) * BASE_VOLUME)
+    audio.volume((volume / FULL_MUSIC_VOLUME) * MUSIC_BASE_VOLUME)
   }
 
   const getHasPendingMusic = () => preloadedAudio !== undefined
@@ -217,9 +222,8 @@ const MusicController = () => {
   // Bypasses getChannelAudio because an empty channel is expected here, not
   // something to warn about.
   const restoreChannelVolumes = () => {
-    const fullVolume = (FULL_MUSIC_VOLUME / 127) * BASE_VOLUME
-    channel0?.volume(fullVolume)
-    channel1?.volume(fullVolume)
+    channel0?.volume(MUSIC_BASE_VOLUME)
+    channel1?.volume(MUSIC_BASE_VOLUME)
   }
 
   const transitionVolume = (channelId: number, volume: number, duration: number) => {
@@ -227,14 +231,22 @@ const MusicController = () => {
     if (!audio) {
       return
     }
-    audio.fade(audio.volume(), (volume / 127) * BASE_VOLUME, framesToMs(duration))
+    audio.fade(audio.volume(), (volume / FULL_MUSIC_VOLUME) * MUSIC_BASE_VOLUME, framesToMs(duration))
   }
 
   const setBattleMusic = (musicId: number) => {
-    setState({ battleMusicId: musicId })
+    battleMusicId = musicId
   }
 
-  const playOverlayMusic = (url: string) => {
+  const getBattleMusicId = () => battleMusicId
+
+  const playOverlayMusic = (musicId: number) => {
+    const url = MUSIC_URLS[musicId]
+    if (!url) {
+      console.warn('No recording for music id', musicId)
+      return
+    }
+
     channel0?.pause()
     overlayAudio?.stop()
     overlayAudio = createLoopingTrack(url)
@@ -265,9 +277,10 @@ const MusicController = () => {
   return {
     crossMusic,
     dualMusic,
+    getBattleMusicId,
     getHasPendingMusic,
     pauseChannel,
-    playConcertSegments,
+    playConcert,
     playMusic,
     playOverlayMusic,
     preloadMusic,

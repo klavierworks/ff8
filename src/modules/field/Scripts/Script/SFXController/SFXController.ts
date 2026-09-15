@@ -2,25 +2,24 @@ import { create } from 'zustand'
 
 import { MAX_SFX_VOLUME, SFX_PAN_CENTRE } from '../../../../../constants/audio'
 import { FieldData } from '../../../Field'
-import loopPoints from './loop_points.json'
 import { getSoundFromId } from './utils'
 import {
   AudioSourceNode,
   createAudioSource,
-  playWithLoop,
+  playSource,
   setPanForSource,
   setupUserActivation,
   setVolumeForSource,
   stopSource,
 } from './webAudio'
 
-const typedLoopPoints = loopPoints as unknown as Record<number, [number, number]>
-
-interface SFXControllerState {
+type SFXControllerState = {
   channels: Record<number, AudioSourceNode[]>
   generalChannel: AudioSourceNode[]
   id: number | string
 }
+
+const GENERAL_CHANNEL = 0
 
 const createSFXController = (id: number | string, sounds: FieldData['sounds']) => {
   setupUserActivation()
@@ -31,50 +30,10 @@ const createSFXController = (id: number | string, sounds: FieldData['sounds']) =
     id,
   }))
 
-  const replaceSourceInState = (oldSource: AudioSourceNode, newSource: AudioSourceNode): void => {
-    const state = getState()
-    const replaceInArray = (array: AudioSourceNode[]) => array.map((node) => (node === oldSource ? newSource : node))
-
-    setState({
-      ...state,
-      channels: Object.fromEntries(Object.entries(state.channels).map(([key, nodes]) => [key, replaceInArray(nodes)])),
-      generalChannel: replaceInArray(state.generalChannel),
-    })
-  }
-
-  const createLoopSource = async (originalSource: AudioSourceNode): Promise<void> => {
-    if (!originalSource.loopStart || !originalSource.loopEnd) {
-      return
-    }
-
-    try {
-      const loopSource = await createAudioSource(
-        originalSource.id,
-        originalSource.gainNode.gain.value * 256,
-        originalSource.panNode.pan.value * 128 + 128,
-        typedLoopPoints,
-      )
-
-      loopSource.source.loop = true
-      loopSource.source.loopStart = originalSource.loopStart
-      loopSource.source.loopEnd = originalSource.loopEnd
-      loopSource.isLooping = true
-
-      console.log(
-        `Looping sound ${originalSource.id}. Loop start: ${originalSource.loopStart}, Loop end: ${originalSource.loopEnd}`,
-      )
-      loopSource.source.start(0, originalSource.loopStart)
-
-      replaceSourceInState(originalSource, loopSource)
-    } catch (error) {
-      console.error('Failed to create loop source:', error)
-    }
-  }
-
   const addSourceToChannel = (sourceNode: AudioSourceNode, channel: number): void => {
     const state = getState()
 
-    if (channel === 0) {
+    if (channel === GENERAL_CHANNEL) {
       setState({
         ...state,
         generalChannel: [...state.generalChannel, sourceNode],
@@ -104,10 +63,11 @@ const createSFXController = (id: number | string, sounds: FieldData['sounds']) =
 
   const play = async (id: number, channel: number, volume: number, pan: number): Promise<void> => {
     try {
-      const sourceNode = await createAudioSource(id, volume, pan, typedLoopPoints)
+      const sourceNode = await createAudioSource(id, volume, pan)
       addSourceToChannel(sourceNode, channel)
 
-      // Without this the channel lists grow for the lifetime of the field.
+      // Without this the channel lists grow for the lifetime of the field. A looping sound never
+      // ends on its own, so it leaves only when the script stops its channel.
       sourceNode.source.addEventListener('ended', () => {
         if (sourceNode.isLooping) {
           return
@@ -115,7 +75,7 @@ const createSFXController = (id: number | string, sounds: FieldData['sounds']) =
         removeSourceFromChannel(sourceNode)
       })
 
-      playWithLoop(sourceNode, createLoopSource)
+      playSource(sourceNode)
     } catch (error) {
       console.error(`Failed to play sound ${id}:`, error)
     }
@@ -139,7 +99,7 @@ const createSFXController = (id: number | string, sounds: FieldData['sounds']) =
       return [...generalChannel, ...Object.values(channels).flat()]
     }
 
-    if (channel === 0) {
+    if (channel === GENERAL_CHANNEL) {
       return generalChannel
     }
 
@@ -155,7 +115,7 @@ const createSFXController = (id: number | string, sounds: FieldData['sounds']) =
     if (channel === undefined) {
       setState({ ...state, channels: {}, generalChannel: [] })
       return
-    } else if (channel === 0) {
+    } else if (channel === GENERAL_CHANNEL) {
       setState({ ...state, generalChannel: [] })
     } else {
       setState({

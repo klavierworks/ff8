@@ -1,5 +1,8 @@
 import { MUSIC_IDS } from '../constants/audio'
 
+// The Fisherman's Horizon concert.
+export const CONCERT_MUSIC_ID = 43
+
 const SEGMENTS = [
   { mask: 0x2, musicId: 100 },
   { mask: 0x4, musicId: 101 },
@@ -13,9 +16,8 @@ const SEGMENTS = [
 
 const SELECTOR_MASK = 0x3ffffff
 
-// fhwise13 assembles this value from the band roster the player builds up. The maps that
-// request it with a literal are refused and left silent, which the original does by
-// comparing the field id.
+// Only fhwise13 builds this value from the band roster; maps that pass it as a literal are
+// refused, which the original does by comparing the field id.
 const ROSTER_ONLY_MASK = 0xfff
 const ROSTER_ONLY_FIELD_ID = 'fhwise13'
 
@@ -27,10 +29,19 @@ const getSelectedSegments = (mask: number) => {
   return SEGMENTS.filter((segment) => (mask & segment.mask) === segment.mask)
 }
 
-export const getConcertSegmentUrls = (rawMask: number, fieldId: string | undefined) => {
+// Zero means play nothing.
+export const getConcertChannelMask = (rawMask: number, fieldId: string | undefined) => {
   const mask = rawMask & SELECTOR_MASK
 
   if (mask === ROSTER_ONLY_MASK && fieldId !== ROSTER_ONLY_FIELD_ID) {
+    return 0
+  }
+  return mask
+}
+
+export const getConcertSegmentUrls = (rawMask: number, fieldId: string | undefined) => {
+  const mask = getConcertChannelMask(rawMask, fieldId)
+  if (mask === 0) {
     return []
   }
 

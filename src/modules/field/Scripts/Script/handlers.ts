@@ -2,9 +2,7 @@ import drawPoints from '@data/exe/draw-points.json'
 import magic from '@data/kernel/magic.json'
 import { MathUtils, Scene, Vector3 } from 'three'
 
-import { getConcertSegmentUrls } from '../../../../audio/concert'
-import { musicController } from '../../../../audio/MusicController'
-import { MUSIC_IDS } from '../../../../constants/audio'
+import { musicController } from '../../../../audio/activeMusicController'
 import MAP_NAMES from '../../../../constants/maps'
 import {
   LAGUNA_CHARACTER_SLOTS,
@@ -554,7 +552,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       return
     }
 
-    musicController.playConcertSegments(getConcertSegmentUrls(mask, useGlobalStore.getState().fieldId))
+    musicController.playConcert(mask, useGlobalStore.getState().fieldId)
   },
   CLEAR: () => {
     MEMORY = {}
@@ -1623,8 +1621,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     musicController.playMusic()
   },
   MUSICLOAD: ({ STACK }) => {
-    const id = STACK.pop() as keyof typeof MUSIC_IDS
-    musicController.preloadMusic(MUSIC_IDS[id])
+    musicController.preloadMusic(STACK.pop() as number)
   },
   MUSICREPLAY: () => {
     musicController.replayMusic()

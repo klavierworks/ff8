@@ -2,12 +2,11 @@ import { useFrame } from '@react-three/fiber'
 import { useRef, useState } from 'react'
 import { PerspectiveCamera, Vector3 } from 'three'
 
-import { WALKING_SPEED_LIMIT } from '../../../../../constants/speeds'
 import { createAnimationController } from '../AnimationController/AnimationController'
-import createFootstepController, { type Foot } from '../FootstepController/FootstepController'
+import createFootstepController from '../FootstepController/FootstepController'
 import createMovementController from '../MovementController/MovementController'
 import createSFXController from '../SFXController/SFXController'
-import { calculateFootstepPan, calculateFootstepVolume, getNextFoot, hasFootPlanted } from './footsteps'
+import { calculateFootstepPan, calculateFootstepVolume, getPlantedFoot } from './footsteps'
 
 type useFootstepsProps = {
   animationController: ReturnType<typeof createAnimationController>
@@ -22,25 +21,30 @@ const useFootsteps = ({
   movementController,
   sfxController,
 }: useFootstepsProps) => {
-  const previousFootRef = useRef<Foot | undefined>(undefined)
   const previousPhaseRef = useRef<number | undefined>(undefined)
   const [entityPosition] = useState<Vector3>(new Vector3(0, 0, 0))
+  const [viewPosition] = useState<Vector3>(new Vector3(0, 0, 0))
   const [projectedPosition] = useState<Vector3>(new Vector3(0, 0, 0))
 
   // Footsteps are locked to the locomotion animation phase (two footfalls per cycle), not wall-clock time.
   useFrame(({ scene }) => {
-    const { isClimbingLadder, movementSpeed, position } = movementController.getState()
+    const { isClimbingLadder, position } = movementController.getState()
 
-    const phase = animationController.getMovementAnimationPhase()
+    const phase = animationController.getLocomotionAnimationPhase()
+    const previousPhase = previousPhaseRef.current
+    previousPhaseRef.current = phase
 
-    if (phase === undefined || !position.waypoints || !footstepController.getState().isActive || isClimbingLadder) {
-      previousPhaseRef.current = phase
+    const isTakingSteps = isClimbingLadder || Boolean(position.waypoints)
+    if (phase === undefined || previousPhase === undefined || !isTakingSteps) {
       return
     }
 
-    const previousPhase = previousPhaseRef.current
-    previousPhaseRef.current = phase
-    if (previousPhase === undefined || !hasFootPlanted(previousPhase, phase)) {
+    if (!footstepController.getState().isActive) {
+      return
+    }
+
+    const foot = getPlantedFoot(previousPhase, phase)
+    if (!foot) {
       return
     }
 
@@ -51,15 +55,13 @@ const useFootsteps = ({
 
     const { x, y, z } = movementController.getPosition()
     entityPosition.set(x, y, z)
-    projectedPosition.copy(entityPosition).project(camera)
+    viewPosition.copy(entityPosition).applyMatrix4(camera.matrixWorldInverse)
+    projectedPosition.copy(viewPosition).applyMatrix4(camera.projectionMatrix)
 
-    const foot = getNextFoot(previousFootRef.current)
-    previousFootRef.current = foot
-
-    const { id, isFieldSound } = footstepController.getSoundForFoot(foot)
-    const isWalking = movementSpeed < WALKING_SPEED_LIMIT
-    const volume = calculateFootstepVolume(isWalking, entityPosition.distanceTo(camera.position))
+    const volume = calculateFootstepVolume(-viewPosition.z)
     const pan = calculateFootstepPan(projectedPosition.x)
+
+    const { id, isFieldSound } = footstepController.getSoundForFoot(foot, isClimbingLadder)
 
     if (isFieldSound) {
       sfxController.playFieldSound(id, 0, volume, pan)

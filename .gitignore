@@ -24,7 +24,6 @@ dist-ssr
 *.sw?
 
 public/output
-public/audio
 public/models
 public/models_adjusted
 public/*.glb
@@ -42,3 +41,6 @@ public/combined
 extractor/data/*
 !extractor/data/SOURCE/
 extractor/data/SOURCE/*
+!extractor/data/PSX/
+extractor/data/PSX/*
+!extractor/data/PSX/README.md

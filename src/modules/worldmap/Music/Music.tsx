@@ -1,41 +1,34 @@
 import { useEffect } from 'react'
 
-import { musicController } from '../../../audio/MusicController'
-import { MUSIC_IDS } from '../../../constants/audio'
+import { musicController } from '../../../audio/activeMusicController'
+import { FULL_MUSIC_VOLUME } from '../../../constants/audio'
 import { VEHICLE_RAGNAROK } from '../Player/FlyingRagnarok/flightConstants'
 import useWorldmapStore from '../worldmapStore'
 
 const CROSSFADE_FRAMES = 60
-const FULL_VOLUME = 127
 
-// Song ids from the original worldmap music selector:
-//   41 = "Blue Fields" — default worldmap theme
-//   89 = "Ride On" — Ragnarok theme
-// Both crossfade over CROSSFADE_FRAMES at FULL_VOLUME on a vehicle change.
+// 41 is "Blue Fields", the default worldmap theme; 89 is "Ride On", the Ragnarok theme.
 const WORLDMAP_MUSIC_ID = 41 as const
 const RAGNAROK_MUSIC_ID = 89 as const
 
 type WorldmapMusicId = typeof RAGNAROK_MUSIC_ID | typeof WORLDMAP_MUSIC_ID
 
-// Per-track intro skip (seconds). The PSX AKAO/SGT sequencer starts each track
-// from its main theme; the shipped MP3 rips include the original orchestral
-// intro that the engine never plays back. "Ride On" has a ~20s intro before
-// the main theme begins.
+// The MP3 rips carry an orchestral intro the sequencer never plays back.
 const MUSIC_LOOP_START_SECONDS: Record<WorldmapMusicId, number> = {
   [RAGNAROK_MUSIC_ID]: 20,
   [WORLDMAP_MUSIC_ID]: 0,
 }
 
-const musicIdForVehicle = (vehicleId: number): WorldmapMusicId =>
+const getMusicIdForVehicle = (vehicleId: number): WorldmapMusicId =>
   vehicleId === VEHICLE_RAGNAROK ? RAGNAROK_MUSIC_ID : WORLDMAP_MUSIC_ID
 
 const Music = () => {
   const vehicleId = useWorldmapStore((state) => state.vehicleId)
 
   useEffect(() => {
-    const musicId = musicIdForVehicle(vehicleId)
-    musicController.preloadMusic(MUSIC_IDS[musicId], { loopStart: MUSIC_LOOP_START_SECONDS[musicId] })
-    musicController.crossMusic(FULL_VOLUME, CROSSFADE_FRAMES)
+    const musicId = getMusicIdForVehicle(vehicleId)
+    musicController.preloadMusic(musicId, { loopStart: MUSIC_LOOP_START_SECONDS[musicId] })
+    musicController.crossMusic(FULL_MUSIC_VOLUME, CROSSFADE_FRAMES)
   }, [vehicleId])
 
   return null

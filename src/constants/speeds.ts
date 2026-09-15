@@ -2,4 +2,4 @@ export const SPEEDS = {
   BG: 6,
 }
 
-export const WALKING_SPEED_LIMIT = 2695
+export const RUNNING_SPEED_THRESHOLD = 2696
