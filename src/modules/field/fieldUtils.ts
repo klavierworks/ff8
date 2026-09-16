@@ -45,12 +45,10 @@ const getFormattedTiles = (tiles: RawFieldData['tiles']) => {
 const FIELD_DATA = import.meta.glob<{ default: RawFieldData }>('@data/field/mapdata/*/data.json')
 
 // Only the fields that ship a .pmd have a particles.json, so the lookup is allowed to miss.
-const FIELD_PARTICLES = import.meta.glob<{ default: ParticleData }>(
-  '@data/field/mapdata/*/particles.json',
-)
+const FIELD_PARTICLES = import.meta.glob<{ default: ParticleData }>('@data/field/mapdata/*/particles.json')
 
 const getFieldParticles = async (fieldId: string) => {
-  const loadParticles = FIELD_PARTICLES[`/@data/field/mapdata/${fieldId}/particles.json`]
+  const loadParticles = FIELD_PARTICLES[`/extractor/data/converted/field/mapdata/${fieldId}/particles.json`]
   if (!loadParticles) {
     return undefined
   }
@@ -58,7 +56,7 @@ const getFieldParticles = async (fieldId: string) => {
 }
 
 export const getFieldData = async (fieldId: string) => {
-  const loadFieldData = FIELD_DATA[`/@data/field/mapdata/${fieldId}/data.json`]
+  const loadFieldData = FIELD_DATA[`/extractor/data/converted/field/mapdata/${fieldId}/data.json`]
   if (!loadFieldData) {
     throw new Error(`No field data for ${fieldId}`)
   }

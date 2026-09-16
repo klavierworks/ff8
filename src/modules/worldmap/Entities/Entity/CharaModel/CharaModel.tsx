@@ -11,7 +11,7 @@ const CHARAONE_LOADERS = import.meta.glob<string>('@data/worldmap/charaone/*.glb
 })
 
 const charaoneKey = (sectionIndex: number) =>
-  `/@data/worldmap/charaone/world_${sectionIndex.toString().padStart(3, '0')}.glb`
+  `/extractor/data/converted/worldmap/charaone/world_${sectionIndex.toString().padStart(3, '0')}.glb`
 
 const forceDoubleSide = (root: Object3D) => {
   root.traverse((child) => {

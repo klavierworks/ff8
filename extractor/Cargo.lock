@@ -49,6 +49,7 @@ name = "ff8-extractor"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "flate2",
  "png",
  "serde",
  "serde_json",

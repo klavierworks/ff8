@@ -1,4 +1,4 @@
-use super::psx_disc::{Disc, SECTOR_SIZE};
+use crate::utils::disc_image::{Disc, SECTOR_SIZE};
 use anyhow::{Context as _, Result};
 
 const IMAGE_EXTENSION: &str = ".IMG";

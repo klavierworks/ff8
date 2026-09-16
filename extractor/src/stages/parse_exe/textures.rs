@@ -4,10 +4,10 @@ use serde::Serialize;
 use std::fs;
 use std::path::Path;
 
+use super::exe_build::ExeBuild;
 use super::IMAGE_BASE;
 
-// Both FF8.exe (2000) and FF8_EN.exe (2013) share this region byte-for-byte. Effect IDs are the
-// game's magic-effect table indices; see ida.md.
+// Offsets are v1.2 file offsets. Effect IDs are the game's magic-effect table indices; see ida.md.
 struct KnownTexture {
     offset: usize,
     name: &'static str,
@@ -275,7 +275,7 @@ pub struct TextureRecord {
     pub files: Vec<String>,
 }
 
-pub fn export(exe: &[u8], out_dir: &Path) -> Result<Vec<TextureRecord>> {
+pub fn export(exe: &[u8], build: ExeBuild, out_dir: &Path) -> Result<Vec<TextureRecord>> {
     let mut records = Vec::new();
     let mut position = 0;
     while position + 8 <= exe.len() {
@@ -285,7 +285,7 @@ pub fn export(exe: &[u8], out_dir: &Path) -> Result<Vec<TextureRecord>> {
         }
         match tim_clut::validate(&exe[position..]) {
             Some(info) => {
-                records.push(export_at(exe, position, &info, out_dir)?);
+                records.push(export_at(exe, position, build, &info, out_dir)?);
                 position += info.total_bytes;
             }
             None => position += 1,
@@ -297,13 +297,17 @@ pub fn export(exe: &[u8], out_dir: &Path) -> Result<Vec<TextureRecord>> {
 fn export_at(
     exe: &[u8],
     offset: usize,
+    build: ExeBuild,
     info: &tim_clut::TimInfo,
     out_dir: &Path,
 ) -> Result<TextureRecord> {
-    let known = KNOWN.iter().find(|texture| texture.offset == offset);
+    let canonical_offset = build.to_canonical(offset);
+    let known = KNOWN
+        .iter()
+        .find(|texture| texture.offset == canonical_offset);
     let name = known
         .map(|texture| texture.name.to_string())
-        .unwrap_or_else(|| format!("exe_tim_{:08X}", offset + IMAGE_BASE));
+        .unwrap_or_else(|| format!("exe_tim_{:08X}", canonical_offset + IMAGE_BASE));
     let note = known
         .map(|texture| texture.note.to_string())
         .unwrap_or_else(|| "Unidentified embedded TIM".to_string());
@@ -328,8 +332,8 @@ fn export_at(
     Ok(TextureRecord {
         name,
         note,
-        address: format!("{:#X}", offset + IMAGE_BASE),
-        file_offset: format!("{offset:#X}"),
+        address: format!("{:#X}", canonical_offset + IMAGE_BASE),
+        file_offset: format!("{canonical_offset:#X}"),
         bpp: info.bpp,
         width: info.width,
         height: info.height,

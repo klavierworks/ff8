@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "extract": "cargo run --release --manifest-path extractor/Cargo.toml",
+    "extract": "cargo run --release --manifest-path extractor/Cargo.toml --",
     "build": "tsc && vite build",
     "deploy": "npm run build && netlify deploy --prod",
     "lint": "eslint ./src --ext .ts,.tsx --report-unused-disable-directives --max-warnings 0 --fix",

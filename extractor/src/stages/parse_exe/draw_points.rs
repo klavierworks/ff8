@@ -1,3 +1,4 @@
+use super::exe_build::ExeBuild;
 use anyhow::{Context, Result};
 use serde::Serialize;
 
@@ -16,8 +17,8 @@ pub struct DrawPoint {
     pub flags: u8,
 }
 
-pub fn export(exe: &[u8]) -> Result<Vec<DrawPoint>> {
-    let offset = VIRTUAL_ADDRESS - super::IMAGE_BASE;
+pub fn export(exe: &[u8], build: ExeBuild) -> Result<Vec<DrawPoint>> {
+    let offset = build.locate(VIRTUAL_ADDRESS - super::IMAGE_BASE);
     let end = offset + DRAW_POINT_COUNT;
     let table = exe
         .get(offset..end)

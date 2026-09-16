@@ -1,5 +1,5 @@
-use super::psx_disc::{Disc, SECTOR_SIZE};
 use super::psx_image::ImageEntry;
+use crate::utils::disc_image::{Disc, SECTOR_SIZE};
 use anyhow::Result;
 
 // A music file opens with a block directory of `u32 block_count` then a `u32 offset, u32 size`

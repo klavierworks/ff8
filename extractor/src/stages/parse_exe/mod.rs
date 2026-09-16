@@ -1,16 +1,15 @@
 mod cards;
 mod draw_points;
+mod exe_build;
 mod textures;
 
 use crate::stage::{Context, Stage};
 use crate::utils::ff8_text::TextCodec;
-use anyhow::{bail, Context as _, Result};
+use anyhow::{Context as _, Result};
+use exe_build::detect_exe_build;
 use std::fs;
-use std::path::PathBuf;
 
-// The 2000 release names it FF8.exe; the 2013 Steam release names it FF8_EN.exe. Both share the
-// embedded-texture layout, so try each.
-const EXE_CANDIDATES: &[&str] = &["FF8_EN.exe", "FF8.exe"];
+const EXE_PATH: &str = "FF8.exe";
 
 // file offset + IMAGE_BASE = virtual address; the data this stage reads sits in the flat-mapped
 // region where that identity holds.
@@ -24,8 +23,10 @@ impl Stage for ParseExe {
     }
 
     fn run(&self, context: &Context) -> Result<()> {
-        let exe_path = find_exe(&context.source_dir)?;
+        let exe_path = context.install_dir.join(EXE_PATH);
         let exe = fs::read(&exe_path).with_context(|| format!("reading {}", exe_path.display()))?;
+        let build = detect_exe_build(&exe)?;
+        println!("  exe build: {}", build.label());
 
         let out_dir = context.converted_dir.join("exe");
         if out_dir.exists() {
@@ -33,7 +34,7 @@ impl Stage for ParseExe {
         }
         fs::create_dir_all(&out_dir)?;
 
-        let records = textures::export(&exe, &out_dir)?;
+        let records = textures::export(&exe, build, &out_dir)?;
         fs::write(
             out_dir.join("textures.json"),
             serde_json::to_vec_pretty(&records)?,
@@ -47,14 +48,14 @@ impl Stage for ParseExe {
         );
 
         let codec = TextCodec::load()?;
-        let cards = cards::export(&exe, &codec)?;
+        let cards = cards::export(&exe, build, &codec)?;
         fs::write(
             out_dir.join("cards.json"),
             serde_json::to_vec_pretty(&cards)?,
         )?;
         println!("  exe cards: {} -> {}", cards.len(), out_dir.display());
 
-        let draw_points = draw_points::export(&exe)?;
+        let draw_points = draw_points::export(&exe, build)?;
         fs::write(
             out_dir.join("draw-points.json"),
             serde_json::to_vec_pretty(&draw_points)?,
@@ -66,24 +67,4 @@ impl Stage for ParseExe {
         );
         Ok(())
     }
-}
-
-fn find_exe(source_dir: &std::path::Path) -> Result<PathBuf> {
-    EXE_CANDIDATES
-        .iter()
-        .map(|name| source_dir.join(name))
-        .find(|path| path.exists())
-        .with_context(|| {
-            format!(
-                "no game exe ({}) found in {}",
-                EXE_CANDIDATES.join(", "),
-                source_dir.display()
-            )
-        })
-        .and_then(|path| {
-            if fs::metadata(&path).map(|meta| meta.len()).unwrap_or(0) == 0 {
-                bail!("game exe {} is empty", path.display());
-            }
-            Ok(path)
-        })
 }

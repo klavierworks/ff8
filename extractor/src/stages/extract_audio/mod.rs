@@ -1,12 +1,11 @@
-mod psx_disc;
 mod psx_image;
 mod psx_music;
 mod sound_archive;
 mod wave;
 
 use crate::stage::{Context, Stage};
+use crate::utils::disc_image::{find_disc_image, Disc};
 use anyhow::{bail, Context as _, Result};
-use psx_disc::{find_disc_image, Disc};
 use psx_image::read_image_index;
 use psx_music::{read_music_tracks, read_resident_banks};
 use sound_archive::{parse_sound_index, SoundEntry};
@@ -16,6 +15,7 @@ use wave::{build_wave, SampleLoop, WaveFile};
 
 const SOUND_INDEX_PATH: &str = "Data/Sound/audio.fmt";
 const SOUND_ARCHIVE_PATH: &str = "Data/Sound/audio.dat";
+const PC_MUSIC_DIRS: &[&str] = &["Data/Music/dmusic", "Data/Music/stream"];
 
 pub struct ExtractAudio;
 
@@ -32,24 +32,49 @@ impl Stage for ExtractAudio {
         }
 
         write_sound_effects(context, &out_dir.join("effects"))?;
-        write_music(context, &out_dir.join("music"))?;
+        write_music(context, &out_dir)?;
         Ok(())
     }
 }
 
-// The PC build ships its music as DirectMusic segments the port has no player for, so a track only
-// exists as extractable data on the PlayStation disc. Without one this writes nothing and the
-// runtime falls back to its recorded audio.
-fn write_music(context: &Context, out_dir: &Path) -> Result<()> {
-    let Some(image_path) = find_disc_image(&context.psx_dir)? else {
-        println!(
-            "  music: no disc image in {}, skipping",
-            context.psx_dir.display()
-        );
-        return Ok(());
-    };
+fn write_music(context: &Context, audio_dir: &Path) -> Result<()> {
+    match find_disc_image(&context.psx_dir)? {
+        Some(image_path) => write_psx_music(&image_path, &audio_dir.join("music")),
+        None => copy_pc_music(context, &audio_dir.join("pc-music")),
+    }
+}
 
-    let mut disc = Disc::open(&image_path)?;
+// The PC build ships its music as DirectMusic segments the port has no player for, so these are
+// copied as they are for whenever a player exists.
+fn copy_pc_music(context: &Context, out_dir: &Path) -> Result<()> {
+    let mut copied = 0usize;
+    for relative in PC_MUSIC_DIRS {
+        let source_dir = context.install_dir.join(relative);
+        let leaf = Path::new(relative)
+            .file_name()
+            .context("music directory has no name")?;
+        let destination_dir = out_dir.join(leaf);
+        fs::create_dir_all(&destination_dir)?;
+        for entry in fs::read_dir(&source_dir)
+            .with_context(|| format!("reading {}", source_dir.display()))?
+        {
+            let path = entry?.path();
+            let name = path.file_name().context("music file has no name")?;
+            fs::copy(&path, destination_dir.join(name))?;
+            copied += 1;
+        }
+    }
+    println!(
+        "  music: no PSX disc image in {}, copied {copied} PC music files -> {}",
+        context.psx_dir.display(),
+        out_dir.display()
+    );
+    Ok(())
+}
+
+// Only the PlayStation disc keeps the music as sequence data the port can play.
+fn write_psx_music(image_path: &Path, out_dir: &Path) -> Result<()> {
+    let mut disc = Disc::open(image_path)?;
     let entries = read_image_index(&mut disc)?;
     let tracks = read_music_tracks(&mut disc, &entries)?;
     if tracks.is_empty() {
@@ -83,8 +108,8 @@ fn write_music(context: &Context, out_dir: &Path) -> Result<()> {
 }
 
 fn write_sound_effects(context: &Context, out_dir: &Path) -> Result<()> {
-    let index = fs::read(context.source_dir.join(SOUND_INDEX_PATH))?;
-    let archive = fs::read(context.source_dir.join(SOUND_ARCHIVE_PATH))?;
+    let index = fs::read(context.install_dir.join(SOUND_INDEX_PATH))?;
+    let archive = fs::read(context.install_dir.join(SOUND_ARCHIVE_PATH))?;
     let entries = parse_sound_index(&index)?;
     fs::create_dir_all(out_dir)?;
 

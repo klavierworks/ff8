@@ -14,8 +14,8 @@ const ANIMATION_LOADERS = import.meta.glob<string>('@data/field/models/animation
   query: '?url',
 })
 
-const baseKey = (model: string, base: string) => `/@data/field/models/base/${model}/${base}.glb`
-const animationKey = (model: string) => `/@data/field/models/animations/${model}.glb`
+const baseKey = (model: string, base: string) => `/extractor/data/converted/field/models/base/${model}/${base}.glb`
+const animationKey = (model: string) => `/extractor/data/converted/field/models/animations/${model}.glb`
 
 type CopyEntry = {
   base: string

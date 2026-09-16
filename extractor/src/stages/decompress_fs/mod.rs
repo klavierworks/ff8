@@ -1,8 +1,12 @@
 use crate::stage::{Context, Stage};
 use crate::utils::fs_archive::{parse_file_list, parse_index, read_entry, to_relative_paths};
+use crate::utils::stamp::{build_stamp, is_stamp_current, write_stamp};
 use anyhow::{bail, Context as _, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
+
+const ARCHIVE_DIR: &str = "Data";
+const STAMP_FILE_NAME: &str = "stamp.json";
 
 pub struct DecompressFs;
 
@@ -12,17 +16,26 @@ impl Stage for DecompressFs {
     }
 
     fn run(&self, context: &Context) -> Result<()> {
-        let archives = discover_archives(&context.compressed_dir)?;
+        let archive_dir = context.install_dir.join(ARCHIVE_DIR);
+        let archives = discover_archives(&archive_dir)?;
         if archives.is_empty() {
-            bail!(
-                "no .fs/.fi/.fl archives found in {}",
-                context.compressed_dir.display()
-            );
+            bail!("no .fs/.fi/.fl archives found in {}", archive_dir.display());
         }
+
+        let stamp = build_stamp(&list_archive_files(&archives))?;
+        let stamp_path = context.uncompressed_dir.join(STAMP_FILE_NAME);
+        if context.should_use_cache && is_stamp_current(&stamp_path, &stamp) {
+            println!("  up to date, skipping");
+            return Ok(());
+        }
+        if stamp_path.exists() {
+            fs::remove_file(&stamp_path)?;
+        }
+
         for archive in &archives {
             extract_archive(archive, &context.uncompressed_dir)?;
         }
-        Ok(())
+        write_stamp(&stamp_path, &stamp)
     }
 }
 
@@ -31,6 +44,19 @@ struct Archive {
     fs_path: PathBuf,
     fi_path: PathBuf,
     fl_path: PathBuf,
+}
+
+fn list_archive_files(archives: &[Archive]) -> Vec<PathBuf> {
+    archives
+        .iter()
+        .flat_map(|archive| {
+            [
+                archive.fs_path.clone(),
+                archive.fi_path.clone(),
+                archive.fl_path.clone(),
+            ]
+        })
+        .collect()
 }
 
 fn discover_archives(dir: &Path) -> Result<Vec<Archive>> {

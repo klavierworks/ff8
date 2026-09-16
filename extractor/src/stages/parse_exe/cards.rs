@@ -1,3 +1,4 @@
+use super::exe_build::ExeBuild;
 use crate::utils::ff8_text::TextCodec;
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
@@ -23,9 +24,9 @@ pub struct Card {
     pub ai_value: u8,
 }
 
-pub fn export(exe: &[u8], codec: &TextCodec) -> Result<Vec<Card>> {
-    let stats_offset = STATS_VIRTUAL_ADDRESS - super::IMAGE_BASE;
-    let names_offset = NAMES_VIRTUAL_ADDRESS - super::IMAGE_BASE;
+pub fn export(exe: &[u8], build: ExeBuild, codec: &TextCodec) -> Result<Vec<Card>> {
+    let stats_offset = build.locate(STATS_VIRTUAL_ADDRESS - super::IMAGE_BASE);
+    let names_offset = build.locate(NAMES_VIRTUAL_ADDRESS - super::IMAGE_BASE);
     let stats_end = stats_offset + CARD_COUNT * STAT_STRIDE;
     let stats = exe.get(stats_offset..stats_end).with_context(|| {
         format!("card stat table out of range ({stats_offset:#X}..{stats_end:#X})")

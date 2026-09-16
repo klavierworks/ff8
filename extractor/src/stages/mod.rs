@@ -1,7 +1,10 @@
 mod combine_field_models;
+mod convert_movies;
 mod decompress_fs;
 mod emit_types;
 mod extract_audio;
+mod extract_discs;
+mod extract_movies;
 mod index_gateways;
 mod parse_exe;
 mod parse_field;
@@ -12,9 +15,12 @@ mod parse_worldmap;
 mod parse_worldmap_models;
 
 pub use combine_field_models::CombineFieldModels;
+pub use convert_movies::ConvertMovies;
 pub use decompress_fs::DecompressFs;
 pub use emit_types::EmitTypes;
 pub use extract_audio::ExtractAudio;
+pub use extract_discs::ExtractDiscs;
+pub use extract_movies::ExtractMovies;
 pub use index_gateways::IndexGateways;
 pub use parse_exe::ParseExe;
 pub use parse_field::ParseField;
