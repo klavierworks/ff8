@@ -6,7 +6,7 @@ import { BOARD_IMAGE_WIDTH, RENDER_ORDER } from '../../../../constants/cardGameL
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../../constants/constants'
 
 const BOARD_URL = Object.values(
-  import.meta.glob<string>('/extractor/data/converted/exe/cardgame_board/*.png', {
+  import.meta.glob<string>('@data/exe/cardgame_board/*.png', {
     eager: true,
     import: 'default',
     query: '?url',

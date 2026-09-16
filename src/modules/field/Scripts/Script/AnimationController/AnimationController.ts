@@ -3,6 +3,7 @@ import { create } from 'zustand'
 
 import { RUNNING_SPEED_THRESHOLD } from '../../../../../constants/speeds'
 import { framesToSeconds, TARGET_FPS } from '../../../../../timing'
+import { getScriptFrame } from '../../../scriptClock'
 import createMovementController from '../MovementController/MovementController'
 import { applyAnimationAtTime } from './animationUtils'
 
@@ -41,8 +42,8 @@ type PlayAnimationOptions = {
 
 type RunState = {
   direction: number
-  isAtLoopBoundary: boolean
   isComplete: boolean
+  loopBoundaryFrame: number | undefined
   time: number
 }
 
@@ -79,17 +80,17 @@ export const createAnimationController = (id: number | string) => {
     setState({ activeAnimation: undefined })
   }
 
+  const dispatchAnimationEnd = (uniqueId: string) => {
+    document.dispatchEvent(new CustomEvent('animationEnd', { detail: uniqueId }))
+  }
+
   const handleAnimationEnded = (uniqueId: string, shouldHoldLastFrame: boolean) => {
     if (!currentRunState) {
       return
     }
 
     currentRunState.isComplete = true
-
-    const event = new CustomEvent('animationEnd', {
-      detail: uniqueId,
-    })
-    document.dispatchEvent(event)
+    dispatchAnimationEnd(uniqueId)
 
     if (shouldHoldLastFrame) {
       return
@@ -118,8 +119,8 @@ export const createAnimationController = (id: number | string) => {
       const initialTime = direction === -1 ? endTime : startTime
       currentRunState = {
         direction,
-        isAtLoopBoundary: false,
         isComplete: false,
+        loopBoundaryFrame: undefined,
         time: initialTime,
       }
       applyAnimationAtTime(mesh, action.getClip(), initialTime)
@@ -140,19 +141,18 @@ export const createAnimationController = (id: number | string) => {
     }
 
     const animationSpeed = getState().animationSpeed
-    currentRunState.isAtLoopBoundary = false
 
     // "Normal" animation speed is 16.
     currentRunState.time += currentRunState.direction * delta * (animationSpeed / 16)
 
     if (currentRunState.time >= endTime && activeAnimation.isLooping && direction === 1) {
       currentRunState.time = startTime
-      currentRunState.isAtLoopBoundary = true
+      currentRunState.loopBoundaryFrame = getScriptFrame()
     }
 
     if (currentRunState.time <= startTime && activeAnimation.isLooping && direction === -1) {
       currentRunState.time = endTime
-      currentRunState.isAtLoopBoundary = true
+      currentRunState.loopBoundaryFrame = getScriptFrame()
     }
 
     if (currentRunState.time >= endTime && !activeAnimation.isLooping && direction === 1) {
@@ -205,11 +205,12 @@ export const createAnimationController = (id: number | string) => {
       startTime,
     }
 
+    const replacedAnimation = getState().activeAnimation
     currentRunState = undefined
-    const currentlyActiveAnimation = getState().activeAnimation
-    if (currentlyActiveAnimation) {
-      handleAnimationEnded(currentlyActiveAnimation.id, currentlyActiveAnimation.shouldHoldLastFrame)
-      currentlyActiveAnimation.action.stop()
+    if (replacedAnimation) {
+      // A script awaiting the replaced animation (ANIMEKEEP, CANIMEKEEP, …) must not wait forever.
+      dispatchAnimationEnd(replacedAnimation.id)
+      replacedAnimation.action.stop()
     }
 
     setState({
@@ -263,10 +264,9 @@ export const createAnimationController = (id: number | string) => {
     if (activeAnimation && currentRunState?.isComplete) {
       return true
     }
-    if (activeAnimation.isLooping && currentRunState?.isAtLoopBoundary) {
-      return true
-    }
-    return false
+    // A wrap stays visible to the next once-per-script-frame ANIMESYNC poll, however many render frames lie between.
+    const loopBoundaryFrame = currentRunState?.loopBoundaryFrame
+    return activeAnimation.isLooping && loopBoundaryFrame !== undefined && loopBoundaryFrame >= getScriptFrame() - 1
   }
 
   const getLocomotionAnimationPhase = () => {
@@ -339,6 +339,25 @@ export const createAnimationController = (id: number | string) => {
     }
 
     return true
+  }
+
+  const isPlayingSteppingAnimation = () => {
+    const { activeAnimation } = getState()
+
+    if (!activeAnimation) {
+      return false
+    }
+
+    if (activeAnimation.isFromLadder) {
+      return true
+    }
+
+    if (!activeAnimation.isFromMovement) {
+      return false
+    }
+
+    const { runningId, walkingId } = getSavedAnimation()
+    return activeAnimation.clipId === walkingId || activeAnimation.clipId === runningId
   }
 
   const isSafeToApplyMovementAnimation = () => {
@@ -475,6 +494,7 @@ export const createAnimationController = (id: number | string) => {
     getState,
     initialize,
     isPlayingMovementAnimation,
+    isPlayingSteppingAnimation,
     isSafeToApplyMovementAnimation,
     movementAnimationTick,
     pauseAnimation,

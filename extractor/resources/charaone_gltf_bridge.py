@@ -25,10 +25,15 @@ import shutil
 from math import radians
 from mathutils import Vector, Euler
 
+# The engine advances one animation keyframe per 30 Hz frame at normal speed.
+KEYFRAMES_PER_SECOND = 30
+
 
 # ─── Scene reset ───
 
 def reset_blender():
+    bpy.context.scene.render.fps = KEYFRAMES_PER_SECOND
+    bpy.context.scene.render.fps_base = 1
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
     for collection in (

@@ -7,7 +7,7 @@ import { loadAssetUrl } from '../../loadAssetUrl'
 // Field sprite sheets live alongside their field data as `<field>/<field>*.png`. The glob
 // stays lazy (one thunk per file, resolved on demand) so loading a field doesn't pull in
 // every sprite; map basename -> glob key so the caller can keep passing the filename.
-const SPRITE_LOADERS = import.meta.glob<string>('/extractor/data/converted/field/mapdata/*/*.png', {
+const SPRITE_LOADERS = import.meta.glob<string>('@data/field/mapdata/*/*.png', {
   import: 'default',
   query: '?url',
 })

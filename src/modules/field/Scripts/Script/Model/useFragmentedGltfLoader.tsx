@@ -5,17 +5,17 @@ import { useMemo } from 'react'
 import { loadAssetUrl, preloadAssetUrl } from '../../../../../loadAssetUrl'
 
 // Lazy globs: one thunk per model glb, resolved on demand so a field only pulls in its models.
-const BASE_LOADERS = import.meta.glob<string>('/extractor/data/converted/field/models/base/**/*.glb', {
+const BASE_LOADERS = import.meta.glob<string>('@data/field/models/base/**/*.glb', {
   import: 'default',
   query: '?url',
 })
-const ANIMATION_LOADERS = import.meta.glob<string>('/extractor/data/converted/field/models/animations/*.glb', {
+const ANIMATION_LOADERS = import.meta.glob<string>('@data/field/models/animations/*.glb', {
   import: 'default',
   query: '?url',
 })
 
-const baseKey = (model: string, base: string) => `/extractor/data/converted/field/models/base/${model}/${base}.glb`
-const animationKey = (model: string) => `/extractor/data/converted/field/models/animations/${model}.glb`
+const baseKey = (model: string, base: string) => `/@data/field/models/base/${model}/${base}.glb`
+const animationKey = (model: string) => `/@data/field/models/animations/${model}.glb`
 
 type CopyEntry = {
   base: string

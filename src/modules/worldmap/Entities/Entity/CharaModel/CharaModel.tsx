@@ -5,13 +5,13 @@ import { clone as cloneSkinnedScene } from 'three/examples/jsm/utils/SkeletonUti
 
 import { loadAssetUrl } from '../../../../../loadAssetUrl'
 
-const CHARAONE_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldmap/charaone/*.glb', {
+const CHARAONE_LOADERS = import.meta.glob<string>('@data/worldmap/charaone/*.glb', {
   import: 'default',
   query: '?url',
 })
 
 const charaoneKey = (sectionIndex: number) =>
-  `/extractor/data/converted/worldmap/charaone/world_${sectionIndex.toString().padStart(3, '0')}.glb`
+  `/@data/worldmap/charaone/world_${sectionIndex.toString().padStart(3, '0')}.glb`
 
 const forceDoubleSide = (root: Object3D) => {
   root.traverse((child) => {

@@ -28,14 +28,13 @@ const useFootsteps = ({
 
   // Footsteps are locked to the locomotion animation phase (two footfalls per cycle), not wall-clock time.
   useFrame(({ scene }) => {
-    const { isClimbingLadder, position } = movementController.getState()
+    const { isClimbingLadder } = movementController.getState()
 
     const phase = animationController.getLocomotionAnimationPhase()
     const previousPhase = previousPhaseRef.current
     previousPhaseRef.current = phase
 
-    const isTakingSteps = isClimbingLadder || Boolean(position.waypoints)
-    if (phase === undefined || previousPhase === undefined || !isTakingSteps) {
+    if (phase === undefined || previousPhase === undefined || !animationController.isPlayingSteppingAnimation()) {
       return
     }
 

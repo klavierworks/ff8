@@ -11,11 +11,11 @@ import useWorldmapStore, {
 } from '../../../worldmapStore'
 import { VEHICLE_RAGNAROK } from '../flightConstants'
 
-const CHARAONE_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldmap/charaone/*.glb', {
+const CHARAONE_LOADERS = import.meta.glob<string>('@data/worldmap/charaone/*.glb', {
   import: 'default',
   query: '?url',
 })
-const RAGNAROK_GLB_KEY = '/extractor/data/converted/worldmap/charaone/world_001.glb'
+const RAGNAROK_GLB_KEY = '@data/worldmap/charaone/world_001.glb'
 
 // charaone-family base scale: matches the worldmap-entity convention
 // (`Entity.tsx` uses `WORLDMAP_SCALE * 100`) so the Ragnarok mesh sits in the

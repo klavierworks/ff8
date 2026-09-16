@@ -5,12 +5,12 @@ import { OBJLoader } from 'three/examples/jsm/Addons.js'
 
 import { loadAssetUrl } from '../../../../../loadAssetUrl'
 
-const MODELS_DIR = '/extractor/data/converted/worldmap/models'
-const OBJ_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldmap/models/*.obj', {
+const MODELS_DIR = '@data/worldmap/models'
+const OBJ_LOADERS = import.meta.glob<string>('@data/worldmap/models/*.obj', {
   import: 'default',
   query: '?url',
 })
-const TEXTURE_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldmap/models/*.png', {
+const TEXTURE_LOADERS = import.meta.glob<string>('@data/worldmap/models/*.png', {
   import: 'default',
   query: '?url',
 })

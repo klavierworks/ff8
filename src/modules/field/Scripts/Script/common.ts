@@ -98,7 +98,8 @@ export const wasKeyPressed = (keyFlag: keyof typeof KEY_FLAGS) => {
 
 const keydownListener = (event: KeyboardEvent) => {
   const { currentMessages, isCardGameActive } = useGlobalStore.getState()
-  if (currentMessages.length > 0 || isCardGameActive || event.repeat) {
+  const hasBlockingMessage = currentMessages.some((message) => message.isCloseable)
+  if (hasBlockingMessage || isCardGameActive || event.repeat) {
     return
   }
 

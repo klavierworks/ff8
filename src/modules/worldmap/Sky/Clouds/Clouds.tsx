@@ -6,7 +6,7 @@ import { ClampToEdgeWrapping, Color, DoubleSide, NearestFilter, RepeatWrapping, 
 import useWorldmapStore from '../../worldmapStore'
 
 const CLOUD_TEXTURE_URL = Object.values(
-  import.meta.glob<string>('/extractor/data/converted/worldmap/textures/sky_cloud.png', {
+  import.meta.glob<string>('@data/worldmap/textures/sky_cloud.png', {
     eager: true,
     import: 'default',
     query: '?url',

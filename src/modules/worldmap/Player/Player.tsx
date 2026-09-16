@@ -16,11 +16,11 @@ import useCharacterAnimation from './useCharacterAnimation'
 import useMovement from './useMovement'
 
 const ON_FOOT_CHARAONE_SECTION = 0
-const CHARAONE_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldmap/charaone/*.glb', {
+const CHARAONE_LOADERS = import.meta.glob<string>('@data/worldmap/charaone/*.glb', {
   import: 'default',
   query: '?url',
 })
-const ON_FOOT_CHARAONE_KEY = `/extractor/data/converted/worldmap/charaone/world_${ON_FOOT_CHARAONE_SECTION.toString().padStart(3, '0')}.glb`
+const ON_FOOT_CHARAONE_KEY = `/@data/worldmap/charaone/world_${ON_FOOT_CHARAONE_SECTION.toString().padStart(3, '0')}.glb`
 
 const MODEL_PITCH_X = -Math.PI / 2
 

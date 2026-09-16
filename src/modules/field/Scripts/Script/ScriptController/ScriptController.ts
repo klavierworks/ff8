@@ -262,7 +262,7 @@ const createScriptController = ({
           TEMP_STACK: item.tempStack,
         })
         isBlocking = result instanceof Promise
-        nextIndex = await result
+        nextIndex = result instanceof Promise ? await result : result
       } catch (error) {
         console.error(`Error running opcode ${activeOpcode.name}:`, error)
         nextIndex = undefined
