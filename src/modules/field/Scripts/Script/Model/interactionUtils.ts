@@ -8,6 +8,8 @@ import { InteractiveEntity } from './modelUtils'
 const PUSH_HEIGHT_LIMIT = numberToFloatingPoint(128)
 const TALK_HEIGHT_LIMIT = numberToFloatingPoint(256)
 
+const _probePosition = new Vector3()
+
 // Angles run 0-255 over a full turn, so this is a quarter turn either side.
 const MAXIMUM_FACING_OFFSET = 64
 
@@ -23,6 +25,16 @@ export const isWithinPushRange = (entity: InteractiveEntity, position: Vector3, 
     return false
   }
   return getPlanarDistance(position, entity.position) < numberToFloatingPoint((pushRadius + entity.pushRadius) / 2)
+}
+
+export const createSolidEntityProbe = (entities: InteractiveEntity[], height: number, pushRadius: number) => {
+  if (entities.length === 0) {
+    return undefined
+  }
+  return (x: number, y: number) => {
+    _probePosition.set(x, y, height)
+    return entities.some((entity) => isWithinPushRange(entity, _probePosition, pushRadius))
+  }
 }
 
 const isWithinTalkRange = (entity: InteractiveEntity, position: Vector3, pushRadius: number) => {

@@ -8,6 +8,8 @@ import PromiseSignal from '../../../../../PromiseSignal'
 import { framesToSeconds, TARGET_FPS } from '../../../../../timing'
 import { floatingPointToNumber, numberToFloatingPoint } from '../../../../../utils'
 import { isTouching } from '../common'
+import { createSolidEntityProbe } from '../Model/interactionUtils'
+import { getCollidableEntities } from '../Model/modelUtils'
 import {
   getAngleToVector,
   getDirectionForAngle,
@@ -709,9 +711,11 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       } else {
         const { heading } = updateTurn(positionGoal, facingAngle, delta)
         const direction = getDirectionForAngle(heading)
+        const bodyRadius = getState().bodyRadius
         const step = walkmeshController.getNextPositionOnWalkmesh(currentPosition, direction, maxDistance, {
-          bodyRadius: numberToFloatingPoint(getState().bodyRadius),
+          bodyRadius: numberToFloatingPoint(bodyRadius),
           isAllowedToCrossBlockedTriangles: position.isAllowedToCrossBlockedTriangles,
+          isPointBlocked: createSolidEntityProbe(getCollidableEntities(scene, entity), currentPosition.z, bodyRadius),
           triangleId: getState().position.walkmeshTriangle ?? undefined,
         })
         currentPosition.copy(step.position)

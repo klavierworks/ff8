@@ -8,6 +8,7 @@ import { DRAW_POINT_COUNT, DRAW_POINT_STATE_FULL } from './constants/drawPoints'
 import { LADDER_CLIMB_SPEED } from './constants/ladders'
 import MAP_NAMES from './constants/maps'
 import LerpValue from './LerpValue'
+import { BackgroundAnimation } from './modules/field/backgroundAnimation'
 import { FieldData } from './modules/field/Field'
 import { EMITTER_MODE_OFF, EMITTER_SLOT_COUNT } from './modules/field/Particles/particleSimulation'
 import createSFXController from './modules/field/Scripts/Script/SFXController/SFXController'
@@ -18,7 +19,7 @@ type GlobalState = {
   availableCharacters: number[]
 
   availableMessages: string[][]
-  backgroundAnimations: Record<number, LerpValue>
+  backgroundAnimations: Record<number, BackgroundAnimation>
 
   backgroundLayerSpeeds: Record<number, number>
   backgroundLayerVisibility: Record<number, boolean>
@@ -166,9 +167,7 @@ const INITIAL_STATE: GlobalState = {
   availableCharacters: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
 
   availableMessages: [],
-  backgroundAnimations: {
-    [-1]: new LerpValue(0),
-  },
+  backgroundAnimations: {},
 
   backgroundLayerSpeeds: {},
   backgroundLayerVisibility: {},

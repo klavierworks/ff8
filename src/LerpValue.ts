@@ -1,5 +1,7 @@
 import { framesToMs } from './timing'
 
+export type LoopMode = 'bounce' | 'none' | 'restart'
+
 type EasingFunction = (t: number) => number
 
 export const cosineEaseInOut: EasingFunction = (t) => (1 - Math.cos(Math.PI * t)) / 2
@@ -10,7 +12,7 @@ class LerpValue {
   private currentValue: number
   private duration: number
   private easing: EasingFunction | undefined
-  private isLooping: boolean = false
+  private loopMode: LoopMode = 'none'
   private pendingResolve: (() => void) | null = null
   private speedMultiplier: number = 1.0
   private startTime: number
@@ -43,7 +45,7 @@ class LerpValue {
     this.startValue = value
   }
 
-  start(targetValue: number, duration: number, delay: number = 0, isLooping: boolean = false): Promise<void> {
+  start(targetValue: number, duration: number, delay: number = 0, loopMode: LoopMode = 'none'): Promise<void> {
     return new Promise((resolve) => {
       // stop() settles any previously-pending Promise (so an interrupted
       // turn/lerp resolves rather than leaking forever), then we install
@@ -61,15 +63,15 @@ class LerpValue {
       this.targetValue = targetValue
       this.duration = duration
       this.isAnimating = true
-      this.isLooping = isLooping
+      this.loopMode = loopMode
 
       const startAnimation = () => {
         if (this.duration <= 0) {
           this.currentValue = this.targetValue
           this.isAnimating = false
 
-          if (this.isLooping) {
-            this.start(this.targetValue, this.duration, 0, true)
+          if (this.loopMode !== 'none') {
+            this.start(this.targetValue, this.duration, 0, this.loopMode)
           }
           settle()
           return
@@ -89,7 +91,11 @@ class LerpValue {
           } else {
             this.currentValue = this.targetValue
 
-            if (this.isLooping) {
+            if (this.loopMode === 'restart') {
+              this.currentValue = this.startValue
+              this.startTime = currentTime - (elapsed % this.duration)
+              this.animationId = requestAnimationFrame(animate)
+            } else if (this.loopMode === 'bounce') {
               const temp = this.startValue
               this.startValue = this.targetValue
               this.targetValue = temp

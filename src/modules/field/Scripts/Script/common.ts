@@ -3,6 +3,7 @@ import { Group, Object3D, Scene, Vector3 } from 'three'
 import { PSX_CONTROLS_MAP } from '../../../../constants/controls'
 import LerpValue from '../../../../LerpValue'
 import useGlobalStore from '../../../../store'
+import { BackgroundAnimation } from '../../backgroundAnimation'
 import { checkForIntersectingMeshes } from '../../Gateways/gatewayUtils'
 import {
   EMITTER_MODE_ENTITY_FLAG,
@@ -185,6 +186,26 @@ export const setLayerScroll = (
       [layerIndex]: transition,
     },
   })
+}
+
+export const showBackgroundAnimation = (parameter: number, animation: BackgroundAnimation) => {
+  useGlobalStore.getState().backgroundAnimations[parameter]?.progress.stop()
+  useGlobalStore.setState({
+    backgroundAnimations: {
+      ...useGlobalStore.getState().backgroundAnimations,
+      [parameter]: animation,
+    },
+    backgroundLayerVisibility: {
+      ...useGlobalStore.getState().backgroundLayerVisibility,
+      [parameter]: true,
+    },
+  })
+}
+
+export const waitForBackgroundAnimation = async (parameter: number) => {
+  while (useGlobalStore.getState().backgroundAnimations[parameter]?.progress.isAnimating) {
+    await nextScriptFrame()
+  }
 }
 
 export const setCameraAndLayerFocus = async (object: Object3D, duration: number) => {

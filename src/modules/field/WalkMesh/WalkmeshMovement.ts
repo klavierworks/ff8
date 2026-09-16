@@ -25,7 +25,13 @@ export type WalkmeshStep = {
 export type WalkmeshStepOptions = {
   bodyRadius?: number
   isAllowedToCrossBlockedTriangles?: boolean
+  isPointBlocked?: (x: number, y: number) => boolean
   triangleId?: number
+}
+
+type StepProbeOptions = {
+  isAllowedToCrossBlockedTriangles: boolean
+  isPointBlocked?: (x: number, y: number) => boolean
 }
 
 type WallProbe = {
@@ -167,7 +173,8 @@ class WalkmeshMovementController {
     moveDistance: number,
     options: WalkmeshStepOptions = {},
   ): WalkmeshStep {
-    const { bodyRadius = DEFAULT_BODY_RADIUS, isAllowedToCrossBlockedTriangles = false } = options
+    const { bodyRadius = DEFAULT_BODY_RADIUS, isAllowedToCrossBlockedTriangles = false, isPointBlocked } = options
+    const probeOptions = { isAllowedToCrossBlockedTriangles, isPointBlocked }
     const triangleId =
       options.triangleId ??
       this.getTriangleForPosition(currentPosition, undefined, isAllowedToCrossBlockedTriangles) ??
@@ -187,19 +194,9 @@ class WalkmeshMovementController {
     for (let iteration = 0; iteration < MAX_SLIDE_ITERATIONS && !isStepClear; iteration++) {
       _destination.copy(_heading).multiplyScalar(moveDistance).add(currentPosition).setZ(0)
 
-      const centre = this.probeBodyRadius(triangleId, bodyRadius, 0, isAllowedToCrossBlockedTriangles)
-      const anticlockwise = this.probeBodyRadius(
-        triangleId,
-        bodyRadius,
-        FLANK_PROBE_ANGLE,
-        isAllowedToCrossBlockedTriangles,
-      )
-      const clockwise = this.probeBodyRadius(
-        triangleId,
-        bodyRadius,
-        -FLANK_PROBE_ANGLE,
-        isAllowedToCrossBlockedTriangles,
-      )
+      const centre = this.probeBodyRadius(triangleId, bodyRadius, 0, probeOptions)
+      const anticlockwise = this.probeBodyRadius(triangleId, bodyRadius, FLANK_PROBE_ANGLE, probeOptions)
+      const clockwise = this.probeBodyRadius(triangleId, bodyRadius, -FLANK_PROBE_ANGLE, probeOptions)
 
       isStepClear = !centre.isBlocked && !anticlockwise.isBlocked && !clockwise.isBlocked
       if (isStepClear) {
@@ -787,20 +784,24 @@ class WalkmeshMovementController {
     triangleId: number,
     bodyRadius: number,
     flankAngle: number,
-    isAllowedToCrossBlockedTriangles: boolean,
+    options: StepProbeOptions,
   ): WallProbe {
     _flank.copy(_heading)
     if (flankAngle !== 0) {
       _flank.applyAxisAngle(_up, flankAngle)
     }
 
-    return this.traverseToTarget(
-      triangleId,
-      _destination.x + _flank.x * bodyRadius,
-      _destination.y + _flank.y * bodyRadius,
-      isAllowedToCrossBlockedTriangles,
-      _flank,
-    )
+    const probeX = _destination.x + _flank.x * bodyRadius
+    const probeY = _destination.y + _flank.y * bodyRadius
+
+    const wall = this.traverseToTarget(triangleId, probeX, probeY, options.isAllowedToCrossBlockedTriangles, _flank)
+    if (wall.isBlocked) {
+      return wall
+    }
+    if (options.isPointBlocked?.(probeX, probeY)) {
+      return { ...wall, isBlocked: true }
+    }
+    return wall
   }
 
   private smoothPath(trianglePath: number[], start: Vector3, end: Vector3): Vector3[] {

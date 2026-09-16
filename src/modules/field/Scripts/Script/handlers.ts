@@ -11,7 +11,6 @@ import {
   SEED_RANK_POINTS_MAX,
   SEED_RANK_POINTS_MIN,
 } from '../../../../constants/party'
-import { SPEEDS } from '../../../../constants/speeds'
 import LerpValue from '../../../../LerpValue'
 import useGlobalStore from '../../../../store'
 import { framesToMs, MS_PER_FRAME } from '../../../../timing'
@@ -19,6 +18,7 @@ import { cardGameController } from '../../../../UI/CardGame/CardGameController'
 import { addCardToCollection, getOwnedCardCount, removeCardFromCollection } from '../../../../UI/CardGame/collection'
 import { floatingPointToNumber, numberToFloatingPoint, signExtend16, vectorToFloatingPoint } from '../../../../utils'
 import useWorldmapStore from '../../../worldmap/worldmapStore'
+import { createBackgroundDraw, startBackgroundAnimation } from '../../backgroundAnimation'
 import { preloadField } from '../../fieldPreloader'
 import { nextScriptFrame, waitForScriptFrames } from '../../scriptClock'
 import { SHADE_FORM_SLOTS } from '../constants'
@@ -37,7 +37,9 @@ import {
   setCameraAndLayerFocus,
   setCameraScroll,
   setLayerScroll,
+  showBackgroundAnimation,
   triggerFadeout,
+  waitForBackgroundAnimation,
   wasKeyPressed,
 } from './common'
 import {
@@ -318,30 +320,12 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   BATTLEON: dummiedCommand,
   BATTLERESULT: dummiedCommand,
   BGANIME: async ({ script, STACK }) => {
-    const end = STACK.pop() as number
-    const start = STACK.pop() as number
+    const last = STACK.pop() as number
+    const first = STACK.pop() as number
 
-    const speed = useGlobalStore.getState().backgroundLayerSpeeds[script.backgroundParamId]
-    const lerpValue = new LerpValue(start, SPEEDS.BG)
-    const duration = lerpValue.calculateDuration(speed)
-    lerpValue.start(end, duration, 0)
-
-    useGlobalStore.setState({
-      backgroundAnimations: {
-        ...useGlobalStore.getState().backgroundAnimations,
-        [script.backgroundParamId]: lerpValue,
-      },
-      backgroundLayerVisibility: {
-        ...useGlobalStore.getState().backgroundLayerVisibility,
-        [script.backgroundParamId]: true,
-      },
-    })
-    while (useGlobalStore.getState().backgroundAnimations[script.backgroundParamId]?.isAnimating) {
-      if (!useGlobalStore.getState().backgroundAnimations[script.backgroundParamId]) {
-        return
-      }
-      await nextScriptFrame()
-    }
+    const speed = useGlobalStore.getState().backgroundLayerSpeeds[script.backgroundParamId] ?? 0
+    showBackgroundAnimation(script.backgroundParamId, startBackgroundAnimation(first, last, speed, 'none'))
+    await waitForBackgroundAnimation(script.backgroundParamId)
   },
   BGANIMEFLAG: unusedCommand,
   BGANIMESPEED: ({ script, STACK }) => {
@@ -354,9 +338,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     })
   },
   BGANIMESYNC: async ({ script }) => {
-    while (useGlobalStore.getState().backgroundAnimations[script.backgroundParamId].isAnimating) {
-      await nextScriptFrame()
-    }
+    await waitForBackgroundAnimation(script.backgroundParamId)
   },
   BGCLEAR: ({ STACK }) => {
     const layerId = STACK.pop() as number // MAYBE?
@@ -371,18 +353,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   BGDRAW: ({ script, STACK }) => {
     const frame = STACK.pop() as number
 
-    const lerpValue = new LerpValue(frame, SPEEDS.BG)
-
-    useGlobalStore.setState({
-      backgroundAnimations: {
-        ...useGlobalStore.getState().backgroundAnimations,
-        [script.backgroundParamId]: lerpValue,
-      },
-      backgroundLayerVisibility: {
-        ...useGlobalStore.getState().backgroundLayerVisibility,
-        [script.backgroundParamId]: true,
-      },
-    })
+    showBackgroundAnimation(script.backgroundParamId, createBackgroundDraw(frame))
   },
   BGOFF: ({ script }) => {
     useGlobalStore.setState({
@@ -1121,7 +1092,13 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     TEMP_STACK[0] = useGlobalStore.getState().inventory[itemId] !== undefined ? 1 : 0
   },
   HIDE: ({ setState }) => {
-    setState({ isPushable: false, isTalkable: false, isVisible: false })
+    setState((state) => ({
+      isPushable: false,
+      isSolid: false,
+      isSolidWhenVisible: state.isSolid,
+      isTalkable: false,
+      isVisible: false,
+    }))
   },
   HOLD: ({ STACK }) => {
     STACK.splice(-3)
@@ -1888,44 +1865,18 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     })
   },
   RBGANIME: ({ script, STACK }) => {
-    const end = STACK.pop() as number
-    const start = STACK.pop() as number
+    const last = STACK.pop() as number
+    const first = STACK.pop() as number
 
-    const speed = useGlobalStore.getState().backgroundLayerSpeeds[script.backgroundParamId]
-    const lerpValue = new LerpValue(start, SPEEDS.BG)
-    const duration = lerpValue.calculateDuration(speed)
-    lerpValue.start(end, duration, 0)
-
-    useGlobalStore.setState({
-      backgroundAnimations: {
-        ...useGlobalStore.getState().backgroundAnimations,
-        [script.backgroundParamId]: lerpValue,
-      },
-      backgroundLayerVisibility: {
-        ...useGlobalStore.getState().backgroundLayerVisibility,
-        [script.backgroundParamId]: true,
-      },
-    })
+    const speed = useGlobalStore.getState().backgroundLayerSpeeds[script.backgroundParamId] ?? 0
+    showBackgroundAnimation(script.backgroundParamId, startBackgroundAnimation(first, last, speed, 'none'))
   },
   RBGANIMELOOP: ({ script, STACK }) => {
-    const end = STACK.pop() as number
-    const start = STACK.pop() as number
+    const last = STACK.pop() as number
+    const first = STACK.pop() as number
 
-    const speed = useGlobalStore.getState().backgroundLayerSpeeds[script.backgroundParamId]
-    const lerpValue = new LerpValue(start, SPEEDS.BG)
-    const duration = lerpValue.calculateDuration(speed)
-    lerpValue.start(end, duration, 0, true)
-
-    useGlobalStore.setState({
-      backgroundAnimations: {
-        ...useGlobalStore.getState().backgroundAnimations,
-        [script.backgroundParamId]: lerpValue,
-      },
-      backgroundLayerVisibility: {
-        ...useGlobalStore.getState().backgroundLayerVisibility,
-        [script.backgroundParamId]: true,
-      },
-    })
+    const speed = useGlobalStore.getState().backgroundLayerSpeeds[script.backgroundParamId] ?? 0
+    showBackgroundAnimation(script.backgroundParamId, startBackgroundAnimation(first, last, speed, 'restart'))
   },
   RBGSHADELOOP: ({ script, STACK }) => {
     const holdOut = STACK.pop() as number
@@ -1940,7 +1891,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const durationIn = STACK.pop() as number
 
     const progress = new LerpValue(0)
-    progress.start(1, framesToMs(durationIn), 0, true)
+    progress.start(1, framesToMs(durationIn), 0, 'bounce')
 
     useGlobalStore.setState((state) => ({
       layerTints: {
@@ -2360,8 +2311,15 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       cameraShake: { ...state.cameraShake, isActive: false },
     }))
   },
+  // SHOW restores the solidity the entity had when it was hidden rather than
+  // setting it, so a THROUGHON issued while hidden is discarded here.
   SHOW: ({ setState }) => {
-    setState({ isPushable: true, isTalkable: true, isVisible: true })
+    setState((state) => ({
+      isPushable: true,
+      isSolid: state.isSolidWhenVisible,
+      isTalkable: true,
+      isVisible: true,
+    }))
   },
   SPLIT: async ({ scene, STACK }) => {
     useGlobalStore.setState({

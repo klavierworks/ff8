@@ -128,7 +128,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
       }
 
       const { backgroundAnimations, controlAxis, layerTints } = useGlobalStore.getState()
-      Object.values(backgroundAnimations).forEach((animation) => animation.stop())
+      Object.values(backgroundAnimations).forEach((animation) => animation.progress.stop())
       Object.values(layerTints).forEach((tint) => tint.progress.stop())
       controlAxis.set(data?.controlDirection ?? 0)
 

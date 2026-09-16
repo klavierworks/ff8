@@ -1,11 +1,12 @@
 import { Group, Object3D, Scene, Vector3 } from 'three'
 
+import type createFootstepController from '../FootstepController/FootstepController'
+import type createMovementController from '../MovementController/MovementController'
+import type createRotationController from '../RotationController/RotationController'
+import type createScriptController from '../ScriptController/ScriptController'
+import type { ScriptStateStore } from '../state'
+
 import useGlobalStore from '../../../../../store'
-import createFootstepController from '../FootstepController/FootstepController'
-import createMovementController from '../MovementController/MovementController'
-import createRotationController from '../RotationController/RotationController'
-import createScriptController from '../ScriptController/ScriptController'
-import { ScriptStateStore } from '../state'
 
 export type InteractiveEntity = {
   isPushable: boolean
@@ -73,8 +74,8 @@ const isPartyControlled = (partyMemberId?: number) => {
   return party[0] === partyMemberId || partyMembersFollowing.includes(partyMemberId)
 }
 
-const readInteractiveEntity = (object: Object3D): InteractiveEntity | null => {
-  if (!object.name.startsWith('entity--') || isPartyControlled(object.userData.partyMemberId)) {
+const readEntity = (object: Object3D): InteractiveEntity | null => {
+  if (!object.name.startsWith('entity--')) {
     return null
   }
 
@@ -98,6 +99,13 @@ const readInteractiveEntity = (object: Object3D): InteractiveEntity | null => {
   }
 }
 
+const readInteractiveEntity = (object: Object3D): InteractiveEntity | null => {
+  if (isPartyControlled(object.userData.partyMemberId)) {
+    return null
+  }
+  return readEntity(object)
+}
+
 export const getFootstepControllers = (scene: Scene) => {
   const controllers: ReturnType<typeof createFootstepController>[] = []
   scene.traverse((object) => {
@@ -113,6 +121,27 @@ export const getInteractiveEntities = (scene: Scene) => {
   scene.traverse((object) => {
     const entity = readInteractiveEntity(object)
     if (entity) {
+      entities.push(entity)
+    }
+  })
+  return entities
+}
+
+// Unlike the interactive list this keeps the party, because a scripted mover is
+// blocked by the player just as it is by any other entity. The conga line is the
+// one exception: it trails the character it follows, so it must never block it.
+export const getCollidableEntities = (scene: Scene, self: Object3D) => {
+  const isSelfPartyControlled = isPartyControlled(self.userData.partyMemberId)
+  const entities: InteractiveEntity[] = []
+  scene.traverse((object) => {
+    if (object === self) {
+      return
+    }
+    if (isSelfPartyControlled && isPartyControlled(object.userData.partyMemberId)) {
+      return
+    }
+    const entity = readEntity(object)
+    if (entity?.isSolid) {
       entities.push(entity)
     }
   })

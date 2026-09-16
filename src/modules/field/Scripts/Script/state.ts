@@ -25,6 +25,7 @@ export type ScriptState = {
 
   isPushable: boolean
   isSolid: boolean
+  isSolidWhenVisible: boolean
   isTalkable: boolean
 
   isUnused: boolean
@@ -89,6 +90,7 @@ const createScriptState = (script: Script) => {
 
     isPushable: true,
     isSolid: script.type === 'model',
+    isSolidWhenVisible: script.type === 'model',
     isTalkable: true,
     isUnused: false,
 

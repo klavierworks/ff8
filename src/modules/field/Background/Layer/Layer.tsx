@@ -1,28 +1,30 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useRef } from 'react'
+import { RefObject, useRef } from 'react'
 import { DoubleSide, Mesh, MeshBasicMaterial, NoBlending, PerspectiveCamera, Texture, Vector3 } from 'three'
 
 import useGlobalStore from '../../../../store'
-import useCameraScroll from '../../useScrollTransition'
+import { getBackgroundAnimationState } from '../../backgroundAnimation'
 import { writeLayerPositions } from '../buildTileGroups'
+import { LayerScrolls } from '../tileUtils'
 
 type LayerProps = {
   layer: Layer
+  layerScrolls: RefObject<LayerScrolls>
   texture: Texture
 }
 
 const SHADE_NEUTRAL = 128
 const SCROLL_RATIO_FULL = 256
 const _cameraPosition = new Vector3()
+const NO_SCROLL = { x: 0, y: 0 }
 
-const Layer = ({ layer, texture }: LayerProps) => {
+const Layer = ({ layer, layerScrolls, texture }: LayerProps) => {
   const meshRef = useRef<Mesh>(null)
   const lastWrite = useRef({ centerX: NaN, centerY: NaN, fovHalfTan: 0, length: 0, offsetX: NaN, offsetY: NaN })
 
   const { parameter, renderID, renderOrder, state } = layer
 
   const camera = useThree(({ scene }) => scene.getObjectByName('sceneCamera') as PerspectiveCamera)
-  const layerScroll = useCameraScroll('layer', renderID)
 
   useFrame(() => {
     const mesh = meshRef.current
@@ -34,7 +36,7 @@ const Layer = ({ layer, texture }: LayerProps) => {
       useGlobalStore.getState()
 
     const animation = backgroundAnimations[parameter]
-    const currentParameterState = animation !== undefined ? Math.round(animation.get()) : 0
+    const currentParameterState = animation !== undefined ? getBackgroundAnimationState(animation) : 0
 
     const tint = layerTints[parameter]
     let shadeRed = SHADE_NEUTRAL
@@ -89,8 +91,9 @@ const Layer = ({ layer, texture }: LayerProps) => {
     const parallaxX = centerX * (1 - xRatio / SCROLL_RATIO_FULL)
     const parallaxY = centerY * (1 - yRatio / SCROLL_RATIO_FULL)
 
-    const offsetX = (controlledScroll?.xOffset ?? 0) + parallaxX - layerScroll.current.x
-    const offsetY = (controlledScroll?.yOffset ?? 0) + parallaxY - layerScroll.current.y
+    const layerScroll = layerScrolls.current[renderID]?.current ?? NO_SCROLL
+    const offsetX = (controlledScroll?.xOffset ?? 0) + parallaxX - layerScroll.x
+    const offsetY = (controlledScroll?.yOffset ?? 0) + parallaxY - layerScroll.y
 
     const previous = lastWrite.current
     if (
