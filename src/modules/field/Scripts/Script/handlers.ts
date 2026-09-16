@@ -1294,7 +1294,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     setState({ isLineOn: true })
   },
 
-  LOADSYNC: () => { },
+  LOADSYNC: () => {},
   /*
   Prefixes:
   d – instant camera
@@ -1487,7 +1487,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     STACK.pop() as number
   },
 
-  MENUTUTO: () => { },
+  MENUTUTO: () => {},
   MES: async ({ currentState, STACK }) => {
     const id = STACK.pop() as number
     const channel = STACK.pop() as number
@@ -1645,7 +1645,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     musicController.setVolume(channel, startVolume)
     musicController.transitionVolume(channel, endVolume, duration)
   },
-  MUSICVOLSYNC: () => { },
+  MUSICVOLSYNC: () => {},
   MUSICVOLTRANS: ({ STACK }) => {
     const volume = STACK.pop() as number
     const duration = STACK.pop() as number
@@ -1737,7 +1737,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       distanceToStopAnimationFromTarget,
     })
   },
-  PMOVECANCEL: () => { },
+  PMOVECANCEL: () => {},
   POLYCOLOR: ({ setState, STACK }) => {
     const blue = STACK.pop() as number
     const green = STACK.pop() as number
@@ -1756,7 +1756,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       globalMeshTint: [red, green, blue],
     })
   },
-  POPANIME: () => { },
+  POPANIME: () => {},
   POPI_L: ({ currentOpcode, STACK, TEMP_STACK }) => {
     TEMP_STACK[currentOpcode.param] = STACK.pop() as number
   },
@@ -1823,7 +1823,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   PSHSM_W: ({ currentOpcode, STACK }) => {
     STACK.push(MEMORY[currentOpcode.param] ?? 0)
   },
-  PUSHANIME: () => { },
+  PUSHANIME: () => {},
   PUSHOFF: ({ setState }) => {
     setState({
       isPushable: false,
