@@ -6,6 +6,7 @@ import { musicController } from './audio/activeMusicController'
 import { registerMusicConsole } from './audio/musicConsole'
 import MAP_NAMES from './constants/maps'
 import FieldLoader from './modules/field/Field'
+import { movieController } from './modules/field/movieController'
 import ScriptClock from './modules/field/ScriptClock/ScriptClock'
 import { attachKeyDownListeners } from './modules/field/Scripts/Script/common'
 import Menu from './modules/menu/Menu'
@@ -38,7 +39,7 @@ const Entrypoint = ({ setWorldScene }: EntrypointProps) => {
     if (!isMapFadeEnabled) {
       return
     }
-    const currentStyle = fadeSpring.get()
+    const currentStyle = movieController.getIsFieldDrawSuppressedDuringMovie() ? 1 : fadeSpring.get()
     if (currentStyleRef.current === currentStyle) {
       return
     }

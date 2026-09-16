@@ -13,13 +13,14 @@ import {
 } from '../../../../constants/party'
 import LerpValue from '../../../../LerpValue'
 import useGlobalStore from '../../../../store'
-import { framesToMs, MS_PER_FRAME } from '../../../../timing'
+import { framesToMs } from '../../../../timing'
 import { cardGameController } from '../../../../UI/CardGame/CardGameController'
 import { addCardToCollection, getOwnedCardCount, removeCardFromCollection } from '../../../../UI/CardGame/collection'
 import { floatingPointToNumber, numberToFloatingPoint, signExtend16, vectorToFloatingPoint } from '../../../../utils'
 import useWorldmapStore from '../../../worldmap/worldmapStore'
 import { createBackgroundDraw, startBackgroundAnimation } from '../../backgroundAnimation'
 import { preloadField } from '../../fieldPreloader'
+import { movieController, useMovieStore } from '../../movieController'
 import { nextScriptFrame, waitForScriptFrames } from '../../scriptClock'
 import { SHADE_FORM_SLOTS } from '../constants'
 import { Opcode, OpcodeObj, Script } from '../types'
@@ -111,6 +112,7 @@ type HandlerFuncWithPromise = (args: HandlerArgs) => (number | void) | Promise<n
 export let MEMORY: Record<number, number> = {
   72: 9999, // gil
   84: 201, // last area visited
+  204: 1, // current disc
   256: 0, // progress
   266: 0, // disc
   491: 0, // touk
@@ -530,7 +532,8 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     musicController.playConcert(mask, useGlobalStore.getState().fieldId)
   },
   CLEAR: () => {
-    MEMORY = {}
+    // Doesn't clear initial section of memory, which holds info like "current disc number"
+    MEMORY = Object.fromEntries(Object.entries(MEMORY).filter(([key]) => Number(key) < 256))
   },
 
   // Touch stack
@@ -737,7 +740,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     rotationController.turnToFaceVector(worldTarget, 0)
   },
   DISC: ({ STACK }) => {
-    STACK.pop() as number
+    MEMORY[204] = STACK.pop() as number
   },
   DISCJUMP: (args) => {
     OPCODE_HANDLERS?.['MAPJUMP3']?.(args)
@@ -904,16 +907,20 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   FACEDIRSYNC: async ({ headController }) => {
     await headController.sync()
   },
+  // The engine draws no black here: it stops drawing the field, so a playing movie stays on screen.
   FADEBLACK: () => {
     const { fadeSpring } = useGlobalStore.getState()
+    useGlobalStore.setState({ isFieldDrawSuppressed: true })
     fadeSpring.set(0)
   },
   FADEIN: () => {
     const { fadeSpring } = useGlobalStore.getState()
+    useGlobalStore.setState({ isFieldDrawSuppressed: false })
     fadeSpring.start(1, 250)
   },
   FADENONE: () => {
     const { fadeSpring } = useGlobalStore.getState()
+    useGlobalStore.setState({ isFieldDrawSuppressed: false })
     fadeSpring.set(1)
   },
   FADEOUT: triggerFadeout,
@@ -1287,7 +1294,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     setState({ isLineOn: true })
   },
 
-  LOADSYNC: () => {},
+  LOADSYNC: () => { },
   /*
   Prefixes:
   d – instant camera
@@ -1480,7 +1487,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     STACK.pop() as number
   },
 
-  MENUTUTO: () => {},
+  MENUTUTO: () => { },
   MES: async ({ currentState, STACK }) => {
     const id = STACK.pop() as number
     const channel = STACK.pop() as number
@@ -1574,26 +1581,24 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       await nextScriptFrame()
     }
   },
-  // Memory 80 is used to track frames. This is used to fake a movie
-  MOVIE: () => {
-    MEMORY['80'] = 0
-    const interval = setInterval(() => {
-      MEMORY['80'] += 100
-      if (MEMORY['80'] > 3000) {
-        clearInterval(interval)
-      }
-    }, MS_PER_FRAME)
-  },
+  MOVIE: () => movieController.startMovie(),
 
   // Never used ingame (excluding test and bgmast_6 (a weird unused level))
   MOVIECUT: unusedCommand,
 
   /// MOVIES
+  // The top argument (0 or 1 in shipped scripts) is never read on PC.
   MOVIEREADY: ({ STACK }) => {
     STACK.pop() as number
-    STACK.pop() as number
+    const movieId = STACK.pop() as number
+    MEMORY[80] = 0
+    movieController.prepareMovie(MEMORY[204], movieId)
   },
-  MOVIESYNC: dummiedCommand, // used to sync with a movie, we do not show movies so this is dummied and returns done immediately
+  MOVIESYNC: async () => {
+    while (useMovieStore.getState().isActive) {
+      await nextScriptFrame()
+    }
+  },
   MSPEED: ({ movementController, STACK }) => {
     const movementSpeed = STACK.pop() as number
     movementController.setMovementSpeed(movementSpeed)
@@ -1640,7 +1645,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     musicController.setVolume(channel, startVolume)
     musicController.transitionVolume(channel, endVolume, duration)
   },
-  MUSICVOLSYNC: () => {},
+  MUSICVOLSYNC: () => { },
   MUSICVOLTRANS: ({ STACK }) => {
     const volume = STACK.pop() as number
     const duration = STACK.pop() as number
@@ -1732,7 +1737,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       distanceToStopAnimationFromTarget,
     })
   },
-  PMOVECANCEL: () => {},
+  PMOVECANCEL: () => { },
   POLYCOLOR: ({ setState, STACK }) => {
     const blue = STACK.pop() as number
     const green = STACK.pop() as number
@@ -1751,7 +1756,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       globalMeshTint: [red, green, blue],
     })
   },
-  POPANIME: () => {},
+  POPANIME: () => { },
   POPI_L: ({ currentOpcode, STACK, TEMP_STACK }) => {
     TEMP_STACK[currentOpcode.param] = STACK.pop() as number
   },
@@ -1818,7 +1823,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   PSHSM_W: ({ currentOpcode, STACK }) => {
     STACK.push(MEMORY[currentOpcode.param] ?? 0)
   },
-  PUSHANIME: () => {},
+  PUSHANIME: () => { },
   PUSHOFF: ({ setState }) => {
     setState({
       isPushable: false,

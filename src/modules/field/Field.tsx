@@ -3,7 +3,8 @@ import type { FieldData as RawFieldData } from '@data/types/field/FieldData'
 import areaNames from '@data/menu/area-names.json'
 import namedic from '@data/menu/namedic.json'
 import { useThree } from '@react-three/fiber'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { Group } from 'three'
 
 import { CAMERA_SHAKE_OFF } from '../../constants/camera'
 import { LADDER_CLIMB_SPEED } from '../../constants/ladders'
@@ -14,6 +15,7 @@ import Camera from './Camera/Camera'
 import { getFieldData, getRequestedSpawn } from './fieldUtils'
 import Gateways from './Gateways/Gateways'
 import LoadingController from './LoadingController'
+import Movie from './Movie/Movie'
 import Particles from './Particles/Particles'
 import { ParticleData } from './Particles/particleSimulation'
 import { awaitFadesync, triggerFadeout } from './Scripts/Script/common'
@@ -65,6 +67,10 @@ const Field = ({ data }: FieldProps) => {
   }, [currentLocationPlaceName, data.id])
 
   const walkmeshController = useGlobalStore((state) => state.walkmeshController)
+  const backgroundRef = useRef<Group>(null)
+  const entitiesRef = useRef<Group>(null)
+  const particlesRef = useRef<Group>(null)
+
   return (
     <Suspense fallback={<LoadingController />}>
       <group>
@@ -72,10 +78,15 @@ const Field = ({ data }: FieldProps) => {
         {walkmeshController && (
           <>
             <Camera data={data} />
-            <Scripts doors={data.doors} models={data.models} scripts={data.scripts} sounds={data.sounds} />
-            <Background data={data} />
-            {data.particles && <Particles data={data.particles} fieldId={data.id} />}
+            <group ref={entitiesRef}>
+              <Scripts doors={data.doors} models={data.models} scripts={data.scripts} sounds={data.sounds} />
+            </group>
+            <group ref={backgroundRef}>
+              <Background data={data} />
+            </group>
+            <group ref={particlesRef}>{data.particles && <Particles data={data.particles} fieldId={data.id} />}</group>
             <Gateways gateways={data.gateways} />
+            <Movie backgroundRef={backgroundRef} entitiesRef={entitiesRef} particlesRef={particlesRef} />
           </>
         )}
       </group>
@@ -176,6 +187,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
         hasActiveTalkMethod: false,
         hasMoved: false,
         isCongaTrailStretched: false,
+        isFieldDrawSuppressed: false,
         isLoadingSavedGame: false,
 
         isMapFadeEnabled: true,

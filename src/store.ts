@@ -74,6 +74,7 @@ type GlobalState = {
   isCardGameActive: boolean
   isCongaTrailStretched: boolean
   isDebugMode: boolean
+  isFieldDrawSuppressed: boolean
   isLagunaDream: boolean
   isLoading: boolean
   isLoadingSavedGame: boolean
@@ -219,6 +220,7 @@ const INITIAL_STATE: GlobalState = {
   isCardGameActive: false,
   isCongaTrailStretched: false,
   isDebugMode: false,
+  isFieldDrawSuppressed: false,
   isLagunaDream: false,
   isLoading: false,
   isLoadingSavedGame: false,

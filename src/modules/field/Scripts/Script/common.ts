@@ -249,6 +249,7 @@ export const bindParticleEmitterToEntity = (slot: number, entityId: number) =>
 
 export const triggerFadeout = () => {
   const { fadeSpring } = useGlobalStore.getState()
+  useGlobalStore.setState({ isFieldDrawSuppressed: false })
   fadeSpring.start(0, 500)
 }
 

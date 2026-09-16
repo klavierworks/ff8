@@ -1,15 +1,34 @@
 import { useFrame } from '@react-three/fiber'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 import useGlobalStore from '../../../store'
-import { advanceScriptClock, releaseAllScriptWaiters } from '../scriptClock'
+import { useMovieStore } from '../movieController'
+import { advanceScriptClock, advanceScriptClockToMovieFrame, releaseAllScriptWaiters } from '../scriptClock'
+import { MEMORY } from '../Scripts/Script/handlers'
 
 const ScriptClock = () => {
+  const lastMovieFrameRef = useRef<number>(undefined)
+
   useFrame((_, delta) => {
     if (useGlobalStore.getState().isCardGameActive) {
       return
     }
-    advanceScriptClock(delta)
+
+    const { frame, isFieldMovieMode, playingMovie } = useMovieStore.getState()
+    if (isFieldMovieMode) {
+      MEMORY[80] = frame
+    }
+
+    if (!playingMovie) {
+      lastMovieFrameRef.current = undefined
+      advanceScriptClock(delta)
+      return
+    }
+    if (frame === lastMovieFrameRef.current) {
+      return
+    }
+    lastMovieFrameRef.current = frame
+    advanceScriptClockToMovieFrame()
   })
 
   useEffect(() => {

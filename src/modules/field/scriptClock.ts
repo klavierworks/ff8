@@ -30,14 +30,25 @@ const releaseDueWaiters = () => {
   dueWaiters.forEach((waiter) => waiter.resolve())
 }
 
+const stepScriptClock = () => {
+  currentFrame += 1
+  releaseDueWaiters()
+}
+
 export const advanceScriptClock = (delta: number) => {
   accumulatedSeconds = Math.min(accumulatedSeconds + delta, MAX_ACCUMULATED_SECONDS)
   if (accumulatedSeconds < SECONDS_PER_FRAME) {
     return
   }
   accumulatedSeconds -= SECONDS_PER_FRAME
-  currentFrame += 1
-  releaseDueWaiters()
+  stepScriptClock()
+}
+
+// While a movie plays the engine's field loop waits on the video decoder, so
+// scripts tick once per movie frame (15 Hz for the disc movies) instead of at 30 Hz.
+export const advanceScriptClockToMovieFrame = () => {
+  accumulatedSeconds = 0
+  stepScriptClock()
 }
 
 export const waitForScriptFrames = (frames: number) =>

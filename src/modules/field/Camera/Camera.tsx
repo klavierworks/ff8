@@ -1,5 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
 import { clamp } from 'three/src/math/MathUtils.js'
 
@@ -7,10 +7,10 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../constants/constants'
 import { CONTROLS_MAP } from '../../../constants/controls'
 import LerpValue from '../../../LerpValue'
 import useGlobalStore from '../../../store'
-import { vectorToFloatingPoint } from '../../../utils'
 import { FieldData } from '../Field'
+import { movieController } from '../movieController'
 import useScrollTransition from '../useScrollTransition'
-import { calculateFOV, getBoundaries, getCameraDirections, getCameraRangeIndex } from './cameraUtils'
+import { applyFieldCamera, getBoundaries, getCameraDirections, getCameraRangeIndex } from './cameraUtils'
 import Focus from './Focus/Focus'
 import useScreenShake from './useScreenShake'
 
@@ -43,57 +43,28 @@ const Camera = ({ data }: CameraProps) => {
 
   const isDebugMode = useGlobalStore((state) => state.isDebugMode)
   useEffect(() => {
-    const { camera_axis, camera_position, camera_zoom } = cameras[activeCameraId]
-
-    camera.far = 100
-    moveableCamera.far = 100
-    camera.near = 0.000001
-    moveableCamera.near = 0.000001
-
-    const camAxisX = vectorToFloatingPoint(camera_axis[0])
-    const camAxisY = vectorToFloatingPoint(camera_axis[1]).negate()
-    const camAxisZ = vectorToFloatingPoint(camera_axis[2])
-
-    const camPos = vectorToFloatingPoint(new Vector3(...camera_position))
-    camPos.y = -camPos.y
-
-    const tx = -(camPos.x * camAxisX.x + camPos.y * camAxisY.x + camPos.z * camAxisZ.x)
-    const ty = -(camPos.x * camAxisX.y + camPos.y * camAxisY.y + camPos.z * camAxisZ.y)
-    const tz = -(camPos.x * camAxisX.z + camPos.y * camAxisY.z + camPos.z * camAxisZ.z)
-
-    const lookAtTarget = new Vector3(tx + camAxisZ.x, ty + camAxisZ.y, tz + camAxisZ.z)
-
-    camera.position.set(tx, ty, tz)
-    moveableCamera.position.set(tx, ty, tz)
-
-    camera.up.set(camAxisY.x, camAxisY.y, camAxisY.z)
-    moveableCamera.up.set(camAxisY.x, camAxisY.y, camAxisY.z)
-
-    camera.lookAt(lookAtTarget)
-    moveableCamera.lookAt(lookAtTarget)
-
-    camera.fov = calculateFOV(camera_zoom, SCREEN_HEIGHT)
-    moveableCamera.fov = camera.fov
-
-    camera.updateProjectionMatrix()
-    moveableCamera.updateProjectionMatrix()
-
-    const direction = new Vector3(0, 0, -1)
-    direction.applyQuaternion(new Quaternion().setFromEuler(camera.rotation))
-
-    const { rightVector, upVector } = getCameraDirections(camera)
-
-    camera.userData = {
-      forwardAxis: camAxisZ.clone(),
-      initialDirection: direction.clone(),
-      initialPosition: camera.position.clone(),
-      initialTargetPosition: lookAtTarget.clone(),
-      rightAxis: rightVector.clone(),
-      upAxis: upVector.clone(),
-    }
-
-    setInitialCameraTargetPosition(lookAtTarget.clone())
+    const lookAtTarget = applyFieldCamera(camera, moveableCamera, cameras[activeCameraId])
+    setInitialCameraTargetPosition(lookAtTarget)
   }, [activeCameraId, camera, cameras, data, isDebugMode, moveableCamera])
+
+  const lastMovieCameraRef = useRef<FieldData['cameras'][number]>(undefined)
+  const applyMovieCamera = () => {
+    const movieCamera = movieController.getMovieCamera()
+    if (!movieCamera) {
+      if (lastMovieCameraRef.current) {
+        lastMovieCameraRef.current = undefined
+        applyFieldCamera(camera, moveableCamera, cameras[activeCameraId])
+      }
+      return false
+    }
+    if (movieCamera !== lastMovieCameraRef.current) {
+      lastMovieCameraRef.current = movieCamera
+      applyFieldCamera(camera, moveableCamera, movieCamera)
+      camera.clearViewOffset()
+      moveableCamera.clearViewOffset()
+    }
+    return true
+  }
 
   const boundaries = useMemo(
     () => getBoundaries(cameraRanges[getCameraRangeIndex(activeCameraId)], limits.screenRange),
@@ -101,6 +72,10 @@ const Camera = ({ data }: CameraProps) => {
   )
 
   useFrame(({ scene }) => {
+    if (applyMovieCamera()) {
+      return
+    }
+
     const focusObject = scene.getObjectByName('focus')
 
     if (!initialCameraTargetPosition || !focusObject) {
