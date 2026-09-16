@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { DoubleSide, Group, NoBlending, Scene, Vector3 } from 'three'
 
 import { PSX_BLEND_HALF, PSX_BLEND_MODES, PSX_HALF_OPACITY } from '../../../constants/blending'
+import { PARTICLE_RENDER_ORDER } from '../../../constants/depth'
 import useGlobalStore from '../../../store'
 import { floatingPointToNumber } from '../../../utils'
 import { getScriptFrame } from '../scriptClock'
@@ -10,7 +11,6 @@ import useFieldSprite from '../useFieldSprite'
 import { createParticleGroups, disposeParticleGroups, writeParticleGroups } from './particleGeometry'
 import { createParticleSimulation, ParticleData, stepParticleSimulation } from './particleSimulation'
 
-const RENDER_ORDER = 25
 const MAX_FRAMES_PER_TICK = 4
 const ALPHA_TEST = 0.1
 const FIELD_ENTRY_FRAMES = 30
@@ -76,7 +76,7 @@ const Particles = ({ data, fieldId }: ParticlesProps) => {
   return (
     <group name="particles">
       {groups.map((group) => (
-        <mesh frustumCulled={false} geometry={group.geometry} key={group.blendMode} renderOrder={RENDER_ORDER}>
+        <mesh frustumCulled={false} geometry={group.geometry} key={group.blendMode} renderOrder={PARTICLE_RENDER_ORDER}>
           <meshBasicMaterial
             alphaTest={ALPHA_TEST}
             map={texture}

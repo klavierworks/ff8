@@ -1,3 +1,6 @@
-// ─── Field depth sorting ───
-
 export const VIEW_UNITS_PER_DEPTH_SLOT = 4
+export const DEPTH_SLOT_COUNT = 4096
+
+export const BACKGROUND_RENDER_ORDER = 100
+export const PARTICLE_RENDER_ORDER = BACKGROUND_RENDER_ORDER + DEPTH_SLOT_COUNT + 1
+export const SPARKLE_RENDER_ORDER = PARTICLE_RENDER_ORDER + 1

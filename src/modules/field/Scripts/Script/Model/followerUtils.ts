@@ -40,7 +40,9 @@ export const buildCongaSeedHistory = (
   let triangle = startTriangle ?? walkmeshController.getTriangleForPosition(position) ?? undefined
 
   for (let step = 0; step < stepCount; step++) {
-    const next = walkmeshController.getNextPositionOnWalkmesh(position, behindDirection, stepDistance, triangle)
+    const next = walkmeshController.getNextPositionOnWalkmesh(position, behindDirection, stepDistance, {
+      triangleId: triangle,
+    })
     history.unshift({
       angle: leaderAngle,
       isClimbingLadder: false,

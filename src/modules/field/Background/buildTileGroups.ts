@@ -1,8 +1,8 @@
-import { BufferAttribute, BufferGeometry } from 'three'
+import { Blending, BufferAttribute, BufferGeometry, NoBlending } from 'three'
 
 import { PSX_BLEND_MODES } from '../../../constants/blending'
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../constants/constants'
-import { VIEW_UNITS_PER_DEPTH_SLOT } from '../../../constants/depth'
+import { BACKGROUND_RENDER_ORDER, DEPTH_SLOT_COUNT, VIEW_UNITS_PER_DEPTH_SLOT } from '../../../constants/depth'
 import { numberToFloatingPoint } from '../../../utils'
 import { getLayerIdFromTile, TILE_PADDING, TILE_SIZE, TILES_PER_COLUMN } from './tileUtils'
 
@@ -70,6 +70,16 @@ const buildGroupGeometry = (groupTiles: Tile[], atlasWidth: number, atlasHeight:
 // The tile record's layer byte is twice the parallax slot index the scroll opcodes address.
 const getSlotFromLayerID = (layerID: number) => layerID / 2
 
+const getNearestDepthSlot = (groupTiles: Tile[]) =>
+  groupTiles.reduce((nearest, tile) => Math.min(nearest, tile.Z), DEPTH_SLOT_COUNT)
+
+const getRenderOrder = (blendType: Blending, nearestDepthSlot: number) => {
+  if (blendType === NoBlending) {
+    return BACKGROUND_RENDER_ORDER
+  }
+  return BACKGROUND_RENDER_ORDER + 1 + (DEPTH_SLOT_COUNT - nearestDepthSlot)
+}
+
 export const buildTileGroups = (
   tiles: Tile[],
   atlasWidth: number,
@@ -90,14 +100,15 @@ export const buildTileGroups = (
     const slot = getSlotFromLayerID(sample.layerID)
     const wrap = layerWrap[slot]
     const { geometry, tileDepths, tilePositions } = buildGroupGeometry(groupTiles, atlasWidth, atlasHeight)
+    const blendType = PSX_BLEND_MODES[sample.blendType as keyof typeof PSX_BLEND_MODES]
 
     return {
-      blendType: PSX_BLEND_MODES[sample.blendType as keyof typeof PSX_BLEND_MODES],
+      blendType,
       geometry,
       id,
-      layerID: sample.layerID,
       parameter: sample.parameter === 255 ? -1 : sample.parameter,
       renderID: slot,
+      renderOrder: getRenderOrder(blendType, getNearestDepthSlot(groupTiles)),
       shouldWrap: wrap?.isEnabled === true,
       state: sample.state,
       tileDepths,
@@ -107,12 +118,7 @@ export const buildTileGroups = (
     }
   })
 
-  return layers.sort((a, b) => {
-    if (a.layerID !== b.layerID) {
-      return a.layerID - b.layerID
-    }
-    return a.parameter - b.parameter
-  })
+  return layers.sort((a, b) => a.renderOrder - b.renderOrder)
 }
 
 // sub_475480 @ 0x475966: a tile that falls outside the screen-sized clip window is shifted by

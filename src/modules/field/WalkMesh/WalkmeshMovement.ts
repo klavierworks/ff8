@@ -1,21 +1,50 @@
 import { BufferGeometry, Mesh, Object3D, Plane, Triangle, Vector3 } from 'three'
 
+import { DEFAULT_PUSH_RADIUS } from '../../../constants/entities'
 import useGlobalStore from '../../../store'
+import { numberToFloatingPoint } from '../../../utils'
 
 // ─── Walkmesh wall-slide steering ───
 const MAX_SLIDE_ITERATIONS = 16
 const MAX_TRAVERSE_CROSSINGS = 8
 const FLANK_PROBE_ANGLE = Math.PI / 4 // 45° = 32/256 of a revolution
 const STEER_NUDGE_ANGLE = Math.PI / 16 // 11.25° = 8/256 of a revolution
+const DEFAULT_BODY_RADIUS = numberToFloatingPoint(DEFAULT_PUSH_RADIUS)
 
 const _heading = new Vector3()
 const _flank = new Vector3()
+const _destination = new Vector3()
 const _probe = new Vector3()
 const _up = new Vector3(0, 0, 1)
 
 export type WalkmeshStep = {
   position: Vector3
   triangleId: null | number
+}
+
+export type WalkmeshStepOptions = {
+  bodyRadius?: number
+  isAllowedToCrossBlockedTriangles?: boolean
+  triangleId?: number
+}
+
+type WallProbe = {
+  isBlocked: boolean
+  triangleId: number
+  turnSign: number
+  z: number
+}
+
+const getWallTurnSign = (vertices: Vector3[], crossedEdge: number, probeDirection?: Vector3) => {
+  if (!probeDirection) {
+    return -1
+  }
+
+  const start = vertices[crossedEdge]
+  const end = vertices[(crossedEdge + 1) % 3]
+  const alignment = (end.x - start.x) * probeDirection.x + (end.y - start.y) * probeDirection.y
+
+  return alignment < 0 ? 1 : -1
 }
 
 type PathNode = {
@@ -136,11 +165,11 @@ class WalkmeshMovementController {
     currentPosition: Vector3,
     moveDirection: Vector3,
     moveDistance: number,
-    currentTriangleId?: number,
-    isAllowedToCrossBlockedTriangles = false,
+    options: WalkmeshStepOptions = {},
   ): WalkmeshStep {
+    const { bodyRadius = DEFAULT_BODY_RADIUS, isAllowedToCrossBlockedTriangles = false } = options
     const triangleId =
-      currentTriangleId ??
+      options.triangleId ??
       this.getTriangleForPosition(currentPosition, undefined, isAllowedToCrossBlockedTriangles) ??
       undefined
     if (triangleId === undefined) {
@@ -154,53 +183,45 @@ class WalkmeshMovementController {
     }
     _heading.normalize()
 
-    const fromX = currentPosition.x
-    const fromY = currentPosition.y
+    let isStepClear = false
+    for (let iteration = 0; iteration < MAX_SLIDE_ITERATIONS && !isStepClear; iteration++) {
+      _destination.copy(_heading).multiplyScalar(moveDistance).add(currentPosition).setZ(0)
 
-    // The original's convergent slide: if the path dead-ahead is clear, go
-    // straight; otherwise rotate the heading by ±11.25° toward whichever ±45°
-    // flank is open and re-probe, converging on the wall tangent. Steering only
-    // engages once the way ahead is blocked, so a clear run (e.g. the train on
-    // its rails) is never nudged off course.
-    for (let iteration = 0; iteration < MAX_SLIDE_ITERATIONS; iteration++) {
-      if (
-        !this.traverseToTarget(
-          triangleId,
-          fromX + _heading.x * moveDistance,
-          fromY + _heading.y * moveDistance,
-          isAllowedToCrossBlockedTriangles,
-        ).isBlocked
-      ) {
+      const centre = this.probeBodyRadius(triangleId, bodyRadius, 0, isAllowedToCrossBlockedTriangles)
+      const anticlockwise = this.probeBodyRadius(
+        triangleId,
+        bodyRadius,
+        FLANK_PROBE_ANGLE,
+        isAllowedToCrossBlockedTriangles,
+      )
+      const clockwise = this.probeBodyRadius(
+        triangleId,
+        bodyRadius,
+        -FLANK_PROBE_ANGLE,
+        isAllowedToCrossBlockedTriangles,
+      )
+
+      isStepClear = !centre.isBlocked && !anticlockwise.isBlocked && !clockwise.isBlocked
+      if (isStepClear) {
+        break
+      }
+      if (anticlockwise.isBlocked && clockwise.isBlocked) {
         break
       }
 
-      _flank.copy(_heading).applyAxisAngle(_up, FLANK_PROBE_ANGLE)
-      const isLeftBlocked = this.traverseToTarget(
-        triangleId,
-        fromX + _flank.x * moveDistance,
-        fromY + _flank.y * moveDistance,
-        isAllowedToCrossBlockedTriangles,
-      ).isBlocked
-      _flank.copy(_heading).applyAxisAngle(_up, -FLANK_PROBE_ANGLE)
-      const isRightBlocked = this.traverseToTarget(
-        triangleId,
-        fromX + _flank.x * moveDistance,
-        fromY + _flank.y * moveDistance,
-        isAllowedToCrossBlockedTriangles,
-      ).isBlocked
-
-      // Boxed in on both flanks (dead-end / head-on into a wall): stop — the
-      // commit below no-ops because the heading is still blocked.
-      if (isLeftBlocked && isRightBlocked) {
-        break
+      if (anticlockwise.isBlocked) {
+        _heading.applyAxisAngle(_up, -STEER_NUDGE_ANGLE)
+      } else if (clockwise.isBlocked) {
+        _heading.applyAxisAngle(_up, STEER_NUDGE_ANGLE)
+      } else {
+        _heading.applyAxisAngle(_up, centre.turnSign * STEER_NUDGE_ANGLE)
       }
-      _heading.applyAxisAngle(_up, isRightBlocked ? STEER_NUDGE_ANGLE : -STEER_NUDGE_ANGLE)
     }
 
-    const finalX = fromX + _heading.x * moveDistance
-    const finalY = fromY + _heading.y * moveDistance
+    const finalX = currentPosition.x + _heading.x * moveDistance
+    const finalY = currentPosition.y + _heading.y * moveDistance
     const destination = this.traverseToTarget(triangleId, finalX, finalY, isAllowedToCrossBlockedTriangles)
-    if (destination.isBlocked) {
+    if (!isStepClear || destination.isBlocked) {
       return { position: currentPosition.clone(), triangleId }
     }
     return { position: new Vector3(finalX, finalY, destination.z), triangleId: destination.triangleId }
@@ -762,6 +783,25 @@ class WalkmeshMovementController {
 
     return optimized
   }
+  private probeBodyRadius(
+    triangleId: number,
+    bodyRadius: number,
+    flankAngle: number,
+    isAllowedToCrossBlockedTriangles: boolean,
+  ): WallProbe {
+    _flank.copy(_heading)
+    if (flankAngle !== 0) {
+      _flank.applyAxisAngle(_up, flankAngle)
+    }
+
+    return this.traverseToTarget(
+      triangleId,
+      _destination.x + _flank.x * bodyRadius,
+      _destination.y + _flank.y * bodyRadius,
+      isAllowedToCrossBlockedTriangles,
+      _flank,
+    )
+  }
 
   private smoothPath(trianglePath: number[], start: Vector3, end: Vector3): Vector3[] {
     if (trianglePath.length === 0) {
@@ -800,22 +840,19 @@ class WalkmeshMovementController {
     return this.optimizePath(path, trianglePath)
   }
 
-  // Walk from the current triangle toward an XY target, hopping
-  // across each edge the target lies beyond into that edge's neighbour. A crossed
-  // edge with no walkable neighbour is a wall (blocked). Stays edge-local, so it
-  // never teleports onto a different surface that merely overlaps in XY (bridges).
   private traverseToTarget(
     fromTriangleId: number,
     toX: number,
     toY: number,
     isAllowedToCrossBlockedTriangles = false,
-  ): { isBlocked: boolean; triangleId: number; z: number } {
+    probeDirection?: Vector3,
+  ): WallProbe {
     let triangleId = fromTriangleId
 
     for (let crossing = 0; crossing < MAX_TRAVERSE_CROSSINGS; crossing++) {
       const triangle = this.triangleCache.get(triangleId)
       if (!triangle) {
-        return { isBlocked: true, triangleId: fromTriangleId, z: 0 }
+        return { isBlocked: true, triangleId: fromTriangleId, turnSign: -1, z: 0 }
       }
 
       const vertices = [triangle.a, triangle.b, triangle.c]
@@ -835,17 +872,27 @@ class WalkmeshMovementController {
       }
 
       if (crossedEdge === -1) {
-        return { isBlocked: false, triangleId, z: this.getTriangleZAtPosition(_probe.set(toX, toY, 0), triangle) }
+        return {
+          isBlocked: false,
+          triangleId,
+          turnSign: -1,
+          z: this.getTriangleZAtPosition(_probe.set(toX, toY, 0), triangle),
+        }
       }
 
       const neighbor = this.edgeNeighbors.get(triangleId)?.[crossedEdge] ?? -1
       if (neighbor < 0 || (!isAllowedToCrossBlockedTriangles && this.isTriangleLocked(neighbor))) {
-        return { isBlocked: true, triangleId, z: this.getTriangleZAtPosition(_probe.set(toX, toY, 0), triangle) }
+        return {
+          isBlocked: true,
+          triangleId,
+          turnSign: getWallTurnSign(vertices, crossedEdge, probeDirection),
+          z: this.getTriangleZAtPosition(_probe.set(toX, toY, 0), triangle),
+        }
       }
       triangleId = neighbor
     }
 
-    return { isBlocked: true, triangleId, z: 0 }
+    return { isBlocked: true, triangleId, turnSign: -1, z: 0 }
   }
   private trianglesIntersect(triangle1: Triangle, triangle2: Triangle): boolean {
     const vertices1 = [triangle1.a, triangle1.b, triangle1.c]

@@ -97,9 +97,9 @@ declare global {
     blendType: Blending
     geometry: BufferGeometry
     id: string
-    layerID: number
     parameter: number
     renderID: number
+    renderOrder: number
     shouldWrap: boolean
     state: number
     tileDepths: Float32Array

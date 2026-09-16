@@ -2,6 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import { AdditiveBlending, DoubleSide, Mesh, Scene, Vector3 } from 'three'
 
+import { SPARKLE_RENDER_ORDER } from '../../../../../../constants/depth'
 import { SPARKLE_COLOR_RAMPS } from '../../../../../../constants/drawPoints'
 import { floatingPointToNumber } from '../../../../../../utils'
 import { getScriptFrame } from '../../../../scriptClock'
@@ -68,7 +69,7 @@ const Sparkles = ({ burstKey, drawPointState }: SparklesProps) => {
   })
 
   return (
-    <mesh frustumCulled={false} geometry={ribbons.geometry} ref={meshRef} renderOrder={100}>
+    <mesh frustumCulled={false} geometry={ribbons.geometry} ref={meshRef} renderOrder={SPARKLE_RENDER_ORDER}>
       <meshBasicMaterial blending={AdditiveBlending} depthWrite={false} side={DoubleSide} transparent vertexColors />
     </mesh>
   )

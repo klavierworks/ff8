@@ -3,6 +3,7 @@ import { create } from 'zustand'
 
 import type WalkmeshMovementController from '../../../WalkMesh/WalkmeshMovement'
 
+import { DEFAULT_PUSH_RADIUS } from '../../../../../constants/entities'
 import PromiseSignal from '../../../../../PromiseSignal'
 import { framesToSeconds, TARGET_FPS } from '../../../../../timing'
 import { floatingPointToNumber, numberToFloatingPoint } from '../../../../../utils'
@@ -104,6 +105,7 @@ const applyTurnRateLimit = (turn: Turn, desiredHeading: number, limitPerFrame: n
 
 const createMovementController = (id: number, walkmeshController: WalkmeshMovementController) => {
   const { getState, setState, subscribe } = create(() => ({
+    bodyRadius: DEFAULT_PUSH_RADIUS,
     hasBeenPlaced: false,
     hasMoved: false,
     id,
@@ -190,6 +192,12 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
   const setMovementSpeed = (speed: number) => {
     setState({
       movementSpeed: speed,
+    })
+  }
+
+  const setBodyRadius = (radius: number) => {
+    setState({
+      bodyRadius: radius,
     })
   }
 
@@ -701,13 +709,11 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
       } else {
         const { heading } = updateTurn(positionGoal, facingAngle, delta)
         const direction = getDirectionForAngle(heading)
-        const step = walkmeshController.getNextPositionOnWalkmesh(
-          currentPosition,
-          direction,
-          maxDistance,
-          getState().position.walkmeshTriangle ?? undefined,
-          position.isAllowedToCrossBlockedTriangles,
-        )
+        const step = walkmeshController.getNextPositionOnWalkmesh(currentPosition, direction, maxDistance, {
+          bodyRadius: numberToFloatingPoint(getState().bodyRadius),
+          isAllowedToCrossBlockedTriangles: position.isAllowedToCrossBlockedTriangles,
+          triangleId: getState().position.walkmeshTriangle ?? undefined,
+        })
         currentPosition.copy(step.position)
         if (step.triangleId !== null && step.triangleId !== getState().position.walkmeshTriangle) {
           setState({
@@ -796,6 +802,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
     finishLadderSegment('completed')
 
     setState((state) => ({
+      bodyRadius: DEFAULT_PUSH_RADIUS,
       hasBeenPlaced: false,
       hasMoved: false,
       isClimbingLadder: false,
@@ -877,6 +884,7 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
     refreshWalkmeshTriangle,
     reset,
     resume,
+    setBodyRadius,
     setHasMoved,
     setIsClimbingLadder,
     setLadderPosition,

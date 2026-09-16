@@ -1852,11 +1852,12 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       isPushable: true,
     })
   },
-  PUSHRADIUS: ({ setState, STACK }) => {
+  PUSHRADIUS: ({ movementController, setState, STACK }) => {
     const radius = STACK.pop() as number
     setState({
       pushRadius: radius,
     })
+    movementController.setBodyRadius(radius)
   },
   RAMESW: async ({ STACK }) => {
     const y = STACK.pop() as number

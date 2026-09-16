@@ -5,7 +5,7 @@ import { Object3D, PerspectiveCamera, Scene, Vector3 } from 'three'
 import type WalkmeshMovementController from '../../../WalkMesh/WalkmeshMovement'
 
 import useGlobalStore from '../../../../../store'
-import { checkForIntersections } from '../../../../../utils'
+import { checkForIntersections, numberToFloatingPoint } from '../../../../../utils'
 import { createAnimationController } from '../AnimationController/AnimationController'
 import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
@@ -234,14 +234,17 @@ const useControls = ({
       const moveDistance = speed * delta
       desiredPosition.copy(currentPosition).add(meshForward.multiplyScalar(moveDistance))
 
+      const pushRadius = useScriptStateStore.getState().pushRadius
       const { position: newPosition, triangleId } = walkmeshController.getNextPositionOnWalkmesh(
         POSITION_VECTOR.set(currentPosition.x, currentPosition.y, currentPosition.z),
         meshForward,
         moveDistance,
-        movementController.getState().position.walkmeshTriangle ?? undefined,
+        {
+          bodyRadius: numberToFloatingPoint(pushRadius),
+          triangleId: movementController.getState().position.walkmeshTriangle ?? undefined,
+        },
       )
 
-      const pushRadius = useScriptStateStore.getState().pushRadius
       const touchedEntities = getInteractiveEntities(scene).filter((entity) =>
         isWithinPushRange(entity, newPosition, pushRadius),
       )

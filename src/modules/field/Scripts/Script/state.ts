@@ -3,6 +3,7 @@ import type { Howl } from 'howler'
 import { Vector3 } from 'three'
 import { create, StoreApi, UseBoundStore } from 'zustand'
 
+import { DEFAULT_PUSH_RADIUS, DEFAULT_TALK_RADIUS } from '../../../../constants/entities'
 import { Script } from '../types'
 
 export type ScriptState = {
@@ -103,7 +104,7 @@ const createScriptState = (script: Script) => {
 
     pendingBackgroundMusic: undefined,
     pendingBackgroundMusicSrc: undefined,
-    pushRadius: 48,
+    pushRadius: DEFAULT_PUSH_RADIUS,
 
     rootTranslation: 0,
 
@@ -111,7 +112,7 @@ const createScriptState = (script: Script) => {
     shadeLevel: 96,
 
     spuValue: 0,
-    talkRadius: 128,
+    talkRadius: DEFAULT_TALK_RADIUS,
 
     winSize: {},
   }))

@@ -19,7 +19,7 @@ const Layer = ({ layer, texture }: LayerProps) => {
   const meshRef = useRef<Mesh>(null)
   const lastWrite = useRef({ centerX: NaN, centerY: NaN, fovHalfTan: 0, length: 0, offsetX: NaN, offsetY: NaN })
 
-  const { parameter, renderID, state } = layer
+  const { parameter, renderID, renderOrder, state } = layer
 
   const camera = useThree(({ scene }) => scene.getObjectByName('sceneCamera') as PerspectiveCamera)
   const layerScroll = useCameraScroll('layer', renderID)
@@ -114,7 +114,7 @@ const Layer = ({ layer, texture }: LayerProps) => {
   })
 
   return (
-    <mesh frustumCulled={false} geometry={layer.geometry} ref={meshRef} renderOrder={20 - layer.layerID}>
+    <mesh frustumCulled={false} geometry={layer.geometry} ref={meshRef} renderOrder={renderOrder}>
       <meshBasicMaterial
         alphaTest={0.1}
         blending={layer.blendType}
