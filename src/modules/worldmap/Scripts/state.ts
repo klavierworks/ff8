@@ -1,4 +1,9 @@
-import { COMPANION_ENTITY_TYPES, GARDEN_ENTITY_TYPES, RAGNAROK_ENTITY_TYPE } from '../../../constants/worldmapEntities'
+import {
+  CHICOBO_ENTITY_TYPE,
+  CHOCOBO_ENTITY_TYPE,
+  GARDEN_ENTITY_TYPES,
+  RAGNAROK_ENTITY_TYPE,
+} from '../../../constants/worldmapEntities'
 import { TerrainTriangle } from '../terrain'
 import { isOnFootClass } from '../vehicleClasses'
 import { isCarEntityType } from '../vehicleEntities'
@@ -31,8 +36,7 @@ const createInitialScriptState = () => ({
   lastCombatSceneId: 0,
   locationTriangle: undefined as TerrainTriangle | undefined,
   looseCandidate: -1,
-  padCurrent: 0,
-  padPrevious: 0,
+  padPressed: 0,
   previousLocationIndex: 0,
   reservedSlots: [-1, -1, -1, -1, -1, -1, -1] as ReservedSlots,
   tightCandidate: -1,
@@ -55,8 +59,8 @@ let entities: readonly EntityRecord[] = []
 
 const RESERVED_SLOT_PREDICATES: readonly TypeCodePredicate[] = [
   isOnFootCode,
-  (code) => code === COMPANION_ENTITY_TYPES[0],
-  (code) => code === COMPANION_ENTITY_TYPES[1],
+  (code) => code === CHOCOBO_ENTITY_TYPE,
+  (code) => code === CHICOBO_ENTITY_TYPE,
   (code) => code === RAGNAROK_ENTITY_TYPE,
   isCarEntityType,
   (code) => code === GARDEN_ENTITY_TYPES[0],

@@ -20,6 +20,7 @@ export const ON_FOOT_TAG = 0
 export const SPAWN_YAW_SCALE = 16
 
 // ─── Frame order ───
+export const INPUT_LATCH_FRAME_PRIORITY = -2
 export const MOVEMENT_FRAME_PRIORITY = -1
 
 // ─── Character animation ───
@@ -31,6 +32,13 @@ export const IDLE_START_ROLL_MASK = 0xfe
 export const FLOURISH_HOLD_ROLL_MASK = 0xfc
 export const ROLL_THRESHOLD_STEP = 13
 export const SQUALL_MAX_ON_FOOT_TAG = 1
+
+// ─── Chocobo rider animation ───
+export const CLIP_RIDE_DISMOUNT = 4
+export const CLIP_RIDE_STAND = 5
+export const CLIP_RIDE_RUN = 6
+export const CLIP_RIDE_FLOURISH = 7
+export const RIDE_FLOURISH_ROLL_MASK = 0xfc
 
 // ─── Ragnarok flight ───
 export const RAGNAROK_BANK_SHIFT = 1
@@ -63,5 +71,7 @@ export const LANDING_SPOT_HEIGHT_TOLERANCE = 200
 
 // ─── Reserved entity slots ───
 export const PARTY_ENTITY_SLOT = 0
+export const CHOCOBO_ENTITY_SLOT = 1
+export const CHICOBO_ENTITY_SLOT = 2
 export const CAR_ENTITY_SLOT = 4
 export const GARDEN_ENTITY_SLOTS = [5, 6] as const

@@ -6,6 +6,7 @@ import { preloadCharaone } from '../charaoneAssets'
 import { isRidingState } from '../Trains/trainRide'
 import { isTrainClass } from '../vehicleClasses'
 import useWorldmapStore from '../worldmapStore'
+import ChocoboRider from './ChocoboRider/ChocoboRider'
 import { ON_FOOT_CHARAONE_SECTION } from './constants'
 import FlyingRagnarok from './FlyingRagnarok/FlyingRagnarok'
 import GroundVehicle from './GroundVehicle/GroundVehicle'
@@ -36,6 +37,7 @@ const Player = () => {
       )}
       <FlyingRagnarok />
       <GroundVehicle />
+      <ChocoboRider />
     </>
   )
 }

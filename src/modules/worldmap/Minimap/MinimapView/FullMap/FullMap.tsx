@@ -20,6 +20,7 @@ import {
 } from './fullMapUtils'
 import MapCursor from './MapCursor/MapCursor'
 import MapMarkers from './MapMarkers/MapMarkers'
+import useDestinationConfirm from './useDestinationConfirm'
 import useFullMapCursor from './useFullMapCursor'
 import useLocationLabel from './useLocationLabel'
 
@@ -41,7 +42,8 @@ const FullMap = ({ textures }: FullMapProps) => {
   )
   const vehicles = useMemo(collectVehicleMarkers, [])
   const cursorRef = useFullMapCursor(destinations)
-  useLocationLabel(cursorRef)
+  const labelRef = useLocationLabel(cursorRef)
+  useDestinationConfirm(cursorRef, labelRef)
 
   const backdropGeometry = useMemo(createBackdropGeometry, [])
   const backdropMaterial = useMemo(createBackdropMaterial, [])

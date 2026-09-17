@@ -1,5 +1,8 @@
+import { VEHICLE_IDS } from '../../../constants/vehicles'
 import {
   CAR_ACCESS_BIT,
+  CHOCOBO_ACCESS_BIT,
+  CHOCOBO_VELOCITY_SHIFT,
   GARDEN_ACCESS_BIT,
   GARDEN_HOVER_HIGHEST_PSX,
   GARDEN_HOVER_LOWEST_PSX,
@@ -11,7 +14,7 @@ import {
 } from '../../../constants/worldmapVehicles'
 import { ON_FOOT_ACCESS_BIT } from '../constants'
 import { selectOnFootTriangle, selectTopTriangle, TerrainTriangle } from '../terrain'
-import { SLIDE_PROBE_OFFSET_PSX } from './constants'
+import { SLIDE_PROBE_OFFSET_PSX, VELOCITY_INPUT_SHIFT } from './constants'
 import { GroundProfile, GroundStepRequest } from './groundStep'
 
 const selectReachableTriangle = (triangles: readonly TerrainTriangle[], request: GroundStepRequest) =>
@@ -22,6 +25,17 @@ export const ON_FOOT_GROUND: GroundProfile = {
   probeOffsetPsx: SLIDE_PROBE_OFFSET_PSX,
   selectTriangle: selectReachableTriangle,
 }
+
+export const CHOCOBO_GROUND: GroundProfile = {
+  accessBit: CHOCOBO_ACCESS_BIT,
+  probeOffsetPsx: SLIDE_PROBE_OFFSET_PSX,
+  selectTriangle: selectReachableTriangle,
+}
+
+export const getWalkerMotion = (vehicleId: number) =>
+  vehicleId === VEHICLE_IDS.CHOCOBO
+    ? { ground: CHOCOBO_GROUND, velocityShift: CHOCOBO_VELOCITY_SHIFT }
+    : { ground: ON_FOOT_GROUND, velocityShift: VELOCITY_INPUT_SHIFT }
 
 export const CAR_GROUND: GroundProfile = {
   accessBit: CAR_ACCESS_BIT,

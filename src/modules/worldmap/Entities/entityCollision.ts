@@ -2,7 +2,6 @@ import { MathUtils } from 'three'
 
 import {
   CHARACTER_FOOTPRINT,
-  COMPANION_ENTITY_TYPES,
   DRAW_POINT_ENTITY_TYPE,
   FIRST_WMSET_ENTITY_TYPE,
   FOOTPRINT_SHAPE_NONE,
@@ -13,6 +12,7 @@ import {
 } from '../../../constants/worldmapEntities'
 import { WORLD_DEPTH_PSX, WORLD_WIDTH_PSX } from '../constants'
 import { EntityRecord } from '../Scripts/state'
+import { isCompanionEntityType } from '../vehicleEntities'
 
 export type CollisionBox = {
   altitude: number
@@ -59,7 +59,7 @@ export const wrapDelta = (delta: number, size: number) => {
 const isEntityExcluded = (entity: EntityRecord, index: number, excludedIndices: readonly number[]) =>
   excludedIndices.includes(index) ||
   entity.typeCode === DRAW_POINT_ENTITY_TYPE ||
-  (COMPANION_ENTITY_TYPES as readonly number[]).includes(entity.typeCode)
+  isCompanionEntityType(entity.typeCode)
 
 const isHeightOverlapping = (box: CollisionBox, entity: EntityRecord, footprint: Footprint, reach: number) =>
   box.altitude - box.height <= entity.positionVerticalY + reach &&

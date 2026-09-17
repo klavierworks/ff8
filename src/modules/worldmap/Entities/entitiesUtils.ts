@@ -2,6 +2,7 @@ import { VEHICLE_IDS } from '../../../constants/vehicles'
 import {
   ALTERNATE_ENTITY_SUBTYPE,
   ALTERNATE_SUBTYPE_ENTITY_TYPE,
+  CHICOBO_ENTITY_TYPE,
   GARDEN_ENTITY_TYPES,
   LOOSE_CANDIDATE_DISTANCE,
   MAX_WORLDMAP_ENTITIES,
@@ -20,6 +21,7 @@ import { WorldPosition } from '../types'
 import { EntityPosition } from '../useSections'
 import { getEntityVehicleCategory, isGardenEntityType } from '../vehicleEntities'
 import {
+  hasChicoboOnWorldmap,
   readSavedCarEntityType,
   readSavedRagnarok,
   readSavedVehiclePosition,
@@ -78,6 +80,8 @@ const resolveSpawn = ({ positionIndex, typeCode }: RawSpawn, positions: readonly
   }
 }
 
+const isSpawnAllowed = ({ typeCode }: RawSpawn) => typeCode !== CHICOBO_ENTITY_TYPE || hasChicoboOnWorldmap(MEMORY)
+
 export const calculateEntityDistances = (entities: readonly EntityRecord[], playerX: number, playerZ: number) => {
   const psxX = worldXToPsx(playerX)
   const psxY = worldZToPsx(playerZ)
@@ -114,7 +118,12 @@ export const collectEntities = (
   positions: readonly EntityPosition[],
   position: WorldPosition,
 ) =>
-  [...collectSpawns(section, position).map((spawn) => resolveSpawn(spawn, positions)), buildSavedCarEntity()]
+  [
+    ...collectSpawns(section, position)
+      .filter(isSpawnAllowed)
+      .map((spawn) => resolveSpawn(spawn, positions)),
+    buildSavedCarEntity(),
+  ]
     .filter((entity): entity is EntityRecord => entity !== undefined)
     .slice(0, MAX_WORLDMAP_ENTITIES)
 

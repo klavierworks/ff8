@@ -11,8 +11,11 @@ import {
   MAX_CHANNEL_VOLUME,
   MINIMUM_RAMP_SECONDS,
   PAN_CENTRE,
-  PAN_RANGE,
+  PAN_INDEX_MASK,
+  PAN_INDEX_OFFSET,
+  PAN_TABLE,
   VOICE_SCALE_UNITY,
+  VOLUME_REGISTER_SCALE,
 } from './constants'
 import { decodeAdsr } from './decodeAdsr'
 import { getPlaybackRate } from './getPlaybackRate'
@@ -23,8 +26,15 @@ import { createNoiseBuffer, getNoisePlaybackRate } from './noiseSound'
 const VIBRATO_DEPTH_SCALE = 128
 const VIBRATO_NARROW_RANGE = 15 / 256
 
-const TREMOLO_DEPTH_SCALE = 256
-const PAN_OSCILLATION_DEPTH_SCALE = 256
+// Tremolo swings the part's own level by up to depth/128 of itself; pan oscillation moves the pan
+// index by up to `depth` steps, which the gain slope of the table's crossfade turns into level.
+const TREMOLO_DEPTH_SCALE = 128
+const PAN_CROSSFADE_START = PAN_CENTRE
+const PAN_CROSSFADE_CENTRE = PAN_CENTRE * 2
+const PAN_GAIN_PER_INDEX =
+  (PAN_TABLE[PAN_CROSSFADE_START] - PAN_TABLE[PAN_CROSSFADE_CENTRE]) /
+  (PAN_CROSSFADE_CENTRE - PAN_CROSSFADE_START) /
+  VOLUME_REGISTER_SCALE
 
 // The SPU multiplies the previous voice's output sample by sample; a detune send is the nearest
 // Web Audio has to that.
@@ -89,37 +99,58 @@ const getVibratoCents = (modulation: AkaoModulation) => {
 
 const getTremoloSwing = (modulation: AkaoModulation) => modulation.depth / TREMOLO_DEPTH_SCALE
 
-const getPanOscillationSwing = (modulation: AkaoModulation) => modulation.depth / PAN_OSCILLATION_DEPTH_SCALE
+const getPanOscillationSwing = (modulation: AkaoModulation) => modulation.depth * PAN_GAIN_PER_INDEX
 
 const getVoiceScaleGain = (volumeScale: number) =>
   volumeScale === 0 ? 1 : Math.min(1, volumeScale / VOICE_SCALE_UNITY)
 
-const getPanPosition = (value: number) => Math.max(-1, Math.min(1, (value - PAN_CENTRE) / PAN_RANGE))
+const connectOscillator = (output: AudioNode, target: AudioNode | AudioParam) => {
+  if (target instanceof AudioParam) {
+    output.connect(target)
+    return
+  }
+  output.connect(target)
+}
+
+const getPanIndex = (value: number) => (value + PAN_INDEX_OFFSET) & PAN_INDEX_MASK
+
+const getPanGain = (index: number) => (PAN_TABLE[index] ?? 0) / VOLUME_REGISTER_SCALE
 
 export const createAkaoVoice = ({ audioContext, dryBus, instruments, reverbBus }: AkaoVoiceOptions) => {
   const expressionGain = audioContext.createGain()
   const volumeGain = audioContext.createGain()
   const partVolumeGain = audioContext.createGain()
+  const tremoloGain = audioContext.createGain()
   const voiceScaleGain = audioContext.createGain()
-  const panner = audioContext.createStereoPanner()
+  const leftGain = audioContext.createGain()
+  const rightGain = audioContext.createGain()
+  const panOscillationInverter = audioContext.createGain()
+  const stereo = audioContext.createChannelMerger(2)
   const reverbSend = audioContext.createGain()
   const pitchModulationSend = audioContext.createGain()
 
   expressionGain.connect(volumeGain)
-  volumeGain.connect(partVolumeGain)
+  volumeGain.connect(tremoloGain)
+  tremoloGain.connect(partVolumeGain)
   partVolumeGain.connect(voiceScaleGain)
-  voiceScaleGain.connect(panner)
-  panner.connect(dryBus)
-  panner.connect(reverbSend)
+  voiceScaleGain.connect(leftGain)
+  voiceScaleGain.connect(rightGain)
+  leftGain.connect(stereo, 0, 0)
+  rightGain.connect(stereo, 0, 1)
+  panOscillationInverter.connect(leftGain.gain)
+  stereo.connect(dryBus)
+  stereo.connect(reverbSend)
   reverbSend.connect(reverbBus)
   reverbSend.gain.value = 0
+  panOscillationInverter.gain.value = -1
   pitchModulationSend.gain.value = 0
 
   const expression = createAutomatedParameter(expressionGain.gain)
   const volume = createAutomatedParameter(volumeGain.gain)
   const partVolume = createAutomatedParameter(partVolumeGain.gain)
   const voiceScale = createAutomatedParameter(voiceScaleGain.gain)
-  const pan = createAutomatedParameter(panner.pan)
+  const leftLevel = createAutomatedParameter(leftGain.gain)
+  const rightLevel = createAutomatedParameter(rightGain.gain)
   const reverbLevel = createAutomatedParameter(reverbSend.gain)
   const pitchModulationLevel = createAutomatedParameter(pitchModulationSend.gain)
 
@@ -241,7 +272,7 @@ export const createAkaoVoice = ({ audioContext, dryBus, instruments, reverbBus }
   const setOscillator = (
     current: AkaoOscillator | undefined,
     update: AkaoModulationUpdate,
-    target: AudioParam | undefined,
+    targets: readonly (AudioNode | AudioParam)[],
     getSwing: (modulation: AkaoModulation) => number,
   ) => {
     const { modulation, slide, tickSeconds, time } = update
@@ -258,9 +289,7 @@ export const createAkaoVoice = ({ audioContext, dryBus, instruments, reverbBus }
     current?.dispose()
     const oscillator = createAkaoOscillator(audioContext, modulation, time, modulation.delayTicks * tickSeconds)
     oscillator.depth.setValueAt(getSwing(modulation), time + oscillator.delaySeconds)
-    if (target) {
-      oscillator.output.connect(target)
-    }
+    targets.forEach((target) => connectOscillator(oscillator.output, target))
     return oscillator
   }
 
@@ -277,9 +306,13 @@ export const createAkaoVoice = ({ audioContext, dryBus, instruments, reverbBus }
     panOscillation?.dispose()
     expressionGain.disconnect()
     volumeGain.disconnect()
+    tremoloGain.disconnect()
     partVolumeGain.disconnect()
     voiceScaleGain.disconnect()
-    panner.disconnect()
+    leftGain.disconnect()
+    rightGain.disconnect()
+    panOscillationInverter.disconnect()
+    stereo.disconnect()
     reverbSend.disconnect()
     pitchModulationSend.disconnect()
   }
@@ -291,20 +324,31 @@ export const createAkaoVoice = ({ audioContext, dryBus, instruments, reverbBus }
     setNoise: (value) => {
       noise = value
     },
-    setPan: (value, time, rampSeconds) => pan.rampTo(getPanPosition(value), time, rampSeconds),
+    // Across the authored range both sides of the table are straight lines, so ramping each gain
+    // linearly follows the driver's stepped slide exactly.
+    setPan: (value, time, rampSeconds) => {
+      const index = getPanIndex(value)
+      leftLevel.rampTo(getPanGain(index), time, rampSeconds)
+      rightLevel.rampTo(getPanGain(index ^ PAN_INDEX_MASK), time, rampSeconds)
+    },
     setPanOscillation: (update) => {
-      panOscillation = setOscillator(panOscillation, update, panner.pan, getPanOscillationSwing)
+      panOscillation = setOscillator(
+        panOscillation,
+        update,
+        [panOscillationInverter, rightGain.gain],
+        getPanOscillationSwing,
+      )
     },
     setPartVolume: (value, time, rampSeconds) => partVolume.rampTo(value / MAX_CHANNEL_VOLUME, time, rampSeconds),
     setPitchModulationEnabled: (isEnabled, time) =>
       pitchModulationLevel.rampTo(isEnabled ? PITCH_MODULATION_CENTS : 0, time, 0),
     setReverbEnabled: (isEnabled, time) => reverbLevel.rampTo(isEnabled ? 1 : 0, time, 0),
     setTremolo: (update) => {
-      tremolo = setOscillator(tremolo, update, volumeGain.gain, getTremoloSwing)
+      tremolo = setOscillator(tremolo, update, [tremoloGain.gain], getTremoloSwing)
     },
     // A vibrato oscillator is picked up by each note's own detune, in cents, as the note starts.
     setVibrato: (update) => {
-      vibrato = setOscillator(vibrato, update, undefined, getVibratoCents)
+      vibrato = setOscillator(vibrato, update, [], getVibratoCents)
       if (vibrato && soundingNote) {
         vibrato.output.connect(soundingNote.source.detune)
       }
@@ -313,5 +357,5 @@ export const createAkaoVoice = ({ audioContext, dryBus, instruments, reverbBus }
     slidePitch,
   }
 
-  return { disconnect, modulationOutput: panner, pitchModulationInput: pitchModulationSend, stop, voice }
+  return { disconnect, modulationOutput: voiceScaleGain, pitchModulationInput: pitchModulationSend, stop, voice }
 }

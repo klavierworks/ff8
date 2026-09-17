@@ -66,7 +66,7 @@ const VEHICLE_CLASS_MATCHERS: Partial<Record<number, VehicleClassMatcher>> = {
   133: (vehicleId) => isVehicleInRange(vehicleId, 34, VEHICLE_IDS.CAR_CLASS_MAX),
   [VEHICLE_IDS.BALAMB_GARDEN]: (vehicleId) => vehicleId === VEHICLE_IDS.BALAMB_GARDEN,
   [VEHICLE_IDS.BIKE]: (vehicleId) => vehicleId === VEHICLE_IDS.BIKE,
-  [VEHICLE_IDS.CACTUAR]: (vehicleId) => vehicleId === VEHICLE_IDS.CACTUAR,
+  [VEHICLE_IDS.CHOCOBO]: (vehicleId) => vehicleId === VEHICLE_IDS.CHOCOBO,
   [VEHICLE_IDS.ON_FOOT]: isOnFootCode,
   [VEHICLE_IDS.RAGNAROK]: (vehicleId) => vehicleId === VEHICLE_IDS.RAGNAROK,
 }
@@ -96,8 +96,6 @@ const isVehicleClass = (vehicleClass: number) => {
 
 const isWorldMapState = (state: number | undefined) => useWorldmapStore.getState().worldMapState === state
 
-const getPressedButtons = () => WORLDMAP_STATE.padCurrent & (WORLDMAP_STATE.padCurrent ^ WORLDMAP_STATE.padPrevious)
-
 const isButtonInputPassing = (buttons: number) => {
   if (WORLDMAP_STATE.isTileMode) {
     return true
@@ -105,7 +103,7 @@ const isButtonInputPassing = (buttons: number) => {
   if (WORLDMAP_STATE.isButtonInputConsumed) {
     return false
   }
-  const pressed = getPressedButtons()
+  const pressed = WORLDMAP_STATE.padPressed
   return buttons === ANY_BUTTON ? pressed !== 0 : (buttons & pressed) !== 0
 }
 

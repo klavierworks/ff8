@@ -25,8 +25,7 @@ const INTERIOR_ENTRANCES: Partial<Record<number, number>> = {
   [VEHICLE_IDS.RAGNAROK]: RAGNAROK_INTERIOR_ENTRANCE,
 }
 
-const isMenuButtonPressed = () =>
-  (WORLDMAP_STATE.padCurrent & (WORLDMAP_STATE.padCurrent ^ WORLDMAP_STATE.padPrevious) & WORLDMAP_PAD_BITS.menu) !== 0
+const isMenuButtonPressed = () => (WORLDMAP_STATE.padPressed & WORLDMAP_PAD_BITS.menu) !== 0
 
 const findInteriorEntrance = (vehicleId: number) => (isMenuButtonPressed() ? INTERIOR_ENTRANCES[vehicleId] : undefined)
 

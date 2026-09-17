@@ -3,13 +3,14 @@ import { useRef } from 'react'
 import { Object3D, Vector3 } from 'three'
 
 import useGlobalStore from '../../../store'
+import { getPadPresses } from '../Controls/padPresses'
 import { WORLDMAP_STATE } from '../Scripts/state'
 import { getOnFootPsxHeight, psxHeightToWorldY, worldYToPsxHeight } from '../terrain'
 import { isStepBlockedByTrain } from '../Trains/trainCollision'
 import useScriptTick from '../useScriptTick'
 import useWorldmapStore, { WORLD_MAP_STATE_FREE_ROAM } from '../worldmapStore'
 import { MOVEMENT_FRAME_PRIORITY } from './constants'
-import { ON_FOOT_GROUND } from './groundProfiles'
+import { getWalkerMotion } from './groundProfiles'
 import { getPressedSlideSet, GroundStep, resolveGroundStep, SlideSet } from './groundStep'
 import { setMovementOutputs } from './movementState'
 import { isPadInputIgnored, OnFootInput, readOnFootInput } from './onFootInput'
@@ -19,7 +20,6 @@ type MovementMemory = {
   blockedTicks: number
   groundType: number | undefined
   lastSlideAnglePsx: number
-  padButtons: number
   preferredSet: SlideSet
 }
 
@@ -27,7 +27,6 @@ const INITIAL_MEMORY: MovementMemory = {
   blockedTicks: 0,
   groundType: undefined,
   lastSlideAnglePsx: 0,
-  padButtons: 0,
   preferredSet: 0,
 }
 
@@ -72,22 +71,23 @@ const applyStep = (position: Vector3, step: GroundStep) => {
 
 const runMovementTick = (scene: Object3D, memory: MovementMemory, tick: number): MovementMemory => {
   const { characterPosition: position, fieldDirection } = useGlobalStore.getState()
-  const { camera, controls } = useWorldmapStore.getState()
+  const { camera, vehicleId } = useWorldmapStore.getState()
   if (!position) {
     return memory
   }
 
+  const motion = getWalkerMotion(vehicleId)
   const input = readInputForTick(tick)
-  const velocity = calculateOnFootVelocity(input, camera.yawRadians)
+  const velocity = calculateOnFootVelocity(input, camera.yawRadians, motion.velocityShift)
   const heading = calculateHeading(fieldDirection, input, velocity, memory.lastSlideAnglePsx)
-  const preferredSet = getPressedSlideSet(controls.padButtons, memory.padButtons, memory.preferredSet)
+  const preferredSet = getPressedSlideSet(getPadPresses(tick), memory.preferredSet)
 
   const resolvedStep = resolveGroundStep(scene, {
     blockedTicks: memory.blockedTicks,
     currentGroundType: memory.groundType,
     currentPsxY: worldYToPsxHeight(position.y),
     preferredSet,
-    profile: ON_FOOT_GROUND,
+    profile: motion.ground,
     velocity,
     x: position.x,
     z: position.z,
@@ -108,7 +108,7 @@ const runMovementTick = (scene: Object3D, memory: MovementMemory, tick: number):
     tick,
   })
 
-  return { ...updateCollisionMemory(memory, preferredSet, step), padButtons: controls.padButtons }
+  return updateCollisionMemory(memory, preferredSet, step)
 }
 
 const useMovement = () => {

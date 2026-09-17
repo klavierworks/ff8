@@ -10,10 +10,13 @@ export const PSX_VOLUME_MASK = 0x7f
 
 export const MUSIC_BASE_VOLUME = 0.4
 
+export const AKAO_MUSIC_BASE_VOLUME = 0.8
+
 // ─── Audio: worldmap ───
 
 export const WORLDMAP_MUSIC_ID = 41
 export const RAGNAROK_MUSIC_ID = 89
+export const CHOCOBO_MUSIC_ID = 81
 export const RAGNAROK_MUSIC_START_MEASURE = 13
 export const WORLDMAP_MUSIC_CHANNEL = 0
 export const WORLDMAP_MUSIC_FADE_IN_FRAMES = 60

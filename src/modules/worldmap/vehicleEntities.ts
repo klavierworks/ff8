@@ -1,5 +1,10 @@
 import { VEHICLE_IDS } from '../../constants/vehicles'
-import { ENTITY_VEHICLE_CATEGORIES, GARDEN_ENTITY_TYPES, RAGNAROK_ENTITY_TYPE } from '../../constants/worldmapEntities'
+import {
+  COMPANION_ENTITY_TYPES,
+  ENTITY_VEHICLE_CATEGORIES,
+  GARDEN_ENTITY_TYPES,
+  RAGNAROK_ENTITY_TYPE,
+} from '../../constants/worldmapEntities'
 import { isCarClass } from './vehicleClasses'
 
 const CATEGORY_BY_TYPE_CODE: ReadonlyMap<number, number> = new Map(
@@ -9,6 +14,9 @@ const CATEGORY_BY_TYPE_CODE: ReadonlyMap<number, number> = new Map(
 )
 
 export const getEntityVehicleCategory = (typeCode: number) => CATEGORY_BY_TYPE_CODE.get(typeCode)
+
+export const isCompanionEntityType = (typeCode: number) =>
+  (COMPANION_ENTITY_TYPES as readonly number[]).includes(typeCode)
 
 export const isGardenEntityType = (typeCode: number) => (GARDEN_ENTITY_TYPES as readonly number[]).includes(typeCode)
 

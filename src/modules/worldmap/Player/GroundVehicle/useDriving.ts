@@ -10,6 +10,7 @@ import useWorldmapStore, { WORLD_MAP_STATE_FREE_ROAM } from '../../worldmapStore
 import { MOVEMENT_FRAME_PRIORITY } from '../constants'
 import {
   calculateHeadingStep,
+  calculateSpeedCap,
   DrivingCamera,
   readDrivingInput,
   stepVehicleVelocity,
@@ -68,7 +69,12 @@ const runDrivingTick = (scene: Object3D, position: Vector3, vehicle: GroundVehic
   const memory = getGroundVehicleState()
   const yaw = stepVehicleYaw(readHeading(), input.turn, camera, vehicle.driving)
 
-  const velocity = stepVehicleVelocity(memory.velocity, input.throttle, yaw, camera, vehicle.driving)
+  const velocity = stepVehicleVelocity(
+    memory.velocity,
+    input.throttle,
+    calculateSpeedCap(yaw, camera, vehicle.driving),
+    vehicle.driving,
+  )
   const preferredSet = getHeldSlideSet(padButtons, memory.preferredSet)
   const currentPsxY = worldYToPsxHeight(position.y)
   const step = resolveGroundStep(scene, {

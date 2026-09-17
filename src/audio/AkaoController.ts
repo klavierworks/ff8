@@ -1,4 +1,4 @@
-import { FULL_MUSIC_VOLUME, MUSIC_BASE_VOLUME, PSX_VOLUME_MASK } from '../constants/audio'
+import { AKAO_MUSIC_BASE_VOLUME, FULL_MUSIC_VOLUME, PSX_VOLUME_MASK } from '../constants/audio'
 import { framesToSeconds } from '../timing'
 import { type AkaoTrack, createAkaoTrack } from './akao/akaoTrack'
 import { type AkaoTrackData, hasAkaoTrack, loadAkaoTrack } from './akao/loadAkaoTrack'
@@ -58,7 +58,7 @@ const AkaoController = () => {
     if (!audio) {
       const context = new AudioContext()
       const masterGain = context.createGain()
-      masterGain.gain.value = MUSIC_BASE_VOLUME
+      masterGain.gain.value = AKAO_MUSIC_BASE_VOLUME
       masterGain.connect(context.destination)
       keepContextRunning(context)
       audio = { context, masterGain }

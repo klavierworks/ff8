@@ -6,6 +6,8 @@ import {
   WORLDMAP_CAMERA_MODE_CLOSE,
   WORLDMAP_CURVATURE_START_DEFAULT,
   WORLDMAP_CURVATURE_START_RAGNAROK,
+  WORLDMAP_FOG_START_DEFAULT,
+  WORLDMAP_FOG_START_RAGNAROK,
   WORLDMAP_PITCH_DEFAULT,
   WORLDMAP_PITCH_OVERHEAD,
   WORLDMAP_PITCH_RAGNAROK_ALTITUDE_DIVISOR,
@@ -18,6 +20,7 @@ import { isBoatClass, isCarOrGarden, isRagnarok, isTrainClass } from '../vehicle
 export type CameraRig = {
   curvatureStart: number
   depth: number
+  fogStart: number
   pitch: number
   yaw: number
   zoom: number
@@ -52,9 +55,13 @@ export const getDepthTarget = (vehicleId: number) =>
 export const getCurvatureStartTarget = (vehicleId: number) =>
   isRagnarok(vehicleId) ? WORLDMAP_CURVATURE_START_RAGNAROK : WORLDMAP_CURVATURE_START_DEFAULT
 
+export const getFogStartTarget = (vehicleId: number) =>
+  isRagnarok(vehicleId) ? WORLDMAP_FOG_START_RAGNAROK : WORLDMAP_FOG_START_DEFAULT
+
 export const createRestingRig = (vehicleId: number, cameraModeIndex: number, altitude: number, yaw: number) => ({
   curvatureStart: getCurvatureStartTarget(vehicleId),
   depth: getDepthTarget(vehicleId),
+  fogStart: getFogStartTarget(vehicleId),
   pitch: getPitchTarget(vehicleId, cameraModeIndex, altitude),
   yaw,
   zoom: getZoomTarget(vehicleId, cameraModeIndex),

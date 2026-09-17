@@ -42,6 +42,8 @@ const useLocationLabel = (cursorRef: RefObject<MapCell>) => {
     },
     { shouldSkipMountTick: true },
   )
+
+  return labelRef
 }
 
 export default useLocationLabel

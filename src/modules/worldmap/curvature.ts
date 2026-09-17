@@ -1,4 +1,4 @@
-import { Camera, Material, MathUtils, Vector3, WebGLProgramParametersWithUniforms } from 'three'
+import { Camera, MathUtils, Vector3, WebGLProgramParametersWithUniforms } from 'three'
 
 import {
   WORLDMAP_CURVATURE_DEPTH_DIVISOR,
@@ -8,9 +8,6 @@ import {
   WORLDMAP_CURVATURE_START_DEFAULT,
 } from '../../constants/worldmapCamera'
 import { WORLDMAP_SCALE } from './constants'
-
-const CURVATURE_APPLIED_FLAG = 'hasPlanetCurvature'
-const CURVATURE_PROGRAM_KEY = 'worldmap-planet-curvature'
 
 export const CURVATURE_UNIFORMS = {
   uCurvatureEye: { value: new Vector3() },
@@ -46,20 +43,10 @@ vec4 mvPosition = viewMatrix * curvedWorldPosition;
 gl_Position = projectionMatrix * mvPosition;
 `
 
-const injectCurvature = (shader: WebGLProgramParametersWithUniforms) => {
+export const injectCurvature = (shader: WebGLProgramParametersWithUniforms) => {
   Object.assign(shader.uniforms, CURVATURE_UNIFORMS)
   shader.vertexShader =
     CURVATURE_DECLARATIONS + shader.vertexShader.replace('#include <project_vertex>', CURVED_PROJECTION)
-}
-
-export const applyPlanetCurvature = (material: Material) => {
-  if (material.userData[CURVATURE_APPLIED_FLAG]) {
-    return
-  }
-  material.userData[CURVATURE_APPLIED_FLAG] = true
-  material.onBeforeCompile = injectCurvature
-  material.customProgramCacheKey = () => CURVATURE_PROGRAM_KEY
-  material.needsUpdate = true
 }
 
 export const updateCurvatureUniforms = (camera: Camera, curvatureStart: number) => {

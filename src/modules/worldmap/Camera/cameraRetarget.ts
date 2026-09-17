@@ -48,6 +48,8 @@ export const VEHICLE_CHANGE_RETARGET: RetargetFlags = {
   isZoomPending: true,
 }
 
+export const hasPendingRetarget = (flags: RetargetFlags) => Object.values(flags).some(Boolean)
+
 export const getModeChangeRetarget = (flags: RetargetFlags, vehicleId: number): RetargetFlags =>
   isWalkerClass(vehicleId) ? { ...flags, isPitchPending: true, isZoomPending: true } : flags
 

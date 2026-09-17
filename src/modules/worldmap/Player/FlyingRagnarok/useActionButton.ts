@@ -1,11 +1,11 @@
 import { useThree } from '@react-three/fiber'
-import { useRef } from 'react'
 import { Object3D } from 'three'
 
 import { WORLDMAP_PAD_BITS } from '../../../../constants/controls'
 import { VEHICLE_IDS } from '../../../../constants/vehicles'
 import useGlobalStore from '../../../../store'
 import { MEMORY } from '../../../field/Scripts/Script/handlers'
+import { getPadPresses } from '../../Controls/padPresses'
 import { getAllEntities, WORLDMAP_STATE } from '../../Scripts/state'
 import useScriptTick from '../../useScriptTick'
 import { isOnFootClass } from '../../vehicleClasses'
@@ -99,13 +99,10 @@ const runActionTick = (scene: Object3D, pressed: number, tick: number) => {
 
 const useActionButton = () => {
   const scene = useThree((state) => state.scene)
-  const previousPadButtonsRef = useRef(0)
 
   useScriptTick(
     (tick) => {
-      const { padButtons } = useWorldmapStore.getState().controls
-      runActionTick(scene, padButtons & ~previousPadButtonsRef.current, tick)
-      previousPadButtonsRef.current = padButtons
+      runActionTick(scene, getPadPresses(tick), tick)
     },
     { priority: MOVEMENT_FRAME_PRIORITY },
   )

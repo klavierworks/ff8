@@ -1,5 +1,3 @@
-import { MathUtils } from 'three'
-
 import { WORLDMAP_PAD_BITS } from '../../../constants/controls'
 import {
   DRIVING_CAMERA_LAG_SPEED_SHIFT,
@@ -75,25 +73,26 @@ export const moveTowardZero = (value: number, step: number) => {
   return value - Math.sign(value) * step
 }
 
-const calculateSpeedCap = (yaw: number, camera: DrivingCamera, profile: DrivingProfile) => {
+export const calculateSpeedCap = (yaw: number, camera: DrivingCamera, profile: DrivingProfile) => {
   if (!profile.hasCameraLagSpeedCap || camera.cameraModeIndex !== 0) {
     return profile.topSpeed
   }
   return profile.topSpeed - (Math.abs(shortestPsxDelta(camera.cameraYaw, yaw)) >> DRIVING_CAMERA_LAG_SPEED_SHIFT)
 }
 
-export const stepVehicleVelocity = (
-  velocity: number,
-  throttle: number,
-  yaw: number,
-  camera: DrivingCamera,
-  profile: DrivingProfile,
-) => {
+// A negative cap flips the velocity's sign every tick instead of clamping, as the original does.
+const clampToSpeedCap = (velocity: number, cap: number) => {
+  if (velocity < -cap) {
+    return -cap
+  }
+  return velocity > cap ? cap : velocity
+}
+
+export const stepVehicleVelocity = (velocity: number, throttle: number, speedCap: number, profile: DrivingProfile) => {
   if (throttle === 0) {
     return moveTowardZero(velocity, profile.coastStep)
   }
-  const cap = calculateSpeedCap(yaw, camera, profile)
-  return MathUtils.clamp(velocity + Math.trunc(throttle / profile.accelerationDivisor), -cap, cap)
+  return clampToSpeedCap(velocity + Math.trunc(throttle / profile.accelerationDivisor), speedCap)
 }
 
 const scaleByFixedPointTrig = (distance: number, trig: number) =>

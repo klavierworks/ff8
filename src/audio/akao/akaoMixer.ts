@@ -2,15 +2,8 @@ import type { AkaoInstrumentSound } from './decodeInstruments'
 
 import { createAkaoVoice } from './akaoVoice'
 import { createAutomatedParameter } from './automatedParameter'
-import { REVERB_SECONDS } from './constants'
-
-// The original mix cannot clip; this stands in for that headroom.
-const LIMITER_THRESHOLD_DB = -6
-const LIMITER_RATIO = 20
-const LIMITER_ATTACK_SECONDS = 0.003
-const LIMITER_RELEASE_SECONDS = 0.25
-
-const REVERB_DECAY_CURVE = 3
+import { SAMPLE_RATE } from './constants'
+import { renderReverbImpulse } from './spuReverb'
 
 type AkaoMixerOptions = {
   audioContext: BaseAudioContext
@@ -19,43 +12,52 @@ type AkaoMixerOptions = {
   voiceCount: number
 }
 
-// The hardware reverb is a fixed "Studio C" preset chosen once at startup.
-const createReverbImpulse = (audioContext: BaseAudioContext) => {
-  const length = Math.floor(REVERB_SECONDS * audioContext.sampleRate)
-  const impulse = audioContext.createBuffer(2, length, audioContext.sampleRate)
-
-  for (let channel = 0; channel < impulse.numberOfChannels; channel += 1) {
-    const samples = impulse.getChannelData(channel)
-    for (let index = 0; index < length; index += 1) {
-      samples[index] = (Math.random() * 2 - 1) * (1 - index / length) ** REVERB_DECAY_CURVE
-    }
+const resampleLinear = (samples: Float32Array, fromRate: number, toRate: number) => {
+  if (fromRate === toRate) {
+    return samples
   }
-  return impulse
+  const ratio = fromRate / toRate
+  const length = Math.floor(samples.length / ratio)
+  return Float32Array.from({ length }, (_, index) => {
+    const position = index * ratio
+    const before = Math.floor(position)
+    const after = Math.min(before + 1, samples.length - 1)
+    return samples[before] + (samples[after] - samples[before]) * (position - before)
+  })
+}
+
+// The response is rendered once at the SPU's own rate, then fitted to whichever rate the context
+// runs at, because a convolver only accepts a buffer at its context's rate.
+const reverbBuffersByContext = new WeakMap<BaseAudioContext, AudioBuffer>()
+
+const getReverbBuffer = (audioContext: BaseAudioContext) => {
+  const cached = reverbBuffersByContext.get(audioContext)
+  if (cached) {
+    return cached
+  }
+  const channels = renderReverbImpulse().map((samples) => resampleLinear(samples, SAMPLE_RATE, audioContext.sampleRate))
+  const buffer = audioContext.createBuffer(channels.length, channels[0].length, audioContext.sampleRate)
+  channels.forEach((samples, channel) => buffer.copyToChannel(samples, channel))
+  reverbBuffersByContext.set(audioContext, buffer)
+  return buffer
 }
 
 export const createAkaoMixer = ({ audioContext, destination, instruments, voiceCount }: AkaoMixerOptions) => {
   const output = audioContext.createGain()
-  const limiter = audioContext.createDynamicsCompressor()
   const dryBus = audioContext.createGain()
   const reverbBus = audioContext.createGain()
   const reverb = audioContext.createConvolver()
 
-  limiter.threshold.value = LIMITER_THRESHOLD_DB
-  limiter.knee.value = 0
-  limiter.ratio.value = LIMITER_RATIO
-  limiter.attack.value = LIMITER_ATTACK_SECONDS
-  limiter.release.value = LIMITER_RELEASE_SECONDS
-
-  reverb.buffer = createReverbImpulse(audioContext)
+  reverb.normalize = false
+  reverb.buffer = getReverbBuffer(audioContext)
   reverbBus.gain.value = 0
 
   const outputLevel = createAutomatedParameter(output.gain)
   const reverbLevel = createAutomatedParameter(reverbBus.gain)
 
-  dryBus.connect(limiter)
+  dryBus.connect(output)
   reverbBus.connect(reverb)
-  reverb.connect(limiter)
-  limiter.connect(output)
+  reverb.connect(output)
   output.connect(destination)
 
   const channels = Array.from({ length: voiceCount }, () =>
@@ -72,7 +74,6 @@ export const createAkaoMixer = ({ audioContext, destination, instruments, voiceC
     dryBus.disconnect()
     reverbBus.disconnect()
     reverb.disconnect()
-    limiter.disconnect()
     output.disconnect()
   }
 

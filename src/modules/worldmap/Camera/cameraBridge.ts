@@ -2,6 +2,7 @@ import { Object3D, PerspectiveCamera, Vector3 } from 'three'
 
 import useGlobalStore from '../../../store'
 import { updateCurvatureUniforms } from '../curvature'
+import { updateFogUniforms } from '../fog'
 import { getMovementOutputs } from '../Player/movementState'
 import { isPadInputIgnored } from '../Player/onFootInput'
 import { convertFieldDirectionToHeading } from '../Player/playerAngles'
@@ -102,6 +103,7 @@ export const applyCameraMemory = (camera: PerspectiveCamera, memory: CameraMemor
   placeCamera(camera, memory)
   updateCameraProjection(camera, rig.zoom)
   updateCurvatureUniforms(camera, rig.curvatureStart)
+  updateFogUniforms(rig.fogStart)
   publishCameraState({
     curvatureStart: rig.curvatureStart,
     depth: rig.depth,

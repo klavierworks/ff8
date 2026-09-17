@@ -12,6 +12,12 @@ const getDirectionPreferringNegative = (keys: ReadonlySet<string>, negative: str
   return keys.has(positive) ? 1 : 0
 }
 
+export const getPadButtonsForCode = (code: string) =>
+  PAD_BUTTON_NAMES.filter((name) => WORLDMAP_CONTROLS_MAP[name] === code).reduce(
+    (buttons, name) => buttons | WORLDMAP_PAD_BITS[name],
+    0,
+  )
+
 const getPadButtons = (keys: ReadonlySet<string>) =>
   PAD_BUTTON_NAMES.filter((name) => keys.has(WORLDMAP_CONTROLS_MAP[name])).reduce(
     (buttons, name) => buttons | WORLDMAP_PAD_BITS[name],

@@ -1,12 +1,14 @@
 import { useFrame } from '@react-three/fiber'
-import { useEffect, useReducer, useState } from 'react'
+import { Suspense, useEffect, useReducer, useState } from 'react'
 
 import { RAGNAROK_ENTITY_TYPE } from '../../../constants/worldmapEntities'
 import useGlobalStore from '../../../store'
 import { ScriptSection } from '../Scripts/runScript'
 import { getAllEntities, setEntities } from '../Scripts/state'
 import { EntityPosition } from '../useSections'
+import { isCompanionEntityType } from '../vehicleEntities'
 import { buildWorldPosition } from '../worldPosition'
+import CompanionEntity from './CompanionEntity/CompanionEntity'
 import {
   calculateEntityDistances,
   collectEntities,
@@ -59,9 +61,19 @@ const Entities = ({ positions, scripts }: EntitiesProps) => {
 
   return (
     <>
-      {getAllEntities().map((entity, index) =>
-        entity.typeCode === RAGNAROK_ENTITY_TYPE ? null : <Entity entity={entity} key={index} />,
-      )}
+      {getAllEntities().map((entity, index) => {
+        if (entity.typeCode === RAGNAROK_ENTITY_TYPE) {
+          return null
+        }
+        if (isCompanionEntityType(entity.typeCode)) {
+          return (
+            <Suspense fallback={null} key={index}>
+              <CompanionEntity typeCode={entity.typeCode} />
+            </Suspense>
+          )
+        }
+        return <Entity entity={entity} key={index} />
+      })}
     </>
   )
 }

@@ -15,15 +15,15 @@ export type CharacterAnimationState = {
   roll: RollState
 }
 
+export type IdleSequence = {
+  getClipEndState: (end: ClipEnd) => CharacterAnimationState
+  getFlourishStart: (roll: RollState) => CharacterAnimationState
+}
+
 type ClipEnd = {
   clip: number
   frameCount: number
   roll: RollState
-}
-
-type IdleSequence = {
-  getClipEndState: (end: ClipEnd) => CharacterAnimationState
-  getFlourishStart: (roll: RollState) => CharacterAnimationState
 }
 
 const createStandState = (roll: RollState) => ({ clip: CLIP_STAND, frame: 0, roll })

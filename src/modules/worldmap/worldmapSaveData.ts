@@ -1,7 +1,7 @@
 import { VEHICLE_IDS } from '../../constants/vehicles'
 import { signExtend16 } from '../../utils'
 import { MINIMAP_MODE_HIDDEN, MINIMAP_MODE_LARGE } from './Minimap/constants'
-import { isCarClass, isOnFootClass } from './vehicleClasses'
+import { isCarClass, isWalkerClass } from './vehicleClasses'
 
 export type Memory = Record<number, number>
 
@@ -26,6 +26,9 @@ const SAVEMAP_WORLD_STATE_BYTE = 266
 const WORLD_STATE_MASK = 0x1f
 
 const SAVEMAP_WORLDMAP_BASE = 1280
+const SAVEMAP_CHOCOBO_WORLD_FLAGS = 1536
+const CHOCOBO_WORLD_SPAWN_BIT = 0x01
+const CHOCOBO_WORLD_SUPPRESS_BIT = 0x02
 const SAVEMAP_VEHICLE_RECORD_SIZE = 12
 const VEHICLE_RECORD_Y_OFFSET = 4
 const VEHICLE_RECORD_ALTITUDE_OFFSET = 8
@@ -70,7 +73,7 @@ export const writeSavedWorldmapModes = (memory: Memory, modes: SavedWorldmapMode
 }
 
 const getVehicleRecordSlot = (vehicleId: number) => {
-  if (isOnFootClass(vehicleId) || vehicleId === VEHICLE_IDS.CACTUAR) {
+  if (isWalkerClass(vehicleId)) {
     return PARTY_RECORD_SLOT
   }
   if (vehicleId === VEHICLE_IDS.RAGNAROK) {
@@ -165,4 +168,9 @@ export const readSavedScriptVariable = (memory: Memory, index: number) => memory
 
 export const writeSavedScriptVariable = (memory: Memory, index: number, value: number) => {
   memory[SAVEMAP_SCRIPT_VARIABLES + index] = value
+}
+
+export const hasChicoboOnWorldmap = (memory: Memory) => {
+  const flags = memory[SAVEMAP_CHOCOBO_WORLD_FLAGS] ?? 0
+  return (flags & CHOCOBO_WORLD_SPAWN_BIT) !== 0 && (flags & CHOCOBO_WORLD_SUPPRESS_BIT) === 0
 }

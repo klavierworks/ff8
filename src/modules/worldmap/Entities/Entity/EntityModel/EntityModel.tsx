@@ -14,13 +14,7 @@ const EntityModel = ({ model }: EntityModelProps) => {
   if (model.kind === 'wmset') {
     return <Model index={model.index} />
   }
-  return (
-    <>
-      {model.sectionIndices.map((sectionIndex) => (
-        <CharaModel key={sectionIndex} sectionIndex={sectionIndex} />
-      ))}
-    </>
-  )
+  return <CharaModel sectionIndex={model.sectionIndex} />
 }
 
 export default EntityModel

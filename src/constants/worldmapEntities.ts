@@ -2,7 +2,9 @@
 export const RAGNAROK_ENTITY_TYPE = 1
 export const FORCE_FIELD_ENTITY_TYPE = 93
 export const DRAW_POINT_ENTITY_TYPE = 94
-export const COMPANION_ENTITY_TYPES = [2, 3] as const
+export const CHOCOBO_ENTITY_TYPE = 2
+export const CHICOBO_ENTITY_TYPE = 3
+export const COMPANION_ENTITY_TYPES = [CHOCOBO_ENTITY_TYPE, CHICOBO_ENTITY_TYPE] as const
 export const FIRST_WMSET_ENTITY_TYPE = 64
 export const WMSET_MODEL_COUNT = 32
 export const GARDEN_ENTITY_TYPES = [64, 65] as const
@@ -52,17 +54,19 @@ export const MODEL_YAW_OFFSETS_BY_TYPE: ReadonlyMap<number, number> = new Map([
 export const WMSET_MODEL_ALPHA_TEST = 0.5
 export const WMSET_MODEL_TINT_NEUTRAL = 128
 export const CHARAONE_SECTION_COUNT = 7
-export const CHARAONE_MESH_SLOTS: ReadonlyMap<number, readonly number[]> = new Map([
-  [0, [0, 1]],
-  [1, [4, 5, 6, 7]],
-  [2, [2, 3]],
-  [3, [2, 3]],
-  [4, [0, 1]],
-  [5, [0, 1]],
-  [6, [0, 1]],
-])
 export const ENTITY_PLACEHOLDER_SIZE = 240
 export const ENTITY_PLACEHOLDER_COLOR = '#ff66cc'
+
+// ─── Companion animation ───
+export const CHOCOBO_CLIP_STAND = 0
+export const CHOCOBO_CLIP_RUN = 1
+export const CHOCOBO_CLIP_FLOURISH = 2
+export const CHOCOBO_CLIP_DISMOUNT = 3
+export const CHICOBO_CLIP_STAND = 0
+export const CHICOBO_CLIP_RUN = 1
+export const CHICOBO_CLIP_FLOURISH = 2
+export const CHICOBO_SUBFRAME_STEP = 48
+export const CHICOBO_IDLE_ROLL_MASK = 0xfe
 
 // ─── Entity footprints ───
 export const FOOTPRINT_SHAPE_NONE = 0

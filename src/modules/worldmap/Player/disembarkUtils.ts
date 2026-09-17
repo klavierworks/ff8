@@ -60,14 +60,48 @@ const trySpot = (scene: Object3D, pose: ShipPose, vehicleGround: number, angle: 
   const triangles = PROBE_OFFSETS.map(([offsetX, offsetZ]) => findTopTriangle(scene, x + offsetX, z + offsetZ))
   const centre = triangles[0]
   if (!centre || !triangles.every((triangle) => isProbeLandable(triangle, vehicleGround, rule))) {
+    console.log('[dismount-debug] probe rejected', {
+      angle,
+      probes: triangles.map((triangle) =>
+        triangle
+          ? {
+              access: triangle.accessFlags.toString(16),
+              altitude: getTriangleAltitude(triangle),
+              canLeave: rule.canLeaveFrom(triangle),
+              groundType: triangle.groundType,
+              isOnFoot: isOnFootAccessible(triangle),
+            }
+          : null,
+      ),
+      vehicleGround,
+    })
     return undefined
   }
   const spot = { altitude: getTriangleAltitude(centre), x, z }
-  return isSpotBlockedByEntity(spot, rule) ? undefined : spot
+  if (isSpotBlockedByEntity(spot, rule)) {
+    console.log('[dismount-debug] spot blocked by entity', {
+      blocker: findCollidingEntity(getAllEntities(), {
+        box: buildCollisionBox(spot, LANDING_SPOT_HALF_SIZE, 0),
+        excludedIndices: rule.excludedIndices,
+        isHeightIgnored: true,
+        reach: 0,
+      }),
+      excludedIndices: rule.excludedIndices,
+      spot,
+    })
+    return undefined
+  }
+  return spot
 }
 
 export const findDisembarkSpot = (scene: Object3D, pose: ShipPose, yaw: number, rule: DisembarkRule) => {
   const vehicleTriangle = findTopTriangle(scene, pose.x, pose.z)
+  console.log('[dismount-debug] vehicle triangle', {
+    access: vehicleTriangle?.accessFlags.toString(16),
+    canLeave: vehicleTriangle && rule.canLeaveFrom(vehicleTriangle),
+    groundType: vehicleTriangle?.groundType,
+    pose,
+  })
   if (!vehicleTriangle || !rule.canLeaveFrom(vehicleTriangle)) {
     return undefined
   }

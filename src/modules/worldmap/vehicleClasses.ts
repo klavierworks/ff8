@@ -10,7 +10,9 @@ export const isVehicleInRange = (vehicleId: number, min: number, max: number) =>
 export const isOnFootClass = (vehicleId: number) =>
   vehicleId < WORLDMAP_ON_FOOT_CLASS_LIMIT || vehicleId === VEHICLE_IDS.ON_FOOT
 
-export const isWalkerClass = (vehicleId: number) => isOnFootClass(vehicleId) || vehicleId === VEHICLE_IDS.CACTUAR
+export const isChocobo = (vehicleId: number) => vehicleId === VEHICLE_IDS.CHOCOBO
+
+export const isWalkerClass = (vehicleId: number) => isOnFootClass(vehicleId) || isChocobo(vehicleId)
 
 export const isTrainClass = (vehicleId: number) => isVehicleInRange(vehicleId, WORLDMAP_TRAIN_MIN, WORLDMAP_TRAIN_MAX)
 

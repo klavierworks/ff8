@@ -1,6 +1,8 @@
 import { useRef } from 'react'
 
+import { AUTOPILOT_CONFIRM_SLOT } from '../../../../../constants/worldmapAutopilot'
 import useGlobalStore from '../../../../../store'
+import { isDialogActive } from '../../../Scripts/dialog'
 import useScriptTick from '../../../useScriptTick'
 import useWorldmapStore from '../../../worldmapStore'
 import { getMapCellFromWorld, MapCell } from '../../minimapUtils'
@@ -17,6 +19,9 @@ const useFullMapCursor = (destinations: readonly MapPixel[]) => {
 
   useScriptTick(
     () => {
+      if (isDialogActive(AUTOPILOT_CONFIRM_SLOT)) {
+        return
+      }
       const { padButtons } = useWorldmapStore.getState().controls
       cursorRef.current = advanceCursor(cursorRef.current, padButtons, destinations)
     },

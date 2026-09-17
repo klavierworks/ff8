@@ -5,6 +5,7 @@ import { RAGNAROK_ENTITY_TYPE } from '../../constants/worldmapEntities'
 import { WORLDMAP_ENTRY_FROM_FIELD } from '../../constants/worldmapTransitions'
 import useGlobalStore from '../../store'
 import { convertRadiansToCameraYaw } from './Camera/cameraUtils'
+import { resetChocoboRiderState } from './Player/ChocoboRider/chocoboRiderState'
 import { resetRagnarokState } from './Player/FlyingRagnarok/ragnarokState'
 import { resetGroundVehicleState } from './Player/GroundVehicle/groundVehicleState'
 import { getGroundVehicle } from './Player/GroundVehicle/groundVehicleUtils'
@@ -31,6 +32,7 @@ const resetWorldmapSession = () => {
   resetScriptState()
   resetRagnarokState()
   resetGroundVehicleState()
+  resetChocoboRiderState()
   resetTrainSession()
   closeAllDialogs()
 }

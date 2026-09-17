@@ -1,7 +1,7 @@
 import { MathUtils, Object3D, Vector3 } from 'three'
 
 import { WORLD_DEPTH_PSX, WORLD_WIDTH_PSX, WORLDMAP_SCALE } from '../constants'
-import { queryTerrain, selectTopTriangle, TerrainTriangle } from '../terrain'
+import { queryTerrain, queryTerrainFaces, selectTopFace, selectTopTriangle, TerrainTriangle } from '../terrain'
 
 export type ShipPose = {
   altitude: number
@@ -26,6 +26,9 @@ export const getTriangleAltitude = (triangle: TerrainTriangle) => Math.round(tri
 
 export const findTopTriangle = (scene: Object3D, x: number, z: number) =>
   selectTopTriangle(queryTerrain(scene, wrapMapX(x) * WORLDMAP_SCALE, wrapMapZ(z) * WORLDMAP_SCALE))
+
+export const findTopFace = (scene: Object3D, x: number, z: number) =>
+  selectTopFace(queryTerrainFaces(scene, wrapMapX(x) * WORLDMAP_SCALE, wrapMapZ(z) * WORLDMAP_SCALE))
 
 export const findGroundAltitude = (scene: Object3D, x: number, z: number) => {
   const triangle = findTopTriangle(scene, x, z)

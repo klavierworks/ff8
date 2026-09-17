@@ -57,7 +57,7 @@ const toModulationUpdate = (
 
 const setPan = (context: ChannelContext, rampSeconds: number) => {
   const { channel } = context
-  context.voice.setPan(channel.pan + channel.panOffset, context.time, rampSeconds)
+  context.voice.setPan(channel.pan, context.time, rampSeconds)
 }
 
 const setExpression = (context: ChannelContext, value: number, rampSeconds: number) => {

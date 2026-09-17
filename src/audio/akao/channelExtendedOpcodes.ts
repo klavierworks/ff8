@@ -34,12 +34,9 @@ const jumpOnLoopCount = (context: ChannelContext, shouldPopSlot: boolean) => {
   }
 }
 
-const setReverbPan = (context: ChannelContext, offset: number, rampSeconds: number) => {
-  const { channel } = context
-  channel.panOffset = offset
-  context.voice.setPan(channel.pan + channel.panOffset, context.time, rampSeconds)
-  context.voice.setReverbEnabled(true, context.time)
-}
+// The pan offset these write is read only by the sound-effect mixer; for music the opcode's one
+// audible effect is switching reverb on.
+const enableReverbWithPanOffset = (context: ChannelContext) => context.voice.setReverbEnabled(true, context.time)
 
 const endChannel = (context: ChannelContext) => {
   context.channel.isFinished = true
@@ -104,7 +101,7 @@ const EXTENDED_OPCODE_HANDLERS: Record<number, ExtendedOpcodeHandler> = {
   [EXTENDED_OPCODES.SET_PART_VOLUME]: (context) => context.voice.setPartVolume(readByte(context, 1), context.time, 0),
   [EXTENDED_OPCODES.SET_REVERB_DEPTH]: (context) =>
     context.song.setReverbDepth(readWord(context, 1) / REVERB_DEPTH_SCALE, context.time, 0),
-  [EXTENDED_OPCODES.SET_REVERB_PAN]: (context) => setReverbPan(context, readByte(context, 1), 0),
+  [EXTENDED_OPCODES.SET_REVERB_PAN]: enableReverbWithPanOffset,
   [EXTENDED_OPCODES.SET_TEMPO]: (context) => context.song.setTempo(readWord(context, 1), 0),
   [EXTENDED_OPCODES.SET_TIME_SIGNATURE]: (context) =>
     context.song.setTimeSignature(readByte(context, 1), readByte(context, 2)),
@@ -112,8 +109,7 @@ const EXTENDED_OPCODE_HANDLERS: Record<number, ExtendedOpcodeHandler> = {
     context.voice.setPartVolume(readByte(context, 2), context.time, readSlideSeconds(context, 1)),
   [EXTENDED_OPCODES.SLIDE_REVERB_DEPTH]: (context) =>
     context.song.setReverbDepth(readWord(context, 2) / REVERB_DEPTH_SCALE, context.time, readSlideSeconds(context, 1)),
-  [EXTENDED_OPCODES.SLIDE_REVERB_PAN]: (context) =>
-    setReverbPan(context, readSignedByte(context, 2), readSlideSeconds(context, 1)),
+  [EXTENDED_OPCODES.SLIDE_REVERB_PAN]: enableReverbWithPanOffset,
   [EXTENDED_OPCODES.SLIDE_TEMPO]: (context) => context.song.setTempo(readWord(context, 2), readCount(context, 1)),
   [EXTENDED_OPCODES.SLIDE_VOLUME]: (context) =>
     context.voice.setVolume(readByte(context, 2), context.time, readSlideSeconds(context, 1)),

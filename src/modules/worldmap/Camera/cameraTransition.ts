@@ -16,6 +16,7 @@ import {
   createRestingRig,
   getCurvatureStartTarget,
   getDepthTarget,
+  getFogStartTarget,
   getPitchTarget,
   getZoomTarget,
 } from './cameraRig'
@@ -46,6 +47,7 @@ const createTakeoffSteps = (rig: CameraRig, ship: ShipTransitionInput, cameraMod
     WORLDMAP_TAKEOFF_SETTLE_DIVISOR,
   ),
   depth: divideTowards(getDepthTarget(TAKEOFF_TARGET_VEHICLE), rig.depth, WORLDMAP_TAKEOFF_SETTLE_DIVISOR),
+  fogStart: divideTowards(getFogStartTarget(TAKEOFF_TARGET_VEHICLE), rig.fogStart, WORLDMAP_TAKEOFF_SETTLE_DIVISOR),
   pitch: Math.trunc(
     shortestPsxDelta(rig.pitch, calculateRagnarokPitch(calculateTakeoffAltitude(ship.altitude))) /
       WORLDMAP_TAKEOFF_SETTLE_DIVISOR,
@@ -61,6 +63,7 @@ const createLandingSteps = (rig: CameraRig, ship: ShipTransitionInput, cameraMod
     WORLDMAP_LANDING_DIVISOR,
   ),
   depth: divideTowards(getDepthTarget(LANDING_TARGET_VEHICLE), rig.depth, WORLDMAP_LANDING_DIVISOR),
+  fogStart: divideTowards(getFogStartTarget(LANDING_TARGET_VEHICLE), rig.fogStart, WORLDMAP_LANDING_DIVISOR),
   pitch: Math.trunc(
     shortestPsxDelta(rig.pitch, getPitchTarget(LANDING_TARGET_VEHICLE, cameraModeIndex, ship.altitude)) /
       WORLDMAP_LANDING_DIVISOR,
@@ -96,8 +99,8 @@ export const isTakeoffFocusHeld = (transition: CameraTransition | null) =>
 const addSteps = (rig: CameraRig, steps: CameraRig, keys: readonly (keyof CameraRig)[]): CameraRig =>
   keys.reduce((next, key) => ({ ...next, [key]: next[key] + steps[key] }), rig)
 
-const SETTLE_KEYS = ['curvatureStart', 'depth', 'pitch'] as const
-const ALL_KEYS = ['curvatureStart', 'depth', 'pitch', 'yaw', 'zoom'] as const
+const SETTLE_KEYS = ['curvatureStart', 'depth', 'fogStart', 'pitch'] as const
+const ALL_KEYS = ['curvatureStart', 'depth', 'fogStart', 'pitch', 'yaw', 'zoom'] as const
 
 const snapToRagnarok = (rig: CameraRig, ship: ShipTransitionInput, cameraModeIndex: number): CameraRig =>
   createRestingRig(TAKEOFF_TARGET_VEHICLE, cameraModeIndex, ship.altitude, rig.yaw)

@@ -49,8 +49,7 @@ const getProbeOffsets = (probeOffsetPsx: number) => {
   ] as const
 }
 
-export const getPressedSlideSet = (padButtons: number, previousPadButtons: number, currentSet: SlideSet) => {
-  const pressed = padButtons & ~previousPadButtons
+export const getPressedSlideSet = (pressed: number, currentSet: SlideSet) => {
   if ((pressed & WORLDMAP_PAD_BITS.left) !== 0) {
     return 0
   }

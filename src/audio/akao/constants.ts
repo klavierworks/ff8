@@ -217,7 +217,25 @@ export const KEY_TRANSPOSE_TABLE = [
 
 export const MAX_CHANNEL_VOLUME = 127
 export const PAN_CENTRE = 64
-export const PAN_RANGE = 63
+
+export const PAN_INDEX_OFFSET = 0x40
+export const PAN_INDEX_MASK = 0xff
+export const VOLUME_REGISTER_SCALE = 0x8000
+
+// The driver's pan law: left reads the index, right reads it mirrored. Entries 192-255 are zero.
+export const PAN_TABLE = [
+  0, 6, 24, 54, 96, 150, 219, 294, 384, 486, 600, 726, 864, 1014, 1176, 1350, 1536, 1734, 1944, 2166, 2400, 2646, 2904,
+  3174, 3456, 3750, 4056, 4374, 4704, 5046, 5400, 5766, 6144, 6534, 6936, 7350, 7776, 8214, 8664, 9126, 9600, 10086,
+  10584, 11094, 11616, 12150, 12696, 13254, 13824, 14406, 15000, 15606, 16224, 16854, 17496, 18150, 18816, 19494, 20184,
+  20886, 21600, 22326, 23064, 23814, 24576, 24462, 24348, 24235, 24121, 24007, 23894, 23780, 23667, 23553, 23439, 23326,
+  23212, 23098, 22985, 22871, 22758, 22644, 22530, 22417, 22303, 22190, 22076, 21962, 21849, 21735, 21621, 21508, 21394,
+  21281, 21167, 21053, 20940, 20826, 20712, 20599, 20485, 20372, 20258, 20144, 20031, 19917, 19804, 19690, 19576, 19463,
+  19349, 19235, 19122, 19008, 18895, 18781, 18667, 18554, 18440, 18326, 18213, 18099, 17986, 17872, 17758, 17645, 17531,
+  17418, 17418, 17141, 16865, 16588, 16312, 16035, 15759, 15482, 15206, 14929, 14653, 14376, 14100, 13823, 13547, 13270,
+  12994, 12717, 12441, 12164, 11888, 11612, 11335, 11059, 10782, 10506, 10229, 9953, 9676, 9400, 9123, 8847, 8570, 8294,
+  8017, 7741, 7464, 7188, 6911, 6635, 6358, 6082, 5806, 5529, 5253, 4976, 4700, 4423, 4147, 3870, 3594, 3317, 3041,
+  2764, 2488, 2211, 1935, 1658, 1382, 1105, 829, 552, 276, 0,
+]
 
 // A ramp still needs a non-zero span for the audio clock to schedule it against.
 export const MINIMUM_RAMP_SECONDS = 0.001
@@ -228,7 +246,43 @@ export const VOICE_SCALE_UNITY = 128
 
 // Reverb depth arrives as a fraction of this, matching the SPU's 15-bit depth registers.
 export const REVERB_DEPTH_SCALE = 0x8000
-export const REVERB_SECONDS = 0.35
+
+// ─── Reverb ───
+
+// SpuSetReverbModeType(4), "Studio C", in register order 0x1F801DC0-0x1F801DFE.
+// Address pairs are [left, right].
+export const STUDIO_C_REVERB = {
+  allPassAlpha: 0x5680,
+  allPassDelayA: 0x00e3,
+  allPassDelayB: 0x00a9,
+  allPassDestinationA: [0x031c, 0x0238],
+  allPassDestinationB: [0x0154, 0x00aa],
+  allPassX: 0x52c0,
+  combCoefficients: [0x4fa8, -0x4320, 0x4510, -0x4110],
+  combSources: [
+    [0x0d09, 0x0a3c],
+    [0x0bd9, 0x0973],
+    [0x07ec, 0x04b0],
+    [0x06ef, 0x03d2],
+  ],
+  differentSideDestination: [0x08d9, 0x05e9],
+  differentSideSource: [0x05ea, 0x031d],
+  inputVolumes: [-0x8000, -0x8000],
+  reflectionAlpha: 0x6f60,
+  sameSideDestination: [0x0dfb, 0x0b58],
+  sameSideSource: [0x0b59, 0x08da],
+  wallCoefficient: -0x5980,
+  workAreaBytes: 0x6fe0,
+}
+
+// The SPU runs reverb at half rate; these are the symmetric taps of its 39-tap resampling filter,
+// with the zero taps between them omitted.
+export const REVERB_RESAMPLE_TAPS = [
+  -1, 2, -10, 35, -103, 266, -616, 1332, -2960, 10246, 10246, -2960, 1332, -616, 266, -103, 35, -10, 2, -1,
+]
+export const REVERB_RESAMPLE_CENTRE_TAP = 0x4000
+export const REVERB_IMPULSE_SECONDS = 6
+export const REVERB_TAIL_FLOOR = 1e-4
 
 // ─── Noise ───
 

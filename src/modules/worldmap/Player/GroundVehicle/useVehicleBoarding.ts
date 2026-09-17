@@ -1,11 +1,11 @@
 import { useThree } from '@react-three/fiber'
-import { useRef } from 'react'
 import { Object3D } from 'three'
 
 import { WORLDMAP_PAD_BITS } from '../../../../constants/controls'
 import { VEHICLE_IDS } from '../../../../constants/vehicles'
 import { GARDEN_LANDING_FRAMES, VEHICLE_BOARDING_HEIGHT_TOLERANCE } from '../../../../constants/worldmapVehicles'
 import useGlobalStore from '../../../../store'
+import { getPadPresses } from '../../Controls/padPresses'
 import { EntityRecord, getEntity, WORLDMAP_STATE } from '../../Scripts/state'
 import { hasAccessBit, TerrainTriangle } from '../../terrain'
 import useScriptTick from '../../useScriptTick'
@@ -96,6 +96,15 @@ const tryLeaveVehicle = (scene: Object3D, vehicleId: number, vehicle: GroundVehi
 
 const runBoardingTick = (scene: Object3D, pressed: number, tick: number) => {
   const { vehicleId, worldMapState } = useWorldmapStore.getState()
+  if (isConfirmPressed(pressed)) {
+    console.log('[dismount-debug] boarding confirm seen', {
+      isButtonInputConsumed: WORLDMAP_STATE.isButtonInputConsumed,
+      isPadInputIgnored: isPadInputIgnored(tick),
+      tick,
+      vehicleId,
+      worldMapState,
+    })
+  }
   if (
     worldMapState !== WORLD_MAP_STATE_FREE_ROAM ||
     isPadInputIgnored(tick) ||
@@ -116,13 +125,10 @@ const runBoardingTick = (scene: Object3D, pressed: number, tick: number) => {
 
 const useVehicleBoarding = () => {
   const scene = useThree((state) => state.scene)
-  const previousPadButtonsRef = useRef(0)
 
   useScriptTick(
     (tick) => {
-      const { padButtons } = useWorldmapStore.getState().controls
-      runBoardingTick(scene, padButtons & ~previousPadButtonsRef.current, tick)
-      previousPadButtonsRef.current = padButtons
+      runBoardingTick(scene, getPadPresses(tick), tick)
     },
     { priority: MOVEMENT_FRAME_PRIORITY },
   )

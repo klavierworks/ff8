@@ -27,6 +27,13 @@ export const WORLDMAP_CURVATURE_FIXED_POINT_ONE = 4096
 export const WORLDMAP_CURVATURE_DEPTH_DIVISOR = 4
 export const WORLDMAP_CURVATURE_DROP_DIVISOR = 64
 
+// ─── Worldmap camera: distance fog ───
+export const WORLDMAP_FOG_START_DEFAULT = 1896
+export const WORLDMAP_FOG_START_RAGNAROK = 2996
+export const WORLDMAP_FOG_DEPTH_DIVISOR = 8
+export const WORLDMAP_FOG_LEVEL_DIVISOR = 16
+export const WORLDMAP_FOG_LEVEL_MAX = 255
+
 // ─── Worldmap camera: pitch ───
 export const WORLDMAP_PITCH_DEFAULT = -112
 export const WORLDMAP_PITCH_OVERHEAD = -512

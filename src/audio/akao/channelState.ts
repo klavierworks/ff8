@@ -36,7 +36,6 @@ export type AkaoChannelState = {
   noteLengthTicks: number
   octave: number
   pan: number
-  panOffset: number
   panOscillation: AkaoModulation | undefined
   pitchModulationToggleTicks: number
   pitchSlideSemitones: number
@@ -106,7 +105,6 @@ export const createChannelState = (startOffset: number): AkaoChannelState => ({
   noteLengthTicks: 0,
   octave: 0,
   pan: PAN_CENTRE,
-  panOffset: 0,
   panOscillation: undefined,
   pitchModulationToggleTicks: 0,
   pitchSlideSemitones: 0,

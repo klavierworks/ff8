@@ -13,6 +13,9 @@ export const shortestPsxDelta = (current: number, target: number) => {
   return delta > PSX_ANGLE_UNITS / 2 ? delta - PSX_ANGLE_UNITS : delta
 }
 
+export const calculateOffsetHeading = (dx: number, dz: number) =>
+  wrapPsxAngle(Math.round(radiansToPsx(Math.atan2(dx, -dz))))
+
 const mirrorPsxAngle = (angle: number) => wrapPsxAngle(PSX_ANGLE_UNITS / 2 - angle)
 
 export const convertHeadingToFieldDirection = mirrorPsxAngle

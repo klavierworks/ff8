@@ -3,7 +3,7 @@ import { MathUtils } from 'three'
 import { WORLD_TILE_COLUMNS, WORLD_TILE_ROWS } from '../constants'
 import { psxToRadians } from '../Player/playerAngles'
 import { psxXToWorld, psxZToWorld } from '../Player/playerUtils'
-import { WORLD_MAP_STATE_FREE_ROAM, WorldmapState } from '../worldmapStore'
+import { WORLD_MAP_STATE_FREE_ROAM, WORLD_MAP_STATE_FULL_MAP, WorldmapState } from '../worldmapStore'
 import { buildWorldPosition } from '../worldPosition'
 import {
   CONE_VIEW_HEADING_OFFSET,
@@ -53,12 +53,27 @@ export const calculateConeRotation = (cameraYawRadians: number) => {
   return -(cameraViewYawRadians + psxToRadians(CONE_VIEW_HEADING_OFFSET))
 }
 
-export const getNextMinimapMode = (minimapMode: number, worldMapState: number) => {
+const getNextMinimapMode = (minimapMode: number, worldMapState: number) => {
   const nextMode = (minimapMode + 1) % MINIMAP_MODE_COUNT
   if (nextMode === MINIMAP_MODE_LARGE && worldMapState !== WORLD_MAP_STATE_FREE_ROAM) {
     return MINIMAP_MODE_HIDDEN
   }
   return nextMode
+}
+
+const getMinimapToggleState = (nextMode: number, worldMapState: number) => {
+  if (nextMode === MINIMAP_MODE_LARGE) {
+    return WORLD_MAP_STATE_FULL_MAP
+  }
+  return worldMapState === WORLD_MAP_STATE_FULL_MAP ? WORLD_MAP_STATE_FREE_ROAM : worldMapState
+}
+
+export const calculateMinimapToggle = ({
+  minimapMode,
+  worldMapState,
+}: Pick<WorldmapState, 'minimapMode' | 'worldMapState'>): Pick<WorldmapState, 'minimapMode' | 'worldMapState'> => {
+  const nextMode = getNextMinimapMode(minimapMode, worldMapState)
+  return { minimapMode: nextMode, worldMapState: getMinimapToggleState(nextMode, worldMapState) }
 }
 
 export const selectIsFullMapShown = (state: WorldmapState) => state.minimapMode === MINIMAP_MODE_LARGE

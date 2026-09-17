@@ -1,4 +1,5 @@
 use crate::charaone::parse::{Face, Pose, Vertex};
+use crate::charaone::Variant;
 
 const ROTATION_SCALE: f64 = 180.0 / 2048.0;
 const COORD_SCALE: f64 = 256.0;
@@ -44,14 +45,16 @@ fn decode_rotation(low_byte: u8, high_byte_mask: u8, high_byte: u8, shift: u32) 
     combined
 }
 
-// The root offset turns about the vertical axis in the opposite sense to the rest of the
+// Field root offsets turn about the vertical axis in the opposite sense to the rest of the
 // record: read as [y, -x, z] a character's scripted entrance arrives from behind them.
-pub fn root_location(coordinate_offset: &[u16; 3]) -> [f64; 3] {
-    [
-        -scale_offset(coordinate_offset[1]),
-        scale_offset(coordinate_offset[0]),
-        scale_offset(coordinate_offset[2]),
-    ]
+// Worldmap root offsets share the vertex axes; the chocobo and chicobo only centre on
+// their origin read that way.
+pub fn root_location(coordinate_offset: &[u16; 3], variant: Variant) -> [f64; 3] {
+    let [x, y, z] = coordinate_offset.map(scale_offset);
+    match variant {
+        Variant::Field => [-y, x, z],
+        Variant::Worldmap => [x, y, z],
+    }
 }
 
 fn scale_offset(value: u16) -> f64 {

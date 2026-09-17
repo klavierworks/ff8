@@ -24,7 +24,8 @@ pub fn build(parsed: ParsedModel, variant: Variant) -> BuiltModel {
     let meshes = construct_meshes(&parsed, variant);
 
     let source_animations = &parsed.model_data.animations;
-    let rest_root_location = root_location(&source_animations[0].frames[0].coordinate_offset);
+    let rest_root_location =
+        root_location(&source_animations[0].frames[0].coordinate_offset, variant);
     let rest_animation = construct_animation(
         parsed.name.as_str(),
         &source_animations[0],
@@ -318,7 +319,7 @@ fn construct_animation(
                     };
                     let rotation = quat_to_euler_yxz(local);
                     let location = if bone_index == 0 {
-                        let mut location = root_location(&frame.coordinate_offset);
+                        let mut location = root_location(&frame.coordinate_offset, variant);
                         if let Some(base) = rest_root_location {
                             for axis in 0..3 {
                                 location[axis] -= base[axis];

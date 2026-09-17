@@ -8,7 +8,7 @@ import {
   WORLD_GRID_COLS,
   WORLD_GRID_ROWS,
 } from '../constants'
-import { applyPlanetCurvature } from '../curvature'
+import { applyTerrainShaders } from '../terrainShaders'
 import { VARIANT_STAGING_ROW } from './tileState'
 
 export type SegmentPosition = {
@@ -112,7 +112,7 @@ export const getTextureMap = (material: Material) =>
   material instanceof MeshStandardMaterial || material instanceof MeshBasicMaterial ? material.map : null
 
 const configureTileMaterial = (material: Material) => {
-  applyPlanetCurvature(material)
+  applyTerrainShaders(material)
   if (!getTextureMap(material)) {
     return
   }

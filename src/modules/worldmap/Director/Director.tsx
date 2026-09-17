@@ -3,9 +3,11 @@ import { Vector3 } from 'three'
 
 import { WORLDMAP_ENTRY_FROM_BATTLE } from '../../../constants/worldmapTransitions'
 import useGlobalStore from '../../../store'
+import { getPadPresses } from '../Controls/padPresses'
+import { INPUT_LATCH_FRAME_PRIORITY } from '../Player/constants'
 import { EventOutcome } from '../Scripts/eventActions'
 import { ScriptSection } from '../Scripts/runScript'
-import { advanceScriptInputs } from '../Scripts/scriptInputs'
+import { advanceScriptInputs, clearButtonInputLatch } from '../Scripts/scriptInputs'
 import { runTrainStations, TrainStations } from '../Trains/trainStations'
 import useScriptTick from '../useScriptTick'
 import { getEntryDelayFrames } from '../worldmapEntry'
@@ -40,14 +42,16 @@ const Director = ({ eventScripts, locationScripts, trainStations }: DirectorProp
     })
   }
 
+  useScriptTick(clearButtonInputLatch, { priority: INPUT_LATCH_FRAME_PRIORITY })
+
   useScriptTick(
-    () => {
+    (tick) => {
       const { characterPosition } = useGlobalStore.getState()
       if (!characterPosition) {
         return
       }
       advanceScriptInputs(
-        useWorldmapStore.getState().controls.padButtons,
+        getPadPresses(tick),
         characterPosition,
         hasPreviousPositionRef.current ? _previousPosition : undefined,
       )

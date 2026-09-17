@@ -1,11 +1,6 @@
 import { Vector3 } from 'three'
 
-import {
-  HEADING_SNAP_RANGE_PSX,
-  HEADING_TURN_STEP_PSX,
-  VELOCITY_INPUT_MULTIPLIER,
-  VELOCITY_INPUT_SHIFT,
-} from './constants'
+import { HEADING_SNAP_RANGE_PSX, HEADING_TURN_STEP_PSX, VELOCITY_INPUT_MULTIPLIER } from './constants'
 import { OnFootInput } from './onFootInput'
 import { radiansToPsx, shortestPsxDelta, wrapPsxAngle } from './playerAngles'
 
@@ -19,15 +14,21 @@ const _velocity = new Vector3()
 
 const ZERO_VELOCITY: OnFootVelocity = { x: 0, z: 0 }
 
-const scaleInputAxis = (value: number) => (VELOCITY_INPUT_MULTIPLIER * value) >> VELOCITY_INPUT_SHIFT
+const scaleInputAxis = (value: number, shift: number) => (VELOCITY_INPUT_MULTIPLIER * value) >> shift
 
 export const isVelocityZero = ({ x, z }: OnFootVelocity) => x === 0 && z === 0
 
-export const calculateOnFootVelocity = (input: OnFootInput, cameraYawRadians: number): OnFootVelocity => {
+export const calculateOnFootVelocity = (
+  input: OnFootInput,
+  cameraYawRadians: number,
+  velocityShift: number,
+): OnFootVelocity => {
   if (!input.isMoving) {
     return ZERO_VELOCITY
   }
-  _velocity.set(scaleInputAxis(input.x), 0, -scaleInputAxis(input.z)).applyAxisAngle(_yAxis, cameraYawRadians)
+  _velocity
+    .set(scaleInputAxis(input.x, velocityShift), 0, -scaleInputAxis(input.z, velocityShift))
+    .applyAxisAngle(_yAxis, cameraYawRadians)
   return { x: Math.round(_velocity.x), z: Math.round(_velocity.z) }
 }
 

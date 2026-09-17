@@ -5,6 +5,8 @@ type UseHeldKeysOptions = {
   watchedCodes: readonly string[]
 }
 
+const META_KEY_CODES: ReadonlySet<string> = new Set(['MetaLeft', 'MetaRight'])
+
 const useHeldKeys = ({ onChange, watchedCodes }: UseHeldKeysOptions) => {
   const onChangeRef = useRef(onChange)
 
@@ -16,24 +18,7 @@ const useHeldKeys = ({ onChange, watchedCodes }: UseHeldKeysOptions) => {
     const heldKeys = new Set<string>()
     const watched = new Set(watchedCodes)
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!watched.has(event.code)) {
-        return
-      }
-      const wasAlreadyHeld = heldKeys.has(event.code)
-      heldKeys.add(event.code)
-      onChangeRef.current(heldKeys, wasAlreadyHeld ? null : event.code)
-    }
-
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (!watched.has(event.code)) {
-        return
-      }
-      heldKeys.delete(event.code)
-      onChangeRef.current(heldKeys, null)
-    }
-
-    const handleBlur = () => {
+    const releaseAllKeys = () => {
       if (heldKeys.size === 0) {
         return
       }
@@ -41,14 +26,37 @@ const useHeldKeys = ({ onChange, watchedCodes }: UseHeldKeysOptions) => {
       onChangeRef.current(heldKeys, null)
     }
 
+    // A non-repeat keydown for a key already marked held means its keyup never arrived, so it
+    // still counts as a fresh press.
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!watched.has(event.code)) {
+        return
+      }
+      heldKeys.add(event.code)
+      onChangeRef.current(heldKeys, event.repeat ? null : event.code)
+    }
+
+    // macOS browsers drop the keyup of any key released while Cmd is held.
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (META_KEY_CODES.has(event.code)) {
+        releaseAllKeys()
+        return
+      }
+      if (!watched.has(event.code)) {
+        return
+      }
+      heldKeys.delete(event.code)
+      onChangeRef.current(heldKeys, null)
+    }
+
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
-    window.addEventListener('blur', handleBlur)
+    window.addEventListener('blur', releaseAllKeys)
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
-      window.removeEventListener('blur', handleBlur)
+      window.removeEventListener('blur', releaseAllKeys)
     }
   }, [watchedCodes])
 }

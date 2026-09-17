@@ -1,17 +1,19 @@
 import { WORLDMAP_CAMERA_MODE_DEFAULT } from '../../../constants/worldmapCamera'
+import { calculateAutopilotRotateInput } from '../Player/FlyingRagnarok/autopilotUtils'
 import { wrapPsxAngle } from '../Player/playerAngles'
 import { isRagnarok, isSteeredVehicle, isWalkerClass } from '../vehicleClasses'
-import { WORLD_MAP_STATE_FREE_ROAM } from '../worldmapStore'
+import { WORLD_MAP_STATE_AUTOPILOT, WORLD_MAP_STATE_FREE_ROAM } from '../worldmapStore'
 import { createInitialFocus, PsxPoint, stepFocus } from './cameraFocus'
 import { easeRagnarokPitch, hasTerrainPitchDip, stepTerrainPitch } from './cameraPitch'
 import {
   getModeChangeRetarget,
+  hasPendingRetarget,
   NO_RETARGET,
   RetargetFlags,
   stepRetarget,
   VEHICLE_CHANGE_RETARGET,
 } from './cameraRetarget'
-import { calculateRagnarokPitch, CameraRig, createRestingRig } from './cameraRig'
+import { calculateRagnarokPitch, CameraRig, createRestingRig, getFogStartTarget } from './cameraRig'
 import {
   CameraTransition,
   createCameraTransition,
@@ -154,9 +156,14 @@ const applyTerrainPitch = (memory: CameraMemory, input: CameraTickInput): Camera
   return { ...memory, holdTicks: step.holdTicks, rig: { ...memory.rig, pitch: step.pitch } }
 }
 
+const resolveSteeredRotateInput = (memory: CameraMemory, input: CameraTickInput) =>
+  input.worldMapState === WORLD_MAP_STATE_AUTOPILOT
+    ? calculateAutopilotRotateInput(input.headingPsx, memory.rig.yaw)
+    : input.rotateInput
+
 const applySteeredVehicleYaw = (memory: CameraMemory, input: CameraTickInput): CameraMemory => {
   if (input.cameraModeIndex !== WORLDMAP_CAMERA_MODE_DEFAULT) {
-    const step = stepManualVehicleYaw(memory.rig.yaw, memory.manualVelocity, input.rotateInput)
+    const step = stepManualVehicleYaw(memory.rig.yaw, memory.manualVelocity, resolveSteeredRotateInput(memory, input))
     return { ...memory, manualVelocity: step.velocity, rig: { ...memory.rig, yaw: step.yaw } }
   }
   const step = stepFollowVehicleYaw(memory.rig.yaw, memory.followSpeed, input.headingPsx)
@@ -164,7 +171,7 @@ const applySteeredVehicleYaw = (memory: CameraMemory, input: CameraTickInput): C
 }
 
 const applyRagnarokPitchEase = (memory: CameraMemory, input: CameraTickInput): CameraMemory => {
-  if (!isRagnarok(input.vehicleId)) {
+  if (!isRagnarok(input.vehicleId) || input.worldMapState !== WORLD_MAP_STATE_FREE_ROAM) {
     return memory
   }
   const pitch = easeRagnarokPitch(memory.rig.pitch, calculateRagnarokPitch(input.player.altitude))
@@ -196,8 +203,15 @@ const applyRetarget = (memory: CameraMemory, input: CameraTickInput): CameraMemo
   return { ...memory, flags: retargeted.flags, rig: retargeted.rig }
 }
 
+const applyFogPreset = (memory: CameraMemory, input: CameraTickInput): CameraMemory => {
+  if (hasPendingRetarget(memory.flags)) {
+    return memory
+  }
+  return { ...memory, rig: { ...memory.rig, fogStart: getFogStartTarget(input.vehicleId) } }
+}
+
 const runFreeRoamTick = (memory: CameraMemory, input: CameraTickInput): CameraMemory =>
-  applyRetarget(applyYaw(applyTerrainPitch(closeTransition(memory, input), input), input), input)
+  applyFogPreset(applyRetarget(applyYaw(applyTerrainPitch(closeTransition(memory, input), input), input), input), input)
 
 const finishTick = (memory: CameraMemory, input: CameraTickInput): CameraMemory => ({
   ...memory,

@@ -15,17 +15,25 @@ const getDialogLine = (id: number) => dialogText[id] ?? `[missing dialog ${id}]`
 
 export const getSlotState = (slot: number) => slotStates.get(slot) ?? DIALOG_STATE_PENDING
 
+export const isDialogActive = (slot: number) =>
+  openMessageIdsBySlot.has(slot) || getSlotState(slot) !== DIALOG_STATE_PENDING
+
 const createDialogId = (slot: number) => `worldmap-${slot}-${Date.now()}-${nextDialogSequence++}`
+
+const createSlotPlacement = (slot: number): MessagePlacement => ({
+  ...DIALOG_POSITION,
+  channel: slot,
+  height: undefined,
+  width: undefined,
+})
 
 export const isSlotAssigned = (slot: number, stringId: number) => stringIdsBySlot.get(slot) === stringId
 
-export const showDialog = (slot: number, stringId: number, askOptions?: AskOptions) => {
+export const showDialogText = (slot: number, text: string, placement: MessagePlacement, askOptions?: AskOptions) => {
   const id = createDialogId(slot)
   openMessageIdsBySlot.set(slot, id)
-  stringIdsBySlot.set(slot, stringId)
   slotStates.set(slot, DIALOG_STATE_PENDING)
-  const placement: MessagePlacement = { ...DIALOG_POSITION, channel: slot, height: undefined, width: undefined }
-  return openMessage(id, [getDialogLine(stringId)], placement, true, askOptions)
+  return openMessage(id, [text], placement, true, askOptions)
     .then((selectedIndex) => {
       slotStates.set(slot, selectedIndex)
       return selectedIndex
@@ -35,6 +43,11 @@ export const showDialog = (slot: number, stringId: number, askOptions?: AskOptio
         openMessageIdsBySlot.delete(slot)
       }
     })
+}
+
+export const showDialog = (slot: number, stringId: number, askOptions?: AskOptions) => {
+  stringIdsBySlot.set(slot, stringId)
+  return showDialogText(slot, getDialogLine(stringId), createSlotPlacement(slot), askOptions)
 }
 
 export const closeDialog = (slot: number) => {
@@ -49,6 +62,6 @@ export const closeDialog = (slot: number) => {
 }
 
 export const closeAllDialogs = () => {
-  Array.from(stringIdsBySlot.keys()).forEach(closeDialog)
+  new Set([...stringIdsBySlot.keys(), ...openMessageIdsBySlot.keys()]).forEach(closeDialog)
   slotStates.clear()
 }
