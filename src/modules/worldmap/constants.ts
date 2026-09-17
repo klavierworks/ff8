@@ -1,3 +1,5 @@
+export const DRAW_DISTANCE = 2
+
 export const WORLDMAP_SCALE = 1 / 1000
 
 export const SEGMENT_WORLD_SIZE = 8192

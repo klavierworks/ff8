@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 
 import useGlobalStore from '../../../store'
 import { MEMORY } from '../../field/Scripts/Script/handlers'
-import { WORLDMAP_SCALE } from '../constants'
+import { DRAW_DISTANCE, WORLDMAP_SCALE } from '../constants'
 import { getWorldStateVariable } from '../worldmapSaveData'
 import Tile from './Tile/Tile'
 import TilePrecompiler from './TilePrecompiler/TilePrecompiler'
@@ -17,8 +17,9 @@ import {
   SegmentPosition,
 } from './tilesUtils'
 
-const VISIBLE_TILE_RADIUS = 3
-const PRELOAD_TILE_RADIUS = 4
+const BASE_VISIBLE_TILE_RADIUS = 3
+const VISIBLE_TILE_RADIUS = Math.ceil(BASE_VISIBLE_TILE_RADIUS * DRAW_DISTANCE)
+const PRELOAD_TILE_RADIUS = VISIBLE_TILE_RADIUS + 1
 
 const isSameSegment = (a: null | SegmentPosition, b: SegmentPosition) => a?.column === b.column && a.row === b.row
 
