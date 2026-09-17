@@ -1,5 +1,7 @@
 export const VARIANT_STAGING_ROW = 24
 
+const D_DISTRICT_PRISON_REGION = 6
+
 type SegmentVariantEntry = {
   region: number
   segmentIndex: number
@@ -84,15 +86,19 @@ const SEGMENT_VARIANT_MAP: SegmentVariantEntry[] = [
   { region: 6, segmentIndex: 361, variantIndex: 66 },
 ]
 
-export const getTilesState = (worldStateVariable: number, isDDistrictPrisonAboveGround: boolean) => {
-  const activeRegions = [
-    ...(ACTIVE_REGIONS_BY_STATE[worldStateVariable] ?? []),
-    ...(isDDistrictPrisonAboveGround ? [6] : []),
-  ]
-  return SEGMENT_VARIANT_MAP.filter((entry) => activeRegions.includes(entry.region)).map(
-    ({ segmentIndex, variantIndex }) => ({
-      segmentIndex,
-      variantIndex,
-    }),
+const getActiveRegions = (worldStateVariable: number, isDDistrictPrisonAboveGround: boolean) => [
+  ...(ACTIVE_REGIONS_BY_STATE[worldStateVariable] ?? []),
+  ...(isDDistrictPrisonAboveGround ? [D_DISTRICT_PRISON_REGION] : []),
+]
+
+export const getActiveVariantOverrides = (
+  worldStateVariable: number,
+  isDDistrictPrisonAboveGround: boolean,
+): ReadonlyMap<number, number> => {
+  const activeRegions = getActiveRegions(worldStateVariable, isDDistrictPrisonAboveGround)
+  return new Map(
+    SEGMENT_VARIANT_MAP.filter((entry) => activeRegions.includes(entry.region)).map(
+      ({ segmentIndex, variantIndex }) => [segmentIndex, variantIndex],
+    ),
   )
 }

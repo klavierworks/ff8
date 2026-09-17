@@ -1,97 +1,121 @@
-import { useFrame, useThree } from '@react-three/fiber'
-import { MutableRefObject } from 'react'
-import { Vector3 } from 'three'
+import { useThree } from '@react-three/fiber'
+import { useRef } from 'react'
+import { Object3D, Vector3 } from 'three'
 
 import useGlobalStore from '../../../store'
-import { TARGET_FPS } from '../../../timing'
-import { stepToward } from '../Camera/cameraUtils'
-import { WORLDMAP_SCALE } from '../constants'
-import useWorldmapStore from '../worldmapStore'
-import { radiansToPsx, shortestPsxDelta, wrapPsxAngle } from './playerAngles'
-import { findGroundY, PLAYER_Y_OFFSET } from './playerUtils'
+import { WORLDMAP_STATE } from '../Scripts/state'
+import { getOnFootPsxHeight, psxHeightToWorldY, worldYToPsxHeight } from '../terrain'
+import useScriptTick from '../useScriptTick'
+import useWorldmapStore, { WORLD_MAP_STATE_FREE_ROAM } from '../worldmapStore'
+import { MOVEMENT_FRAME_PRIORITY } from './constants'
+import { setMovementOutputs } from './movementState'
+import { isPadInputIgnored, OnFootInput, readOnFootInput } from './onFootInput'
+import { calculateOnFootVelocity, calculateTargetHeadingPsx, OnFootVelocity, stepOnFootHeading } from './onFootMotion'
+import { getPreferredSlideSet, OnFootStep, resolveOnFootStep, SlideSet } from './onFootStep'
 
-const _yAxis = new Vector3(0, 1, 0)
-const _input = new Vector3()
-const _velocity = new Vector3()
-
-const MAX_SPEED_PSX_PER_FRAME = 32
-const MAX_SPEED_THREE_PER_SECOND = MAX_SPEED_PSX_PER_FRAME * TARGET_FPS * WORLDMAP_SCALE
-const DECEL_THREE_PER_SECOND_SQ = 4 * TARGET_FPS * TARGET_FPS * WORLDMAP_SCALE
-const PLAYER_YAW_STEP_PSX_PER_SECOND = 256 * TARGET_FPS
-const Y_SETTLE_THREE_PER_SECOND = 4
-
-const stepPsxAngle = (current: number, target: number, maxStep: number) => {
-  const delta = shortestPsxDelta(current, target)
-  if (Math.abs(delta) <= maxStep) {
-    return wrapPsxAngle(target)
-  }
-  return wrapPsxAngle(current + Math.sign(delta) * maxStep)
+type MovementMemory = {
+  blockedTicks: number
+  groundType: number | undefined
+  lastSlideAnglePsx: number
+  padButtons: number
+  preferredSet: SlideSet
 }
 
-const useMovement = (speedRef: MutableRefObject<number>) => {
-  const camera = useThree((state) => state.camera)
-  const scene = useThree((state) => state.scene)
+const INITIAL_MEMORY: MovementMemory = {
+  blockedTicks: 0,
+  groundType: undefined,
+  lastSlideAnglePsx: 0,
+  padButtons: 0,
+  preferredSet: 0,
+}
 
-  useFrame((_, delta) => {
-    const store = useGlobalStore.getState()
-    const position = store.characterPosition
-    if (!position) {
-      return
-    }
+const readInputForTick = (tick: number) =>
+  readOnFootInput(useWorldmapStore.getState().controls, isPadInputIgnored(tick))
 
-    const { moveX, moveY } = useWorldmapStore.getState().controls
-    const hasInput = moveX !== 0 || moveY !== 0
+const calculateHeading = (
+  currentPsx: number,
+  input: OnFootInput,
+  velocity: OnFootVelocity,
+  lastSlideAnglePsx: number,
+) => {
+  if (!input.isMoving) {
+    return { headingPsx: currentPsx, isTurnClamped: false }
+  }
+  return stepOnFootHeading(currentPsx, calculateTargetHeadingPsx(velocity, lastSlideAnglePsx))
+}
 
-    if (hasInput) {
-      _input.set(moveX, 0, -moveY).normalize()
-      const cameraYaw = Math.atan2(camera.matrixWorld.elements[8], camera.matrixWorld.elements[10])
-      _velocity.copy(_input).applyAxisAngle(_yAxis, cameraYaw).multiplyScalar(MAX_SPEED_THREE_PER_SECOND)
-    } else {
-      const speed = _velocity.length()
-      if (speed === 0) {
-        speedRef.current = 0
-        const groundY = findGroundY(scene, position.x, position.z)
-        if (groundY === undefined) {
-          return
-        }
-        const targetY = groundY + PLAYER_Y_OFFSET
-        const nextY = stepToward(position.y, targetY, Y_SETTLE_THREE_PER_SECOND * delta)
-        if (nextY === position.y) {
-          return
-        }
-        position.set(position.x, nextY, position.z)
-        return
-      }
-      const nextSpeed = Math.max(0, speed - DECEL_THREE_PER_SECOND_SQ * delta)
-      if (nextSpeed === 0) {
-        _velocity.set(0, 0, 0)
-        speedRef.current = 0
-        return
-      }
-      _velocity.multiplyScalar(nextSpeed / speed)
-    }
+const updateCollisionMemory = (
+  memory: MovementMemory,
+  preferredSet: SlideSet,
+  step: OnFootStep | undefined,
+): MovementMemory => {
+  if (!step) {
+    return { ...memory, blockedTicks: memory.blockedTicks + 1, lastSlideAnglePsx: 0, preferredSet }
+  }
+  return {
+    ...memory,
+    blockedTicks: 0,
+    groundType: step.triangle.groundType,
+    lastSlideAnglePsx: step.slideAnglePsx,
+    preferredSet: step.set,
+  }
+}
 
-    speedRef.current = _velocity.length()
+const applyStep = (position: Vector3, step: OnFootStep) => {
+  if (useWorldmapStore.getState().worldMapState === WORLD_MAP_STATE_FREE_ROAM) {
+    position.set(step.x, psxHeightToWorldY(getOnFootPsxHeight(step.triangle)), step.z)
+  }
+  WORLDMAP_STATE.locationTriangle = step.triangle
+}
 
-    const tentativeX = position.x + _velocity.x * delta
-    const tentativeZ = position.z + _velocity.z * delta
+const runMovementTick = (scene: Object3D, memory: MovementMemory, tick: number): MovementMemory => {
+  const { characterPosition: position, fieldDirection } = useGlobalStore.getState()
+  const { camera, controls } = useWorldmapStore.getState()
+  if (!position) {
+    return memory
+  }
 
-    const groundY = findGroundY(scene, tentativeX, tentativeZ)
-    if (groundY === undefined) {
-      return
-    }
-    const targetY = groundY + PLAYER_Y_OFFSET
-    const nextY = stepToward(position.y, targetY, Y_SETTLE_THREE_PER_SECOND * delta)
+  const input = readInputForTick(tick)
+  const velocity = calculateOnFootVelocity(input, camera.yawRadians)
+  const heading = calculateHeading(fieldDirection, input, velocity, memory.lastSlideAnglePsx)
+  const preferredSet = getPreferredSlideSet(controls.padButtons, memory.padButtons, memory.preferredSet)
 
-    const nextFieldDirection = stepPsxAngle(
-      store.fieldDirection,
-      radiansToPsx(Math.atan2(_velocity.x, _velocity.z)),
-      PLAYER_YAW_STEP_PSX_PER_SECOND * delta,
-    )
-
-    position.set(tentativeX, nextY, tentativeZ)
-    useGlobalStore.setState({ fieldDirection: nextFieldDirection })
+  const step = resolveOnFootStep(scene, {
+    blockedTicks: memory.blockedTicks,
+    currentGroundType: memory.groundType,
+    currentPsxY: worldYToPsxHeight(position.y),
+    preferredSet,
+    velocity,
+    x: position.x,
+    z: position.z,
   })
+  if (step) {
+    applyStep(position, step)
+  }
+
+  if (heading.headingPsx !== fieldDirection) {
+    useGlobalStore.setState({ fieldDirection: heading.headingPsx })
+  }
+  setMovementOutputs({
+    headingPsx: heading.headingPsx,
+    isMoving: input.isMoving,
+    isNoSteering: input.isNoSteering || heading.isTurnClamped,
+    tick,
+  })
+
+  return { ...updateCollisionMemory(memory, preferredSet, step), padButtons: controls.padButtons }
+}
+
+const useMovement = () => {
+  const scene = useThree((state) => state.scene)
+  const memoryRef = useRef(INITIAL_MEMORY)
+
+  useScriptTick(
+    (tick) => {
+      memoryRef.current = runMovementTick(scene, memoryRef.current, tick)
+    },
+    { priority: MOVEMENT_FRAME_PRIORITY },
+  )
 }
 
 export default useMovement

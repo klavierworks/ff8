@@ -1,112 +1,112 @@
-import { useFrame, useThree } from '@react-three/fiber'
-import { MutableRefObject } from 'react'
+import { useThree } from '@react-three/fiber'
+import { useRef } from 'react'
+import { Object3D, Vector3 } from 'three'
 
+import { VEHICLE_IDS } from '../../../../constants/vehicles'
 import useGlobalStore from '../../../../store'
-import { TARGET_FPS } from '../../../../timing'
+import { MEMORY } from '../../../field/Scripts/Script/handlers'
+import useScriptTick from '../../useScriptTick'
+import { readSavedCameraMode } from '../../worldmapSaveData'
 import useWorldmapStore, {
   WORLD_MAP_STATE_FREE_ROAM,
   WORLD_MAP_STATE_RAGNAROK_LANDING,
-  WORLD_MAP_TRANSITION_FRAMES,
+  WORLD_MAP_STATE_RAGNAROK_TAKEOFF,
 } from '../../worldmapStore'
-import { findGroundY, PLAYER_Y_OFFSET } from '../playerUtils'
-import { VEHICLE_ON_FOOT } from './flightConstants'
-import { FlightAttitude } from './useFlight'
+import { MOVEMENT_FRAME_PRIORITY, RAGNAROK_FOLDED_FRAME } from '../constants'
+import { convertFieldDirectionToHeading } from '../playerAngles'
+import { storeRagnarokPose } from './ragnarokEntity'
+import { getRagnarokOutputs, getRagnarokTrip, setRagnarokOutputs } from './ragnarokState'
+import { findGroundAltitude, readShipPose, writeShipPose } from './shipPose'
+import {
+  advanceTransition,
+  createLanding,
+  createTakeoff,
+  isTransitionFinished,
+  ShipTransition,
+  stepLandingFrame,
+  stepTakeoffFrame,
+} from './transitionUtils'
 
-type UseTransitionArgs = {
-  attitudeRef: MutableRefObject<FlightAttitude>
+const isTransitionState = (worldMapState: number) =>
+  worldMapState === WORLD_MAP_STATE_RAGNAROK_TAKEOFF || worldMapState === WORLD_MAP_STATE_RAGNAROK_LANDING
+
+const readShipYaw = () => convertFieldDirectionToHeading(useGlobalStore.getState().fieldDirection)
+
+const startTransition = (scene: Object3D, position: Vector3, kind: number) => {
+  const pose = readShipPose(position)
+  const ground = findGroundAltitude(scene, pose.x, pose.z) ?? pose.altitude
+  const isTakeoff = kind === WORLD_MAP_STATE_RAGNAROK_TAKEOFF
+  setRagnarokOutputs({ ...getRagnarokOutputs(), animationFrame: isTakeoff ? RAGNAROK_FOLDED_FRAME : 0, velocity: 0 })
+  return isTakeoff ? createTakeoff(pose.altitude, ground) : createLanding(pose.altitude, ground)
 }
 
-const useTransition = ({ attitudeRef }: UseTransitionArgs) => {
-  // Take-off lifts the ship to a fixed altitude above the ground it boarded
-  // from; the pilot climbs further from there (see ida.md).
-  const TAKEOFF_TARGET_ALTITUDE = 800 / 1000
+const stepAnimationFrame = (transition: ShipTransition) => {
+  const outputs = getRagnarokOutputs()
+  const animationFrame =
+    transition.kind === WORLD_MAP_STATE_RAGNAROK_TAKEOFF
+      ? stepTakeoffFrame(outputs.animationFrame, transition.counter)
+      : stepLandingFrame(outputs.animationFrame)
+  setRagnarokOutputs({ ...outputs, animationFrame })
+}
 
-  const scene = useThree((state) => state.scene)
-
-  useFrame((_, delta) => {
-    const worldmap = useWorldmapStore.getState()
-    const transitionState = worldmap.worldMapState
-    if (transitionState === WORLD_MAP_STATE_FREE_ROAM) {
-      return
-    }
-
-    const position = useGlobalStore.getState().characterPosition
-    if (!position) {
-      return
-    }
-
-    const previousProgress = worldmap.worldMapStateProgress
-    const remainingFrames = Math.max(1, WORLD_MAP_TRANSITION_FRAMES - previousProgress)
-    const framesAdvanced = delta * TARGET_FPS
-
-    // Landing: also interpolate the XZ position toward `landingTarget` so the
-    // ship glides into the parking spot, snapping to it exactly at transition
-    // end. Take-off does not move XZ — the ship lifts straight up from where
-    // the pilot boarded.
-    const target = worldmap.landingTarget
-    const isLanding = transitionState === WORLD_MAP_STATE_RAGNAROK_LANDING
-    const groundY = findGroundY(scene, position.x, position.z) ?? 0
-    const targetAltitude = isLanding
-      ? (target ? target.worldY : groundY) + PLAYER_Y_OFFSET
-      : groundY + TAKEOFF_TARGET_ALTITUDE
-
-    // The engine caches a fixed per-frame step (remaining distance / 60) at
-    // transition start. We recompute the step dynamically against the remaining
-    // frames so the integral still lands on `target` at progress == 60
-    // regardless of frame rate.
-    const altitudeStep = ((targetAltitude - position.y) / remainingFrames) * framesAdvanced
-    const nextY = position.y + altitudeStep
-
-    let nextX = position.x
-    let nextZ = position.z
-    if (isLanding && target) {
-      nextX = position.x + ((target.worldX - position.x) / remainingFrames) * framesAdvanced
-      nextZ = position.z + ((target.worldZ - position.z) / remainingFrames) * framesAdvanced
-    }
-
-    const nextProgress = Math.min(WORLD_MAP_TRANSITION_FRAMES, previousProgress + framesAdvanced)
-
-    position.set(nextX, nextY, nextZ)
-
-    // Bleed off speed and bank linearly across the 60-frame window so we end
-    // straight-and-level (the engine zeros forward velocity on the first
-    // transition frame).
-    const t = Math.min(1, nextProgress / WORLD_MAP_TRANSITION_FRAMES)
-    attitudeRef.current = {
-      bankRadians: attitudeRef.current.bankRadians * (1 - t),
-      speed: attitudeRef.current.speed * (1 - t),
-    }
-
-    if (nextProgress >= WORLD_MAP_TRANSITION_FRAMES) {
-      if (isLanding) {
-        // Snap to landing target exactly + drop to ground offset; switch back
-        // to the saved pre-Ragnarok vehicle and remember the parked spot so
-        // `FlyingRagnarok` can render the ship inline while the player is on
-        // foot.
-        position.set(
-          target ? target.worldX : nextX,
-          (target ? target.worldY : groundY) + PLAYER_Y_OFFSET,
-          target ? target.worldZ : nextZ,
-        )
-        useWorldmapStore.setState({
-          landingTarget: null,
-          parkedRagnarokPosition: target,
-          parkedRagnarokYawPsx: useGlobalStore.getState().fieldDirection,
-          vehicleId: worldmap.preTransitionVehicleId ?? VEHICLE_ON_FOOT,
-          worldMapState: WORLD_MAP_STATE_FREE_ROAM,
-          worldMapStateProgress: 0,
-        })
-      } else {
-        useWorldmapStore.setState({
-          worldMapState: WORLD_MAP_STATE_FREE_ROAM,
-          worldMapStateProgress: 0,
-        })
-      }
-      return
-    }
-
-    useWorldmapStore.setState({ worldMapStateProgress: nextProgress })
+const finishLanding = (position: Vector3) => {
+  const shipPose = readShipPose(position)
+  const { landingSpot, restoredVehicleId } = getRagnarokTrip()
+  storeRagnarokPose(shipPose, readShipYaw())
+  writeShipPose(position, landingSpot ?? shipPose)
+  useWorldmapStore.setState({
+    cameraModeIndex: readSavedCameraMode(MEMORY),
+    vehicleId: restoredVehicleId,
+    worldMapState: WORLD_MAP_STATE_FREE_ROAM,
   })
+}
+
+const finishTransition = (position: Vector3, kind: number) => {
+  if (kind === WORLD_MAP_STATE_RAGNAROK_LANDING) {
+    finishLanding(position)
+    return
+  }
+  useWorldmapStore.setState({ worldMapState: WORLD_MAP_STATE_FREE_ROAM })
+}
+
+const runTransitionTick = (scene: Object3D, position: Vector3, current: null | ShipTransition, kind: number) => {
+  const transition = current?.kind === kind ? current : startTransition(scene, position, kind)
+  const pose = readShipPose(position)
+  writeShipPose(position, { ...pose, altitude: pose.altitude + transition.altitudeStep })
+  stepAnimationFrame(transition)
+  if (!isTransitionFinished(transition)) {
+    return advanceTransition(transition)
+  }
+  finishTransition(position, kind)
+  return null
+}
+
+const mirrorShipIntoEntity = (position: Vector3) => {
+  if (useWorldmapStore.getState().vehicleId !== VEHICLE_IDS.RAGNAROK) {
+    return
+  }
+  storeRagnarokPose(readShipPose(position), readShipYaw())
+}
+
+const useTransition = () => {
+  const scene = useThree((state) => state.scene)
+  const transitionRef = useRef<null | ShipTransition>(null)
+
+  useScriptTick(
+    () => {
+      const { vehicleId, worldMapState } = useWorldmapStore.getState()
+      const position = useGlobalStore.getState().characterPosition
+      if (!position || vehicleId !== VEHICLE_IDS.RAGNAROK) {
+        transitionRef.current = null
+        return
+      }
+      transitionRef.current = isTransitionState(worldMapState)
+        ? runTransitionTick(scene, position, transitionRef.current, worldMapState)
+        : null
+      mirrorShipIntoEntity(position)
+    },
+    { priority: MOVEMENT_FRAME_PRIORITY },
+  )
 }
 
 export default useTransition

@@ -1,4 +1,4 @@
-use super::exe_build::ExeBuild;
+use crate::utils::exe_build::{ExeBuild, IMAGE_BASE};
 use crate::utils::ff8_text::TextCodec;
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
@@ -25,8 +25,8 @@ pub struct Card {
 }
 
 pub fn export(exe: &[u8], build: ExeBuild, codec: &TextCodec) -> Result<Vec<Card>> {
-    let stats_offset = build.locate(STATS_VIRTUAL_ADDRESS - super::IMAGE_BASE);
-    let names_offset = build.locate(NAMES_VIRTUAL_ADDRESS - super::IMAGE_BASE);
+    let stats_offset = build.locate(STATS_VIRTUAL_ADDRESS - IMAGE_BASE);
+    let names_offset = build.locate(NAMES_VIRTUAL_ADDRESS - IMAGE_BASE);
     let stats_end = stats_offset + CARD_COUNT * STAT_STRIDE;
     let stats = exe.get(stats_offset..stats_end).with_context(|| {
         format!("card stat table out of range ({stats_offset:#X}..{stats_end:#X})")

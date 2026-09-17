@@ -1,153 +1,129 @@
 import { MathUtils } from 'three'
 
-import { TARGET_FPS } from '../../../../timing'
-import { PSX_ANGLE_UNITS, WORLDMAP_SCALE } from '../../constants'
-import { shortestRadiansDelta } from '../playerAngles'
+import { WORLDMAP_PAD_BITS } from '../../../../constants/controls'
+import { PSX_ANGLE_TO_RAD } from '../../constants'
+import {
+  RAGNAROK_ALTITUDE_GAIN,
+  RAGNAROK_ALTITUDE_SHIFT,
+  RAGNAROK_BANK_LIMIT,
+  RAGNAROK_BANK_RELAX_STEP,
+  RAGNAROK_BANK_SHIFT,
+  RAGNAROK_CAMERA_LAG_SPEED_SHIFT,
+  RAGNAROK_CEILING_ALTITUDE,
+  RAGNAROK_DRAG_STEP,
+  RAGNAROK_GROUND_CLEARANCE,
+  RAGNAROK_INPUT_MAGNITUDE,
+  RAGNAROK_THROTTLE_DIVISOR,
+  RAGNAROK_TOP_SPEED,
+  RAGNAROK_YAW_HARD_TURN_SHIFT,
+  RAGNAROK_YAW_HARD_TURN_THRESHOLD,
+  RAGNAROK_YAW_SHIFT,
+} from '../constants'
+import { shortestPsxDelta, wrapPsxAngle } from '../playerAngles'
 
-const INPUT_AXIS_MAX = 127
-
-const RAGNAROK_TOP_SPEED_PSX_PER_FRAME = 200
-const RAGNAROK_THROTTLE_DIVISOR = 8
-const RAGNAROK_DRAG_STEP_PSX_PER_FRAME = 16
-
-const psxPerFrameToWorldPerSecond = (value: number) => value * TARGET_FPS * WORLDMAP_SCALE
-
-const RAGNAROK_TOP_SPEED = psxPerFrameToWorldPerSecond(RAGNAROK_TOP_SPEED_PSX_PER_FRAME)
-const RAGNAROK_THROTTLE_ACCEL_PER_AXIS = psxPerFrameToWorldPerSecond(1 / RAGNAROK_THROTTLE_DIVISOR) * TARGET_FPS
-const RAGNAROK_DRAG_DECEL = psxPerFrameToWorldPerSecond(RAGNAROK_DRAG_STEP_PSX_PER_FRAME) * TARGET_FPS
-const RAGNAROK_THROTTLE_FORWARD_AXIS = INPUT_AXIS_MAX
-const RAGNAROK_THROTTLE_REVERSE_AXIS = -INPUT_AXIS_MAX
-
-const RAGNAROK_YAW_DIVISOR_NORMAL = 4
-const RAGNAROK_YAW_DIVISOR_HARD = 8
-const RAGNAROK_YAW_HARD_THRESHOLD_PSX = 511
-
-const psxAnglePerFrameToRadiansPerSecond = (value: number) => (value * TARGET_FPS * 2 * Math.PI) / PSX_ANGLE_UNITS
-
-const RAGNAROK_YAW_RATE_PER_AXIS_NORMAL = psxAnglePerFrameToRadiansPerSecond(1 / RAGNAROK_YAW_DIVISOR_NORMAL)
-const RAGNAROK_YAW_RATE_PER_AXIS_HARD = psxAnglePerFrameToRadiansPerSecond(1 / RAGNAROK_YAW_DIVISOR_HARD)
-const RAGNAROK_YAW_HARD_THRESHOLD_RADIANS = (RAGNAROK_YAW_HARD_THRESHOLD_PSX / PSX_ANGLE_UNITS) * 2 * Math.PI
-
-const RAGNAROK_BANK_INPUT_DIVISOR = 2
-const RAGNAROK_BANK_LIMIT_PSX = 256
-const RAGNAROK_BANK_RELAX_PSX_PER_FRAME = 32
-
-const RAGNAROK_BANK_RATE_PER_AXIS = psxAnglePerFrameToRadiansPerSecond(1 / RAGNAROK_BANK_INPUT_DIVISOR)
-const RAGNAROK_BANK_LIMIT = (RAGNAROK_BANK_LIMIT_PSX / PSX_ANGLE_UNITS) * 2 * Math.PI
-const RAGNAROK_BANK_RELAX_RATE = psxAnglePerFrameToRadiansPerSecond(RAGNAROK_BANK_RELAX_PSX_PER_FRAME)
-
-const RAGNAROK_ALTITUDE_INPUT_GAIN = 120
-const RAGNAROK_CAMERA_TILT_RATE_PSX_PER_AXIS_FRAME = RAGNAROK_ALTITUDE_INPUT_GAIN / 512
-const RAGNAROK_CAMERA_TILT_MAX_PSX = 4096
-
-// Translates the port's high-level control booleans into the same ±127 axis
-// bytes the original integrator reads. `isBraking` overrides accel so that
-// holding both keys produces the brake/reverse direction (matching dpad-down
-// vs cross in the original).
-type RagnarokInputAxes = {
-  altitudeAxis: number
-  throttleAxis: number
-  yawAxis: number
+export type FlightCamera = {
+  cameraModeIndex: number
+  cameraYaw: number
 }
 
-export const buildRagnarokInputAxes = (controls: {
-  isAccelerating: boolean
-  isBraking: boolean
-  moveX: number
-  moveY: number
-}): RagnarokInputAxes => {
-  let throttleAxis = 0
-  if (controls.isBraking) {
-    throttleAxis = RAGNAROK_THROTTLE_REVERSE_AXIS
-  } else if (controls.isAccelerating) {
-    throttleAxis = RAGNAROK_THROTTLE_FORWARD_AXIS
+type RagnarokInput = {
+  altitude: number
+  throttle: number
+  turn: number
+}
+
+const FIXED_POINT_SHIFT = 12
+const FIXED_POINT_ONE = 1 << FIXED_POINT_SHIFT
+
+const CANCEL_BIT = WORLDMAP_PAD_BITS.cancel
+const CARD_BIT = WORLDMAP_PAD_BITS.card
+const UP_BIT = WORLDMAP_PAD_BITS.forward
+const DOWN_BIT = WORLDMAP_PAD_BITS.backward
+const LEFT_BIT = WORLDMAP_PAD_BITS.left
+const RIGHT_BIT = WORLDMAP_PAD_BITS.right
+
+const IDLE_RAGNAROK_INPUT: RagnarokInput = { altitude: 0, throttle: 0, turn: 0 }
+
+const isHeld = (padButtons: number, bit: number) => (padButtons & bit) !== 0
+
+const readAxis = (padButtons: number, winningBit: number, losingBit: number) => {
+  if (isHeld(padButtons, winningBit)) {
+    return RAGNAROK_INPUT_MAGNITUDE
   }
-  const yawAxis = controls.moveX * RAGNAROK_THROTTLE_FORWARD_AXIS
-  const altitudeAxis = controls.moveY * RAGNAROK_THROTTLE_FORWARD_AXIS
-  return { altitudeAxis, throttleAxis, yawAxis }
+  return isHeld(padButtons, losingBit) ? -RAGNAROK_INPUT_MAGNITUDE : 0
 }
 
-const relaxToward = (current: number, step: number): number => {
-  if (Math.abs(current) <= step) {
+export const readRagnarokInput = (padButtons: number, isIgnored: boolean): RagnarokInput => {
+  if (isIgnored) {
+    return IDLE_RAGNAROK_INPUT
+  }
+  return {
+    altitude: readAxis(padButtons, UP_BIT, DOWN_BIT),
+    throttle: -readAxis(padButtons, CANCEL_BIT, CARD_BIT),
+    turn: readAxis(padButtons, LEFT_BIT, RIGHT_BIT),
+  }
+}
+
+const isHardTurn = (shipYaw: number, camera: FlightCamera) => {
+  const unwrappedYawDifference = camera.cameraYaw - shipYaw
+  return camera.cameraModeIndex === 0 && Math.abs(unwrappedYawDifference) > RAGNAROK_YAW_HARD_TURN_THRESHOLD
+}
+
+export const stepShipYaw = (shipYaw: number, turn: number, camera: FlightCamera) => {
+  if (turn === 0) {
+    return shipYaw
+  }
+  const shift = isHardTurn(shipYaw, camera) ? RAGNAROK_YAW_HARD_TURN_SHIFT : RAGNAROK_YAW_SHIFT
+  return wrapPsxAngle(shipYaw + (-turn >> shift))
+}
+
+const moveTowardZero = (value: number, step: number) => {
+  if (Math.abs(value) <= step) {
     return 0
   }
-  return current - Math.sign(current) * step
+  return value - Math.sign(value) * step
 }
 
-// Throttle adds throttle / 8 per frame, clamped to ±200 PSX/frame, with a
-// ±16 PSX/frame drag toward 0 when no throttle button is held. In
-// continuous-time units that becomes:
-//   throttle held: velocity += axis * accelPerAxis * dt
-//   no throttle:   velocity relaxes toward 0 at dragDecel per second
-export const stepRagnarokSpeed = (currentSpeed: number, throttleAxis: number, deltaSeconds: number): number => {
-  if (throttleAxis !== 0) {
-    const next = currentSpeed + throttleAxis * RAGNAROK_THROTTLE_ACCEL_PER_AXIS * deltaSeconds
-    return MathUtils.clamp(next, -RAGNAROK_TOP_SPEED, RAGNAROK_TOP_SPEED)
+export const stepShipBank = (bank: number, turn: number) => {
+  if (turn === 0) {
+    return moveTowardZero(bank, RAGNAROK_BANK_RELAX_STEP)
   }
-  return relaxToward(currentSpeed, RAGNAROK_DRAG_DECEL * deltaSeconds)
+  return MathUtils.clamp(bank + (turn >> RAGNAROK_BANK_SHIFT), -RAGNAROK_BANK_LIMIT, RAGNAROK_BANK_LIMIT)
 }
 
-// Heading turns by -input / 4 per frame normally, or -input / 8 when the
-// heading lags the camera-target yaw by more than 511 PSX units.
-// `targetYawRadians` is that camera-target reference used by the original's
-// auto-yaw assist. The `-input` term rotates the yaw counter-clockwise for a
-// left turn, the visually-correct direction in the standard `atan2(vx, vz)`
-// orientation.
-export const stepRagnarokYaw = (
-  currentYawRadians: number,
-  yawAxis: number,
-  targetYawRadians: number,
-  deltaSeconds: number,
-): number => {
-  if (yawAxis === 0) {
-    return currentYawRadians
+const calculateSpeedCap = (shipYaw: number, camera: FlightCamera) => {
+  if (camera.cameraModeIndex !== 0) {
+    return RAGNAROK_TOP_SPEED
   }
-  const delta = shortestRadiansDelta(targetYawRadians - currentYawRadians)
-  const ratePerAxis =
-    Math.abs(delta) > RAGNAROK_YAW_HARD_THRESHOLD_RADIANS
-      ? RAGNAROK_YAW_RATE_PER_AXIS_HARD
-      : RAGNAROK_YAW_RATE_PER_AXIS_NORMAL
-  return currentYawRadians - yawAxis * ratePerAxis * deltaSeconds
+  return RAGNAROK_TOP_SPEED - (Math.abs(shortestPsxDelta(camera.cameraYaw, shipYaw)) >> RAGNAROK_CAMERA_LAG_SPEED_SHIFT)
 }
 
-// Bank accumulates input / 2 per frame, clamped to ±256 PSX units
-// (= ±BANK_LIMIT), and relaxes at ±32 PSX/frame when input is 0. A left turn
-// rolls about the +Z body axis (right wing up), matching a positive three.js
-// `rotation.z`.
-export const stepRagnarokBank = (currentBank: number, yawAxis: number, deltaSeconds: number): number => {
-  if (yawAxis !== 0) {
-    const next = currentBank + yawAxis * RAGNAROK_BANK_RATE_PER_AXIS * deltaSeconds
-    return MathUtils.clamp(next, -RAGNAROK_BANK_LIMIT, RAGNAROK_BANK_LIMIT)
+export const stepShipVelocity = (velocity: number, throttle: number, shipYaw: number, camera: FlightCamera) => {
+  if (throttle === 0) {
+    return moveTowardZero(velocity, RAGNAROK_DRAG_STEP)
   }
-  return relaxToward(currentBank, RAGNAROK_BANK_RELAX_RATE * deltaSeconds)
+  const cap = calculateSpeedCap(shipYaw, camera)
+  return MathUtils.clamp(velocity + Math.trunc(throttle / RAGNAROK_THROTTLE_DIVISOR), -cap, cap)
 }
 
-// Vertical velocity comes purely from the altitude axis — there is no
-// projection from a heading-pitch.
-export const ragnarokVerticalVelocity = (altitudeAxis: number, ratePerAxis: number): number => {
-  return altitudeAxis * ratePerAxis
+export const stepShipAltitude = (altitude: number, altitudeInput: number) =>
+  altitude + ((RAGNAROK_ALTITUDE_GAIN * altitudeInput) >> RAGNAROK_ALTITUDE_SHIFT)
+
+export const clampShipAltitude = (altitude: number, groundAltitude: number | undefined) => {
+  const belowCeiling = Math.max(altitude, RAGNAROK_CEILING_ALTITUDE)
+  if (groundAltitude === undefined) {
+    return belowCeiling
+  }
+  return Math.min(belowCeiling, groundAltitude - RAGNAROK_GROUND_CLEARANCE)
 }
 
-// The camera tilt accumulator decrements by gain * altitudeAxis / 512 per
-// frame, clamped to ±4096. It drives the Ragnarok camera pitch target on a
-// separate accumulator from vertical velocity — a higher climb rate tilts the
-// camera toward the horizon.
-export const stepRagnarokCameraTilt = (currentTiltPsx: number, altitudeAxis: number, deltaSeconds: number): number => {
-  const step = altitudeAxis * RAGNAROK_CAMERA_TILT_RATE_PSX_PER_AXIS_FRAME * TARGET_FPS * deltaSeconds
-  return MathUtils.clamp(currentTiltPsx - step, -RAGNAROK_CAMERA_TILT_MAX_PSX, RAGNAROK_CAMERA_TILT_MAX_PSX)
-}
+const scaleByFixedPointTrig = (distance: number, trig: number) =>
+  (distance * Math.round(trig * FIXED_POINT_ONE)) >> FIXED_POINT_SHIFT
 
-// Yaw 0 faces +Z, increasing yaw rotates toward +X — matching the rest of the
-// worldmap where `Math.atan2(vx, vz)` yields the field direction.
-type FlightVelocity = { x: number; y: number; z: number }
-
-export const horizontalVelocity = (yawRadians: number, speed: number, output: FlightVelocity): FlightVelocity => {
-  output.x = Math.sin(yawRadians) * speed
-  output.z = Math.cos(yawRadians) * speed
-  return output
-}
-
-export const wrapWorldAxis = (value: number, wrap: number): number => {
-  const wrapped = value % wrap
-  return wrapped < 0 ? wrapped + wrap : wrapped
+export const calculateHeadingStep = (distance: number, yaw: number) => {
+  const angle = yaw * PSX_ANGLE_TO_RAD
+  return {
+    x: scaleByFixedPointTrig(distance, Math.sin(angle)),
+    z: -scaleByFixedPointTrig(distance, Math.cos(angle)),
+  }
 }

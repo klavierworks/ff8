@@ -1,18 +1,13 @@
 use super::reader::Reader;
+use super::tim_clut::{bgr555, MAGIC};
 use anyhow::{bail, Context, Result};
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
 
-const MAGIC: [u8; 4] = [0x10, 0x00, 0x00, 0x00];
-
-// Full TIM header as parsed from the file; some fields (e.g. img_size) are kept for
-// an accurate representation of the format even though nothing reads them yet.
-#[allow(dead_code)]
 pub struct TimHeader {
     pub bpp: u8,
     pub has_palette: bool,
-    pub img_size: u32,
     pub img_x: u16,
     pub img_y: u16,
     pub img_w: u16,
@@ -32,8 +27,10 @@ pub struct Tim {
     pub palette_data: Vec<u8>,
 }
 
-fn scale_5_to_8(value: u16) -> u8 {
-    ((value as f64 / 31.0) * 255.0) as u8
+fn decode_colors(bytes: &[u8]) -> impl Iterator<Item = [u8; 4]> + '_ {
+    bytes
+        .chunks_exact(2)
+        .map(|chunk| bgr555(u16::from_le_bytes([chunk[0], chunk[1]])))
 }
 
 impl Tim {
@@ -84,16 +81,7 @@ impl Tim {
             }
 
             palette_data = reader.read_bytes(body_size as usize).to_vec();
-            let mut i = 0;
-            while i + 1 < palette_data.len() {
-                let word = (palette_data[i] as u16) | ((palette_data[i + 1] as u16) << 8);
-                let b = scale_5_to_8((word >> 10) & 0x1F);
-                let g = scale_5_to_8((word >> 5) & 0x1F);
-                let r = scale_5_to_8(word & 0x1F);
-                let a = if (word >> 15) != 0 { 0u8 } else { 255u8 };
-                palette_colors.push([r, g, b, a]);
-                i += 2;
-            }
+            palette_colors = decode_colors(&palette_data).collect();
         }
 
         let img_size = reader.read_u32();
@@ -117,7 +105,6 @@ impl Tim {
             header: TimHeader {
                 bpp,
                 has_palette,
-                img_size,
                 img_x,
                 img_y,
                 img_w,
@@ -134,70 +121,46 @@ impl Tim {
         })
     }
 
+    pub fn palette_row_count(&self) -> usize {
+        let row_width = self.header.pal_w as usize;
+        if !self.header.has_palette || row_width == 0 {
+            return 0;
+        }
+        (self.header.pal_h as usize).min(self.palette_colors.len() / row_width)
+    }
+
     pub fn to_rgba(&self) -> (u32, u32, Vec<u8>) {
+        self.to_rgba_with_palette_row(0)
+    }
+
+    pub fn to_rgba_with_palette_row(&self, row: usize) -> (u32, u32, Vec<u8>) {
         let width = self.header.img_w as usize;
         let height = self.header.img_h as usize;
-        let mut pixels = vec![0u8; width * height * 4];
-        let data = &self.image_data;
-
-        let put = |pixels: &mut [u8], x: usize, y: usize, rgba: [u8; 4]| {
-            let base = (y * width + x) * 4;
-            pixels[base..base + 4].copy_from_slice(&rgba);
-        };
-
-        if self.header.has_palette {
-            let mut index = 0usize;
-            if self.header.bpp == 0 {
-                for y in 0..height {
-                    let mut x = 0usize;
-                    while x < width {
-                        if index >= data.len() {
-                            break;
-                        }
-                        let byte = data[index];
-                        let high = ((byte >> 4) & 0x0F) as usize;
-                        let low = (byte & 0x0F) as usize;
-                        if x < width {
-                            put(&mut pixels, x, y, self.palette_at(high));
-                        }
-                        if x + 1 < width {
-                            put(&mut pixels, x + 1, y, self.palette_at(low));
-                        }
-                        index += 1;
-                        x += 2;
-                    }
-                }
-            } else if self.header.bpp == 1 {
-                for y in 0..height {
-                    for x in 0..width {
-                        if index >= data.len() {
-                            break;
-                        }
-                        let color_index = data[index] as usize;
-                        put(&mut pixels, x, y, self.palette_at(color_index));
-                        index += 1;
-                    }
-                }
-            }
+        let pixel_count = width * height;
+        let mut pixels: Vec<u8> = if self.header.has_palette {
+            let palette_offset = row * self.header.pal_w as usize;
+            self.decode_indices()
+                .take(pixel_count)
+                .flat_map(|index| self.palette_at(palette_offset + index))
+                .collect()
         } else {
-            let mut index = 0usize;
-            for y in 0..height {
-                for x in 0..width {
-                    if index + 1 >= data.len() {
-                        break;
-                    }
-                    let word = (data[index] as u16) | ((data[index + 1] as u16) << 8);
-                    let b = scale_5_to_8((word >> 10) & 0x1F);
-                    let g = scale_5_to_8((word >> 5) & 0x1F);
-                    let r = scale_5_to_8(word & 0x1F);
-                    let a = if word == 0 { 0u8 } else { 255u8 };
-                    put(&mut pixels, x, y, [r, g, b, a]);
-                    index += 2;
-                }
-            }
-        }
-
+            decode_colors(&self.image_data)
+                .take(pixel_count)
+                .flatten()
+                .collect()
+        };
+        pixels.resize(pixel_count * 4, 0);
         (width as u32, height as u32, pixels)
+    }
+
+    fn decode_indices(&self) -> Box<dyn Iterator<Item = usize> + '_> {
+        let bytes = self.image_data.iter();
+        if self.header.bpp == 0 {
+            return Box::new(
+                bytes.flat_map(|&byte| [(byte & 0x0F) as usize, (byte >> 4) as usize]),
+            );
+        }
+        Box::new(bytes.map(|&byte| byte as usize))
     }
 
     fn palette_at(&self, index: usize) -> [u8; 4] {
@@ -205,11 +168,6 @@ impl Tim {
             .get(index)
             .copied()
             .unwrap_or([0, 0, 0, 0])
-    }
-
-    pub fn save_png(&self, path: &Path) -> Result<()> {
-        let (width, height, rgba) = self.to_rgba();
-        write_rgba_png(path, width, height, &rgba)
     }
 }
 

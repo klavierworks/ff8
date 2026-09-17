@@ -1,18 +1,27 @@
 import type { WorldmapSections } from '@data/types/worldmap/WorldmapSections'
 
-import { Color } from 'three'
+import { Camera, Color, MathUtils, Vector3 } from 'three'
 
-export type RgbTuple = [number, number, number]
+import { SCREEN_HEIGHT } from '../../../constants/constants'
+import {
+  WORLDMAP_HORIZON_CURVATURE_MULTIPLIER,
+  WORLDMAP_HORIZON_DEPTH_DIVISOR,
+} from '../../../constants/worldmapCamera'
+import { WORLDMAP_SCALE } from '../constants'
+import { radiansToPsx } from '../Player/playerAngles'
+import useWorldmapStore, { WorldmapCameraState } from '../worldmapStore'
 
-export type SkyZone = WorldmapSections['section_32_sky_color_zones']['zones'][number]
-
-type ResolvedSkyColors = {
+export type SkyColors = {
   horizon: Color
   lightColor1: Color
   lightColor2: Color
   mid: Color
   zenith: Color
 }
+
+export type SkyZone = WorldmapSections['section_32_sky_color_zones']['zones'][number]
+
+type RgbTuple = [number, number, number]
 
 type SkyZoneColor = SkyZone['fog_color_1']
 
@@ -23,87 +32,61 @@ type SkyZoneMatch = {
 
 export const STARS_ZONE_INDEX = 3
 
-const DISTANCE_SHIFT = 5
-const VEHICLE_CLASS_MASK = 0x1f
-const FOOT_VEHICLE_CLASS = 4
+export const SCREEN_QUAD_VERTEX_SHADER = /* glsl */ `
+  void main() {
+    gl_Position = vec4(position.xy, 1.0, 1.0);
+  }
+`
 
-const getVehicleClass = (vehicleFlag: number) => vehicleFlag & VEHICLE_CLASS_MASK
+const DEFAULT_ZONE_MATCH: SkyZoneMatch = { blend: 0, index: 0 }
+const DISTANCE_SHIFT = 5
+const WORLD_STATE_ALTERNATE_ZONES = 4
+const CLOUD_QUAD_WIDTH = 256
+
+const _horizonProbe = new Vector3()
+const _blendTarget = new Color()
 
 const scaleDownPsxDistance = (value: number) => value >> DISTANCE_SHIFT
 
-const lerpU8 = (a: number, b: number, t: number) => (a + t * (b - a)) / 255
+const getStartZoneIndex = (worldStateVariable: number) => (worldStateVariable === WORLD_STATE_ALTERNATE_ZONES ? 1 : 2)
 
-const lerpColor = (a: SkyZoneColor, b: SkyZoneColor, t: number, _output: Color) => {
-  _output.setRGB(lerpU8(a[0], b[0], t), lerpU8(a[1], b[1], t), lerpU8(a[2], b[2], t))
-  return _output
-}
-
-const writeColor = (source: SkyZoneColor, _output: Color) => {
-  _output.setRGB(source[0] / 255, source[1] / 255, source[2] / 255)
-  return _output
-}
-
-const getStartZoneIndex = (vehicleFlag: number) => (getVehicleClass(vehicleFlag) !== FOOT_VEHICLE_CLASS ? 2 : 1)
-
-const getZoneBlend = (zone: SkyZone | undefined, playerX: number, playerY: number): null | number => {
-  if (!zone) {
-    return null
-  }
-  const dx = scaleDownPsxDistance(zone.x - playerX)
-  const dy = scaleDownPsxDistance(zone.y - playerY)
-  const distance = Math.sqrt(dx * dx + dy * dy)
+const getZoneBlend = (zone: SkyZone, playerX: number, playerY: number) => {
+  const distance = Math.hypot(scaleDownPsxDistance(zone.x - playerX), scaleDownPsxDistance(zone.y - playerY))
   const radius = scaleDownPsxDistance(zone.transition_range)
-  if (radius > distance) {
-    return Math.min(distance / radius, 1)
-  }
-  return null
+  return radius > distance ? distance / radius : null
 }
 
-export const matchZone = (
+export const findSkyZoneMatch = (
   zones: readonly SkyZone[],
   playerX: number,
   playerY: number,
-  vehicleFlag: number,
+  worldStateVariable: number,
 ): SkyZoneMatch => {
-  const start = getStartZoneIndex(vehicleFlag)
+  const start = getStartZoneIndex(worldStateVariable)
   const matched = zones
-    .map((zone, index) => ({ blend: getZoneBlend(zone, playerX, playerY), index }))
     .slice(start)
-    .find((candidate) => candidate.blend !== null)
-  if (!matched || matched.blend === null) {
-    return { blend: 0, index: 0 }
-  }
-  return { blend: matched.blend, index: matched.index }
+    .map((zone, offset) => ({ blend: getZoneBlend(zone, playerX, playerY), index: start + offset }))
+    .find((candidate): candidate is SkyZoneMatch => candidate.blend !== null)
+  return matched ?? DEFAULT_ZONE_MATCH
 }
 
-export const resolveSkyColors = (
-  zones: readonly SkyZone[],
-  match: SkyZoneMatch,
-  _output: ResolvedSkyColors,
-): null | ResolvedSkyColors => {
+const setColorFromZone = (_color: Color, source: SkyZoneColor) => _color.fromArray(source).multiplyScalar(1 / 255)
+
+const blendZoneColor = (_output: Color, matched: SkyZoneColor, fallback: SkyZoneColor, t: number) =>
+  setColorFromZone(_output, matched).lerp(setColorFromZone(_blendTarget, fallback), t)
+
+export const updateSkyColors = (_output: SkyColors, zones: readonly SkyZone[], match: SkyZoneMatch) => {
   const defaultZone = zones[0]
-  if (!defaultZone) {
-    return null
-  }
   const matched = zones[match.index] ?? defaultZone
-  if (match.index === 0) {
-    writeColor(defaultZone.fog_color_1, _output.zenith)
-    writeColor(defaultZone.fog_color_2, _output.mid)
-    writeColor(defaultZone.fog_color_3, _output.horizon)
-    writeColor(defaultZone.light_color_1, _output.lightColor1)
-    writeColor(defaultZone.light_color_2, _output.lightColor2)
-    return _output
-  }
-  const t = Math.min(Math.max(match.blend, 0), 1)
-  lerpColor(matched.fog_color_1, defaultZone.fog_color_1, t, _output.zenith)
-  lerpColor(matched.fog_color_2, defaultZone.fog_color_2, t, _output.mid)
-  lerpColor(matched.fog_color_3, defaultZone.fog_color_3, t, _output.horizon)
-  lerpColor(matched.light_color_1, defaultZone.light_color_1, t, _output.lightColor1)
-  lerpColor(matched.light_color_2, defaultZone.light_color_2, t, _output.lightColor2)
-  return _output
+  const t = MathUtils.clamp(match.blend, 0, 1)
+  blendZoneColor(_output.zenith, matched.fog_color_1, defaultZone.fog_color_1, t)
+  blendZoneColor(_output.mid, matched.fog_color_2, defaultZone.fog_color_2, t)
+  blendZoneColor(_output.horizon, matched.fog_color_3, defaultZone.fog_color_3, t)
+  blendZoneColor(_output.lightColor1, matched.light_color_1, defaultZone.light_color_1, t)
+  blendZoneColor(_output.lightColor2, matched.light_color_2, defaultZone.light_color_2, t)
 }
 
-export const createResolvedSkyColors = (): ResolvedSkyColors => ({
+export const createSkyColors = (): SkyColors => ({
   horizon: new Color(),
   lightColor1: new Color(),
   lightColor2: new Color(),
@@ -111,10 +94,43 @@ export const createResolvedSkyColors = (): ResolvedSkyColors => ({
   zenith: new Color(),
 })
 
-export const toRgbTuple = (color: Color): RgbTuple => [
+const convertColorToRgbTuple = (color: Color): RgbTuple => [
   Math.round(color.r * 255),
   Math.round(color.g * 255),
   Math.round(color.b * 255),
 ]
 
-export const areRgbTuplesEqual = (a: RgbTuple, b: RgbTuple) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2]
+const areRgbTuplesEqual = (a: RgbTuple, b: RgbTuple) => a.every((channel, index) => channel === b[index])
+
+export const publishSkyLightColors = ({ lightColor1, lightColor2 }: SkyColors) => {
+  const { skyLightColor1, skyLightColor2 } = useWorldmapStore.getState()
+  const nextLight1 = convertColorToRgbTuple(lightColor1)
+  const nextLight2 = convertColorToRgbTuple(lightColor2)
+  if (areRgbTuplesEqual(nextLight1, skyLightColor1) && areRgbTuplesEqual(nextLight2, skyLightColor2)) {
+    return
+  }
+  useWorldmapStore.setState({ skyLightColor1: nextLight1, skyLightColor2: nextLight2 })
+}
+
+const calculateHorizonProbeDistance = ({ curvatureStart, depth }: WorldmapCameraState) =>
+  (depth + WORLDMAP_HORIZON_CURVATURE_MULTIPLIER * curvatureStart) * WORLDMAP_SCALE
+
+const calculateHorizonDepthShift = ({ depth }: WorldmapCameraState) =>
+  Math.trunc(Math.abs(depth) / WORLDMAP_HORIZON_DEPTH_DIVISOR)
+
+export const calculateHorizonScreenY = (camera: Camera, player: Vector3, cameraState: WorldmapCameraState) => {
+  const distance = calculateHorizonProbeDistance(cameraState)
+  _horizonProbe
+    .set(
+      player.x - Math.sin(cameraState.yawRadians) * distance,
+      0,
+      player.z - Math.cos(cameraState.yawRadians) * distance,
+    )
+    .project(camera)
+  return ((1 - _horizonProbe.y) / 2) * SCREEN_HEIGHT + calculateHorizonDepthShift(cameraState)
+}
+
+export const calculateCloudStartX = (yawRadians: number) => {
+  const scroll = Math.round(radiansToPsx(-yawRadians)) % CLOUD_QUAD_WIDTH
+  return scroll === 0 ? -CLOUD_QUAD_WIDTH : -scroll
+}

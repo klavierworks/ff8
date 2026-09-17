@@ -1,7 +1,7 @@
 import type { AkaoChannelState } from './akaoChannel'
 import type { AkaoTrackData } from './loadAkaoTrack'
 import type { AkaoSongPosition } from './songPosition'
-import type { AkaoSongControls } from './types'
+import type { AkaoSongControls, AkaoVoice } from './types'
 
 import { advanceChannel, createChannelState } from './akaoChannel'
 import { createAkaoMixer } from './akaoMixer'
@@ -16,24 +16,27 @@ import {
 } from './constants'
 import { advanceSongPosition, createSongPosition } from './songPosition'
 
-// Events are written into the audio clock well ahead of time, which keeps the music steady
-// through a dropped frame and through a hidden tab, where timers are throttled to once a second.
 const SCHEDULE_AHEAD_SECONDS = 1.5
 const PUMP_INTERVAL_MS = 250
 const START_DELAY_SECONDS = 0.05
 
-// If the pump stalls for longer than this the missed ticks are dropped rather than played back
-// in a burst.
 const MAX_CATCHUP_SECONDS = 1
 
 const ALL_CHANNELS = 0xffffffff
+
+const MAX_SEEK_TICKS = 1 << 16
+
+const ignoreNote = () => undefined
+
+const silenceVoice = (voice: AkaoVoice): AkaoVoice => ({ ...voice, keyOff: ignoreNote, keyOn: ignoreNote })
+
+const haveAllChannelsFinished = (channels: readonly AkaoChannelState[]) =>
+  channels.length > 0 && channels.every((channel) => channel.isFinished)
 
 export type AkaoTrack = ReturnType<typeof createAkaoTrack>
 
 type AkaoTrackOptions = {
   audioContext: AudioContext
-  // One bit per channel, in the order the sequence's own channel mask lists them. The concert
-  // opcode uses it to play a subset of the band.
   channelMask?: number
   data: AkaoTrackData
   destination: AudioNode
@@ -111,7 +114,6 @@ export const createAkaoTrack = ({
     state = createSongState()
   }
 
-  // A tempo change asked to arrive gradually walks one step of the way on every musical tick.
   const advanceTempoSlide = () => {
     if (state.tempoSlideTicks <= 0) {
       return
@@ -120,7 +122,7 @@ export const createAkaoTrack = ({
     state.tempoSlideTicks -= 1
   }
 
-  const runTick = (time: number) => {
+  const runTick = (time: number, voices: readonly AkaoVoice[] = mixer.voices) => {
     const tickSeconds = TEMPO_ACCUMULATOR_LIMIT / (INTERRUPT_HZ * state.tempo)
 
     state.channels.forEach((channel, index) => {
@@ -137,22 +139,18 @@ export const createAkaoTrack = ({
         stream: sequence.stream,
         tickSeconds,
         time,
-        voice: mixer.voices[index],
+        voice: voices[index],
       })
     })
 
     advanceTempoSlide()
     state.position = advanceSongPosition(state.position)
 
-    // A sequence whose channels have all run out has no looping tail of its own, so it starts
-    // again the way the engine's looping music does.
-    if (state.channels.length > 0 && state.channels.every((channel) => channel.isFinished)) {
+    if (haveAllChannelsFinished(state.channels)) {
       rewind()
     }
   }
 
-  // The musical tick is the overflow of a 16-bit accumulator the tempo is added to on every one
-  // of the driver's 240 Hz interrupts.
   const pump = () => {
     const horizon = audioContext.currentTime + SCHEDULE_AHEAD_SECONDS
     if (nextInterruptTime < audioContext.currentTime - MAX_CATCHUP_SECONDS) {
@@ -166,6 +164,14 @@ export const createAkaoTrack = ({
         runTick(nextInterruptTime)
       }
       nextInterruptTime += INTERRUPT_SECONDS
+    }
+  }
+
+  const seekToMeasure = (measure: number) => {
+    const silentVoices = mixer.voices.map(silenceVoice)
+    const time = audioContext.currentTime
+    for (let tick = 0; tick < MAX_SEEK_TICKS && state.position.measure < measure; tick += 1) {
+      runTick(time, silentVoices)
     }
   }
 
@@ -194,18 +200,15 @@ export const createAkaoTrack = ({
       stopPump()
       mixer.disconnect()
     },
-    getIsPlaying: () => pumpTimer !== undefined,
-    getPosition: () => state.position,
     pause: stopPump,
     resume: startPump,
     setVolume: (value: number) => mixer.outputLevel.setValueAt(toGain(value), audioContext.currentTime),
-    start: () => {
+    start: (startMeasure?: number) => {
       rewind()
+      if (startMeasure !== undefined) {
+        seekToMeasure(startMeasure)
+      }
       startPump()
-    },
-    stop: () => {
-      stopPump()
-      rewind()
     },
     transitionVolume: (value: number, seconds: number) =>
       mixer.outputLevel.rampTo(toGain(value), audioContext.currentTime, Math.max(seconds, MINIMUM_RAMP_SECONDS)),

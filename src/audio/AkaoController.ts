@@ -12,24 +12,27 @@ type MusicChannel = {
   track: AkaoTrack
 }
 
-// loopStart exists for parity with the recorded controller; AKAO sequences carry their own loop
-// points.
+type PendingTrack = {
+  musicId: number
+  startMeasure?: number
+  trackData: Promise<AkaoTrackData>
+}
+
 type PreloadMusic = (musicId: number, options?: PreloadMusicOptions) => void
 
 type PreloadMusicOptions = {
-  loopStart?: number
+  startMeasure?: number
 }
 
 type StartOptions = {
   channelMask?: number
   fadeSeconds?: number
   musicId: number
+  startMeasure?: number
   trackData: Promise<AkaoTrackData>
   volume: number
 }
 
-// Safari re-suspends the context every time the page is hidden, so these listeners stay attached
-// rather than unhooking after the first gesture.
 const keepContextRunning = (audioContext: AudioContext) => {
   const resume = () => {
     if (audioContext.state === 'running') {
@@ -45,12 +48,10 @@ const keepContextRunning = (audioContext: AudioContext) => {
 
 const AkaoController = () => {
   const channels: (MusicChannel | undefined)[] = Array.from({ length: CHANNEL_COUNT })
-  // Starting a track has to wait for its samples, so a slot that has been asked for a newer track
-  // ignores the one it asked for first.
   const requestIds = channels.map(() => 0)
 
   let audio: undefined | { context: AudioContext; masterGain: GainNode }
-  let pendingTrack: undefined | { musicId: number; trackData: Promise<AkaoTrackData> }
+  let pendingTrack: PendingTrack | undefined
   let battleMusicId = 0
 
   const getAudio = () => {
@@ -81,7 +82,7 @@ const AkaoController = () => {
   }
 
   const startOnChannel = (channelIndex: number, options: StartOptions) => {
-    const { channelMask, fadeSeconds, musicId, trackData, volume } = options
+    const { channelMask, fadeSeconds, musicId, startMeasure, trackData, volume } = options
     const { context, masterGain } = getAudio()
     const requestId = requestIds[channelIndex] + 1
     requestIds[channelIndex] = requestId
@@ -99,7 +100,7 @@ const AkaoController = () => {
           volume: fadeSeconds ? 0 : volume,
         })
         channels[channelIndex] = { musicId, track }
-        track.start()
+        track.start(startMeasure)
         if (fadeSeconds) {
           track.transitionVolume(volume, fadeSeconds)
         }
@@ -115,13 +116,17 @@ const AkaoController = () => {
     return requested
   }
 
-  const preloadMusic: PreloadMusic = (musicId) => {
+  const preloadMusic: PreloadMusic = (musicId, options) => {
     if (!hasAkaoTrack(musicId)) {
       console.warn('No AKAO sequence for music id', musicId)
       pendingTrack = undefined
       return
     }
-    pendingTrack = { musicId, trackData: loadAkaoTrack(getAudio().context, musicId) }
+    pendingTrack = {
+      musicId,
+      startMeasure: options?.startMeasure,
+      trackData: loadAkaoTrack(getAudio().context, musicId),
+    }
   }
 
   const playMusic = () => {

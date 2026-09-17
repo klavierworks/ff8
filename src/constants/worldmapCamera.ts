@@ -1,0 +1,76 @@
+// ─── Worldmap camera: spawn ───
+export const WORLDMAP_LANDING_YAW_SCALE = 16
+
+// ─── Worldmap camera: modes ───
+export const WORLDMAP_CAMERA_MODE_DEFAULT = 0
+export const WORLDMAP_CAMERA_MODE_CLOSE = 1
+
+// ─── Worldmap camera: projection ───
+export const WORLDMAP_CAMERA_NEAR = 0.05
+export const WORLDMAP_CAMERA_FAR_PSX = 32768
+export const WORLDMAP_ZOOM_DEFAULT = 1024
+export const WORLDMAP_ZOOM_CLOSE = 640
+export const WORLDMAP_ZOOM_RETARGET_STEP = 8
+
+// ─── Worldmap camera: offset from focus ───
+export const WORLDMAP_CAMERA_HEIGHT_OFFSET_PSX = 341
+export const WORLDMAP_CAMERA_DEPTH_DEFAULT = -7168
+export const WORLDMAP_CAMERA_DEPTH_RAGNAROK = -14336
+export const WORLDMAP_CAMERA_DEPTH_RETARGET_STEP = 512
+
+// ─── Worldmap camera: curvature ───
+export const WORLDMAP_CURVATURE_START_DEFAULT = 5216
+export const WORLDMAP_CURVATURE_START_RAGNAROK = 6144
+export const WORLDMAP_CURVATURE_START_RETARGET_STEP = 128
+export const WORLDMAP_CURVATURE_MAX_DEPTH = 65535
+export const WORLDMAP_CURVATURE_FIXED_POINT_ONE = 4096
+export const WORLDMAP_CURVATURE_DEPTH_DIVISOR = 4
+export const WORLDMAP_CURVATURE_DROP_DIVISOR = 64
+
+// ─── Worldmap camera: pitch ───
+export const WORLDMAP_PITCH_DEFAULT = -112
+export const WORLDMAP_PITCH_OVERHEAD = -512
+export const WORLDMAP_PITCH_RAGNAROK_BASE = -256
+export const WORLDMAP_PITCH_RAGNAROK_ALTITUDE_DIVISOR = 24
+export const WORLDMAP_PITCH_RETARGET_STEP = 16
+export const WORLDMAP_PITCH_RAGNAROK_EASE_STEP = 32
+export const WORLDMAP_PITCH_DIP_STEP = 6
+export const WORLDMAP_PITCH_DIP_LIMIT = -512
+export const WORLDMAP_PITCH_RECOVER_STEP = 4
+export const WORLDMAP_PITCH_HOLD_TICKS = 60
+export const WORLDMAP_PITCH_HOLD_MOVE_COST = 2
+export const WORLDMAP_PITCH_HOLD_THROTTLE_COST = 2
+export const WORLDMAP_PITCH_HOLD_TURN_COST = 10
+
+// ─── Worldmap camera: yaw ───
+export const WORLDMAP_YAW_VELOCITY_STEP = 8
+export const WORLDMAP_YAW_VELOCITY_LIMIT = 128
+export const WORLDMAP_YAW_VELOCITY_DIVISOR = 8
+export const WORLDMAP_YAW_OVERFLOW_STEP = 16
+export const WORLDMAP_YAW_RELEASE_SNAP = 8
+export const WORLDMAP_YAW_SETTLE_RANGE = 128
+export const WORLDMAP_YAW_FACING_CAMERA_RANGE = 128
+export const WORLDMAP_YAW_FOLLOW_ENGAGE_RANGE = 64
+export const WORLDMAP_YAW_FOLLOW_ACCELERATION = 8
+export const WORLDMAP_YAW_FOLLOW_DECELERATION = 2
+
+// ─── Worldmap camera: focus ───
+export const WORLDMAP_FOCUS_HEIGHT_ABOVE_PLAYER = 256
+export const WORLDMAP_GARDEN_FOCUS_ALTITUDE_LIMIT = -128
+
+// ─── Worldmap camera: Ragnarok transitions ───
+export const WORLDMAP_TRANSITION_LAST_TICK = 60
+export const WORLDMAP_TAKEOFF_YAW_LAST_TICK = 40
+export const WORLDMAP_TAKEOFF_YAW_DIVISOR = 40
+export const WORLDMAP_TAKEOFF_SETTLE_DIVISOR = 20
+export const WORLDMAP_LANDING_DIVISOR = 60
+export const WORLDMAP_TAKEOFF_ZOOM_DIVISOR = 60
+export const WORLDMAP_RAGNAROK_CEILING_ALTITUDE = -3584
+
+// ─── Worldmap camera: sky horizon ───
+export const WORLDMAP_HORIZON_CURVATURE_MULTIPLIER = 4
+export const WORLDMAP_HORIZON_DEPTH_DIVISOR = -300
+
+// ─── Worldmap camera: terrain occlusion ───
+export const WORLDMAP_OCCLUSION_TARGET_HEIGHT_PSX = 256
+export const WORLDMAP_OCCLUSION_MARGIN_PSX = 256

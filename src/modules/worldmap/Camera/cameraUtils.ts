@@ -1,89 +1,78 @@
-import { MathUtils, Vector3 } from 'three'
+import { Euler, Mesh, Object3D, PerspectiveCamera, Raycaster, Vector3 } from 'three'
 
-import { TARGET_FPS } from '../../../timing'
-import { PSX_ANGLE_TO_RAD } from '../constants'
+import { SCREEN_HEIGHT } from '../../../constants/constants'
+import { WORLDMAP_PAD_BITS } from '../../../constants/controls'
+import {
+  WORLDMAP_CAMERA_HEIGHT_OFFSET_PSX,
+  WORLDMAP_OCCLUSION_MARGIN_PSX,
+  WORLDMAP_OCCLUSION_TARGET_HEIGHT_PSX,
+} from '../../../constants/worldmapCamera'
+import { calculateFOV } from '../../field/Camera/cameraUtils'
+import { WALKMESH_USER_DATA_KEY, WORLDMAP_SCALE } from '../constants'
+import { psxToRadians, radiansToPsx, wrapPsxAngle } from '../Player/playerAngles'
+import { getRenderedFocusAltitude, PsxPoint } from './cameraFocus'
+import { CameraRig } from './cameraRig'
 
-const RAGNAROK_CAMERA_PITCH_BASE_PSX = 256
-const RAGNAROK_CAMERA_TILT_DIVISOR = 24
+const ROTATE_LEFT_BIT = WORLDMAP_PAD_BITS.cameraRotateLeft
+const ROTATE_RIGHT_BIT = WORLDMAP_PAD_BITS.cameraRotateRight
 
-export const WORLDMAP_CAMERA_MODES = [
-  { pitchAboveHorizonRadians: 112 * PSX_ANGLE_TO_RAD, zoom: 1024 },
-  { pitchAboveHorizonRadians: 512 * PSX_ANGLE_TO_RAD, zoom: 640 },
-]
+const _euler = new Euler(0, 0, 0, 'YXZ')
+const _offset = new Vector3()
+const _target = new Vector3()
+const _direction = new Vector3()
+const _raycaster = new Raycaster()
 
-const wrapDelta = (delta: number, wrap: number) => {
-  const half = wrap / 2
-  if (delta > half) {
-    return delta - wrap
+export const convertCameraYawToRadians = (yaw: number) => psxToRadians(-yaw)
+
+export const convertRadiansToCameraYaw = (radians: number) => wrapPsxAngle(Math.round(radiansToPsx(-radians)))
+
+export const convertWorldToPsxPoint = (position: Vector3): PsxPoint => ({
+  altitude: Math.round(-position.y / WORLDMAP_SCALE),
+  x: Math.round(position.x / WORLDMAP_SCALE),
+  z: Math.round(position.z / WORLDMAP_SCALE),
+})
+
+export const getRotateInput = (padButtons: number) => {
+  const isLeftHeld = (padButtons & ROTATE_LEFT_BIT) !== 0
+  const isRightHeld = (padButtons & ROTATE_RIGHT_BIT) !== 0
+  if (isLeftHeld === isRightHeld) {
+    return 0
   }
-  if (delta < -half) {
-    return delta + wrap
+  return isLeftHeld ? 1 : -1
+}
+
+export const placeWorldmapCamera = (camera: PerspectiveCamera, rig: CameraRig, focus: PsxPoint, vehicleId: number) => {
+  _euler.set(psxToRadians(rig.pitch), convertCameraYawToRadians(rig.yaw), 0)
+  camera.quaternion.setFromEuler(_euler)
+  _offset.set(0, WORLDMAP_CAMERA_HEIGHT_OFFSET_PSX, -rig.depth).multiplyScalar(WORLDMAP_SCALE)
+  _offset.applyQuaternion(camera.quaternion)
+  camera.position
+    .set(focus.x, -getRenderedFocusAltitude(focus, vehicleId), focus.z)
+    .multiplyScalar(WORLDMAP_SCALE)
+    .add(_offset)
+  camera.updateMatrixWorld()
+}
+
+export const updateCameraProjection = (camera: PerspectiveCamera, zoom: number) => {
+  const fov = calculateFOV(zoom, SCREEN_HEIGHT)
+  if (camera.fov === fov) {
+    return
   }
-  return delta
+  camera.fov = fov
+  camera.updateProjectionMatrix()
 }
 
-export const frameRateAdjustedAlpha = (alphaPerFrame: number, deltaSeconds: number) => {
-  const frames = deltaSeconds * TARGET_FPS
-  return 1 - Math.pow(1 - alphaPerFrame, frames)
-}
+const isWalkmeshHit = (object: Object3D) => object instanceof Mesh && object.userData[WALKMESH_USER_DATA_KEY] === true
 
-export const smoothFollowAxis = (current: number, target: number, alpha: number, wrap?: number) => {
-  if (wrap === undefined) {
-    return current + (target - current) * alpha
+export const isTerrainOccludingPlayer = (scene: Object3D, camera: PerspectiveCamera, playerPosition: Vector3) => {
+  _target.copy(playerPosition)
+  _target.y += WORLDMAP_OCCLUSION_TARGET_HEIGHT_PSX * WORLDMAP_SCALE
+  _direction.subVectors(_target, camera.position)
+  const distance = _direction.length() - WORLDMAP_OCCLUSION_MARGIN_PSX * WORLDMAP_SCALE
+  if (distance <= 0) {
+    return false
   }
-  const next = current + wrapDelta(target - current, wrap) * alpha
-  return ((next % wrap) + wrap) % wrap
-}
-
-export const stepToward = (current: number, target: number, maxStep: number) => {
-  const delta = target - current
-  if (Math.abs(delta) <= maxStep) {
-    return target
-  }
-  return current + Math.sign(delta) * maxStep
-}
-
-export const computeWorldmapCameraPosition = (
-  target: Vector3,
-  yawRadians: number,
-  pitchAboveHorizonRadians: number,
-  distance: number,
-  output: Vector3,
-) => {
-  const horizontal = distance * Math.cos(pitchAboveHorizonRadians)
-  const vertical = distance * Math.sin(pitchAboveHorizonRadians)
-  output.set(
-    target.x + horizontal * Math.sin(yawRadians),
-    target.y + vertical,
-    target.z + horizontal * Math.cos(yawRadians),
-  )
-  return output
-}
-
-export const computeRagnarokPitchTarget = (tiltPsx: number) =>
-  (RAGNAROK_CAMERA_PITCH_BASE_PSX + tiltPsx / RAGNAROK_CAMERA_TILT_DIVISOR) * PSX_ANGLE_TO_RAD
-
-export const stepPitchManual = (
-  pitchRadians: number,
-  pitchInput: number,
-  speedRadiansPerSecond: number,
-  deltaSeconds: number,
-  minRadians: number,
-  maxRadians: number,
-) => MathUtils.clamp(pitchRadians - pitchInput * speedRadiansPerSecond * deltaSeconds, minRadians, maxRadians)
-
-export const stepPitchTowardTarget = (
-  pitchRadians: number,
-  targetRadians: number,
-  stepRadiansPerSecond: number,
-  deltaSeconds: number,
-) => stepToward(pitchRadians, targetRadians, stepRadiansPerSecond * deltaSeconds)
-
-export const stepZoom = (zoom: number, targetZoom: number, stepPerSecond: number, deltaSeconds: number) =>
-  stepToward(zoom, targetZoom, stepPerSecond * deltaSeconds)
-
-export const applyForwardLead = (target: Vector3, yawRadians: number, leadWorld: number) => {
-  target.x -= Math.sin(yawRadians) * leadWorld
-  target.z -= Math.cos(yawRadians) * leadWorld
-  return target
+  _raycaster.set(camera.position, _direction.normalize())
+  _raycaster.far = distance
+  return _raycaster.intersectObjects(scene.children, true).some((hit) => isWalkmeshHit(hit.object))
 }

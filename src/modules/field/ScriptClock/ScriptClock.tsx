@@ -1,6 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 
+import { SCRIPT_CLOCK_FRAME_PRIORITY } from '../../../constants/constants'
 import useGlobalStore from '../../../store'
 import { useMovieStore } from '../movieController'
 import { advanceScriptClock, advanceScriptClockToMovieFrame, releaseAllScriptWaiters } from '../scriptClock'
@@ -29,7 +30,7 @@ const ScriptClock = () => {
     }
     lastMovieFrameRef.current = frame
     advanceScriptClockToMovieFrame()
-  })
+  }, SCRIPT_CLOCK_FRAME_PRIORITY)
 
   useEffect(() => {
     return () => {

@@ -1,122 +1,136 @@
-import { Box3, BufferAttribute, BufferGeometry, Mesh, Object3D } from 'three'
+import {
+  Box3,
+  BufferAttribute,
+  BufferGeometry,
+  Material,
+  MathUtils,
+  Mesh,
+  MeshBasicMaterial,
+  MeshStandardMaterial,
+  Object3D,
+  Vector3,
+} from 'three'
 
 import { loadAssetUrl, preloadAssetUrl } from '../../../loadAssetUrl'
-import { SEGMENT_SIZE_THREE, SEGMENT_WORLD_SIZE, WORLD_GRID_COLS, WORLD_GRID_ROWS } from '../constants'
-import { positiveModulo } from '../worldPosition'
-import { getTilesState, VARIANT_STAGING_ROW } from './tileState'
+import {
+  SEGMENT_SIZE_THREE,
+  SEGMENT_WORLD_SIZE,
+  WALKMESH_USER_DATA_KEY,
+  WORLD_GRID_COLS,
+  WORLD_GRID_ROWS,
+} from '../constants'
+import { applyPlanetCurvature } from '../curvature'
+import { VARIANT_STAGING_ROW } from './tileState'
 
-// Lazy glob: only the tiles actually rendered are fetched, not the whole world.
+export type SegmentPosition = {
+  column: number
+  row: number
+}
+
+export type TileOffset = [number, number, number]
+
+type VisibleTile = {
+  assetPath: string
+  key: string
+  offset: TileOffset
+}
+
+const TILE_DIRECTORY = '/extractor/data/converted/worldmap/tiles'
+
 const TILE_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldmap/tiles/*.glb', {
   import: 'default',
   query: '?url',
 })
 
-const tileKeyPath = (segmentIndex: number | undefined, variantIndex: number | undefined): string => {
-  const name =
-    segmentIndex !== undefined
-      ? `segment_${String(segmentIndex).padStart(3, '0')}`
-      : `variant_${String(variantIndex).padStart(3, '0')}`
-  return `/extractor/data/converted/worldmap/tiles/${name}.glb`
-}
-
-// Suspends (call inside a Suspense boundary, e.g. before useGLTF).
-export const getTileUrl = (segmentIndex: number | undefined, variantIndex: number | undefined): string =>
-  loadAssetUrl(TILE_LOADERS, tileKeyPath(segmentIndex, variantIndex))
-
-// Non-suspending; for preloading outside of render.
-export const preloadTileUrl = (
-  segmentIndex: number | undefined,
-  variantIndex: number | undefined,
-  onReady: (url: string) => void,
-) => preloadAssetUrl(TILE_LOADERS, tileKeyPath(segmentIndex, variantIndex), onReady)
-
-const SAVEMAP_WORLD_STATE_BYTE = 266
 const SAVEMAP_PRISON_FLAG_BYTE = 264
 const SAVEMAP_PRISON_ABOVE_GROUND_MASK = 0x08
-
-export const getWorldStateVariable = (memory: Record<number, number>) => memory[SAVEMAP_WORLD_STATE_BYTE]
-
-export const isDDistrictPrisonAboveGround = (memory: Record<number, number>): boolean =>
-  (memory[SAVEMAP_PRISON_FLAG_BYTE] & SAVEMAP_PRISON_ABOVE_GROUND_MASK) !== 0
-
-type BakedPosition = { column: number; row: number }
-
-type TileOffset = [number, number, number]
-
-type VisibleTile = (
-  | { kind: 'segment'; offset: TileOffset; segmentIndex: number }
-  | { kind: 'variant'; offset: TileOffset; variantIndex: number }
-) & {
-  targetColumn: number
-  targetRow: number
-}
-
-export const getSegmentBakedPosition = (segmentIndex: number): BakedPosition => ({
-  column: segmentIndex % WORLD_GRID_COLS,
-  row: Math.floor(segmentIndex / WORLD_GRID_COLS),
-})
-
-export const getVariantBakedPosition = (variantIndex: number): BakedPosition => ({
-  column: variantIndex % WORLD_GRID_COLS,
-  row: VARIANT_STAGING_ROW + Math.floor(variantIndex / WORLD_GRID_COLS),
-})
-
-const getTileOffset = (targetColumn: number, targetRow: number, baked: BakedPosition): TileOffset => [
-  (targetColumn - baked.column) * SEGMENT_WORLD_SIZE,
-  0,
-  (targetRow - baked.row) * SEGMENT_WORLD_SIZE,
-]
-
-export const positionToSegmentColumn = (worldX: number) => Math.floor(worldX / SEGMENT_SIZE_THREE)
-export const positionToSegmentRow = (worldZ: number) => Math.floor(worldZ / SEGMENT_SIZE_THREE)
-
-export const buildVariantOverrides = (
-  worldStateVariable: number,
-  isPrisonAboveGround: boolean,
-): ReadonlyMap<number, number> => {
-  const overrides = new Map<number, number>()
-  getTilesState(worldStateVariable, isPrisonAboveGround).forEach(({ segmentIndex, variantIndex }) => {
-    overrides.set(segmentIndex, variantIndex)
-  })
-  return overrides
-}
-
-export const computeVisibleTiles = (
-  playerColumn: number,
-  playerRow: number,
-  radius: number,
-  variantOverrides: ReadonlyMap<number, number>,
-): VisibleTile[] => {
-  const tiles: VisibleTile[] = []
-  for (let deltaRow = -radius; deltaRow <= radius; deltaRow++) {
-    for (let deltaColumn = -radius; deltaColumn <= radius; deltaColumn++) {
-      const targetColumn = playerColumn + deltaColumn
-      const targetRow = playerRow + deltaRow
-
-      const wrappedColumn = positiveModulo(targetColumn, WORLD_GRID_COLS)
-      const wrappedRow = positiveModulo(targetRow, WORLD_GRID_ROWS)
-      const segmentIndex = wrappedRow * WORLD_GRID_COLS + wrappedColumn
-
-      const variantIndex = variantOverrides.get(segmentIndex)
-      const baked =
-        variantIndex !== undefined ? getVariantBakedPosition(variantIndex) : getSegmentBakedPosition(segmentIndex)
-      const offset = getTileOffset(targetColumn, targetRow, baked)
-
-      tiles.push(
-        variantIndex !== undefined
-          ? { kind: 'variant', offset, targetColumn, targetRow, variantIndex }
-          : { kind: 'segment', offset, segmentIndex, targetColumn, targetRow },
-      )
-    }
-  }
-  return tiles
-}
-
-export const tileKey = (tile: VisibleTile) => `${tile.targetColumn}/${tile.targetRow}`
 
 const SEAM_EXPANSION_PSX = 1
 const SEAM_BOUNDARY_TOLERANCE = 0.5
 const SEAMS_EXPANDED_FLAG = 'seamsExpanded'
+
+export const getTileUrl = (assetPath: string) => loadAssetUrl(TILE_LOADERS, assetPath)
+
+export const preloadTileUrl = (assetPath: string, onReady: (url: string) => void) =>
+  preloadAssetUrl(TILE_LOADERS, assetPath, onReady)
+
+export const isDDistrictPrisonAboveGround = (memory: Record<number, number>) =>
+  ((memory[SAVEMAP_PRISON_FLAG_BYTE] ?? 0) & SAVEMAP_PRISON_ABOVE_GROUND_MASK) !== 0
+
+export const getSegmentPosition = (position: Vector3): SegmentPosition => ({
+  column: Math.floor(position.x / SEGMENT_SIZE_THREE),
+  row: Math.floor(position.z / SEGMENT_SIZE_THREE),
+})
+
+const formatTileIndex = (index: number) => String(index).padStart(3, '0')
+
+const getSegmentAssetPath = (segmentIndex: number) => `${TILE_DIRECTORY}/segment_${formatTileIndex(segmentIndex)}.glb`
+
+const getVariantAssetPath = (variantIndex: number) => `${TILE_DIRECTORY}/variant_${formatTileIndex(variantIndex)}.glb`
+
+const getSegmentBakedPosition = (segmentIndex: number): SegmentPosition => ({
+  column: segmentIndex % WORLD_GRID_COLS,
+  row: Math.floor(segmentIndex / WORLD_GRID_COLS),
+})
+
+const getVariantBakedPosition = (variantIndex: number): SegmentPosition => ({
+  column: variantIndex % WORLD_GRID_COLS,
+  row: VARIANT_STAGING_ROW + Math.floor(variantIndex / WORLD_GRID_COLS),
+})
+
+const getTileOffset = (target: SegmentPosition, baked: SegmentPosition): TileOffset => [
+  (target.column - baked.column) * SEGMENT_WORLD_SIZE,
+  0,
+  (target.row - baked.row) * SEGMENT_WORLD_SIZE,
+]
+
+const getWrappedSegmentIndex = ({ column, row }: SegmentPosition) =>
+  MathUtils.euclideanModulo(row, WORLD_GRID_ROWS) * WORLD_GRID_COLS + MathUtils.euclideanModulo(column, WORLD_GRID_COLS)
+
+const createVisibleTile = (target: SegmentPosition, variantOverrides: ReadonlyMap<number, number>): VisibleTile => {
+  const segmentIndex = getWrappedSegmentIndex(target)
+  const variantIndex = variantOverrides.get(segmentIndex)
+  const key = `${target.column}/${target.row}`
+  if (variantIndex === undefined) {
+    return {
+      assetPath: getSegmentAssetPath(segmentIndex),
+      key,
+      offset: getTileOffset(target, getSegmentBakedPosition(segmentIndex)),
+    }
+  }
+  return {
+    assetPath: getVariantAssetPath(variantIndex),
+    key,
+    offset: getTileOffset(target, getVariantBakedPosition(variantIndex)),
+  }
+}
+
+const createDeltaRange = (radius: number) => Array.from({ length: 2 * radius + 1 }, (_, i) => i - radius)
+
+export const getTilesAround = (
+  center: SegmentPosition,
+  radius: number,
+  variantOverrides: ReadonlyMap<number, number>,
+) => {
+  const deltas = createDeltaRange(radius)
+  return deltas.flatMap((deltaRow) =>
+    deltas.map((deltaColumn) =>
+      createVisibleTile({ column: center.column + deltaColumn, row: center.row + deltaRow }, variantOverrides),
+    ),
+  )
+}
+
+const isNearBoundary = (value: number, boundary: number) => Math.abs(value - boundary) < SEAM_BOUNDARY_TOLERANCE
+
+const expandCoordinate = (value: number, min: number, max: number) => {
+  if (isNearBoundary(value, min)) {
+    return value - SEAM_EXPANSION_PSX
+  }
+  if (isNearBoundary(value, max)) {
+    return value + SEAM_EXPANSION_PSX
+  }
+  return value
+}
 
 const expandGeometryToTileBounds = (geometry: BufferGeometry, tileBounds: Box3) => {
   const positions = geometry.getAttribute('position')
@@ -124,29 +138,13 @@ const expandGeometryToTileBounds = (geometry: BufferGeometry, tileBounds: Box3) 
     return
   }
   for (let i = 0; i < positions.count; i++) {
-    const x = positions.getX(i)
-    const z = positions.getZ(i)
-    if (Math.abs(x - tileBounds.min.x) < SEAM_BOUNDARY_TOLERANCE) {
-      positions.setX(i, x - SEAM_EXPANSION_PSX)
-    } else if (Math.abs(x - tileBounds.max.x) < SEAM_BOUNDARY_TOLERANCE) {
-      positions.setX(i, x + SEAM_EXPANSION_PSX)
-    }
-    if (Math.abs(z - tileBounds.min.z) < SEAM_BOUNDARY_TOLERANCE) {
-      positions.setZ(i, z - SEAM_EXPANSION_PSX)
-    } else if (Math.abs(z - tileBounds.max.z) < SEAM_BOUNDARY_TOLERANCE) {
-      positions.setZ(i, z + SEAM_EXPANSION_PSX)
-    }
+    positions.setX(i, expandCoordinate(positions.getX(i), tileBounds.min.x, tileBounds.max.x))
+    positions.setZ(i, expandCoordinate(positions.getZ(i), tileBounds.min.z, tileBounds.max.z))
   }
   positions.needsUpdate = true
 }
 
-// Intentionally mutates the shared cached GLTF scene in place. This is the source loaded by
-// useGLTF, shared across every clone of this tile; the SEAMS_EXPANDED_FLAG makes the edit
-// idempotent so repeated callers (Tile + TilePrecompiler) never double-expand the same seam.
-export const expandTileSeams = (scene: Object3D) => {
-  if (scene.userData[SEAMS_EXPANDED_FLAG]) {
-    return
-  }
+const calculateTileBounds = (scene: Object3D) => {
   const tileBounds = new Box3()
   scene.traverse((object) => {
     if (!(object instanceof Mesh)) {
@@ -157,10 +155,48 @@ export const expandTileSeams = (scene: Object3D) => {
       tileBounds.union(object.geometry.boundingBox)
     }
   })
+  return tileBounds
+}
+
+const expandTileSeams = (scene: Object3D) => {
+  const tileBounds = calculateTileBounds(scene)
   scene.traverse((object) => {
     if (object instanceof Mesh) {
       expandGeometryToTileBounds(object.geometry, tileBounds)
     }
   })
-  scene.userData[SEAMS_EXPANDED_FLAG] = true
+}
+
+export const getMeshMaterials = (mesh: Mesh): Material[] =>
+  Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+
+export const getTextureMap = (material: Material) =>
+  material instanceof MeshStandardMaterial || material instanceof MeshBasicMaterial ? material.map : null
+
+const configureTileMaterial = (material: Material) => {
+  applyPlanetCurvature(material)
+  if (!getTextureMap(material)) {
+    return
+  }
+  material.alphaTest = 0.5
+  material.transparent = false
+  material.needsUpdate = true
+}
+
+const configureTileMesh = (object: Object3D) => {
+  if (!(object instanceof Mesh)) {
+    return
+  }
+  object.userData[WALKMESH_USER_DATA_KEY] = true
+  object.frustumCulled = false
+  getMeshMaterials(object).forEach(configureTileMaterial)
+}
+
+export const prepareTileScene = (scene: Object3D) => {
+  if (!scene.userData[SEAMS_EXPANDED_FLAG]) {
+    expandTileSeams(scene)
+    scene.userData[SEAMS_EXPANDED_FLAG] = true
+  }
+  scene.traverse(configureTileMesh)
+  return scene
 }

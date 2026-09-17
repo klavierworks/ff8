@@ -55,6 +55,13 @@ impl Stage for EmitTypes {
             converted,
             &types_dir,
             "worldmap",
+            "effects.json",
+            "WorldmapEffects",
+        )?;
+        count += emit_named(
+            converted,
+            &types_dir,
+            "worldmap",
             "wm2field.json",
             "Wm2Field",
         )?;

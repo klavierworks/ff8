@@ -1,30 +1,35 @@
-import useGlobalStore from '../../../store'
+import { Hud, OrthographicCamera } from '@react-three/drei'
+import { Suspense } from 'react'
+
+import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../constants/constants'
 import useWorldmapStore from '../worldmapStore'
-import MapView from './MapView/MapView'
-import { MINIMAP_MODE_HIDDEN, MINIMAP_MODE_LARGE, MINIMAP_MODE_PLANET, MINIMAP_MODE_SMALL } from './minimapUtils'
-import PlanetView from './PlanetView/PlanetView'
-import useCurrentLocationName from './useCurrentLocationName'
+import { HUD_DEPTH_RANGE, MINIMAP_MODE_HIDDEN, MINIMAP_RENDER_PRIORITY } from './constants'
+import MinimapView from './MinimapView/MinimapView'
 
 const Minimap = () => {
   const minimapMode = useWorldmapStore((state) => state.minimapMode)
-  const characterPosition = useGlobalStore((state) => state.characterPosition)
 
-  const locationName = useCurrentLocationName(characterPosition?.x ?? 0, characterPosition?.z ?? 0)
-
-  if (minimapMode === MINIMAP_MODE_HIDDEN || !characterPosition) {
+  if (minimapMode === MINIMAP_MODE_HIDDEN) {
     return null
   }
 
-  if (minimapMode === MINIMAP_MODE_PLANET) {
-    return <PlanetView />
-  }
-  if (minimapMode === MINIMAP_MODE_SMALL) {
-    return <MapView variant="small" />
-  }
-  if (minimapMode === MINIMAP_MODE_LARGE) {
-    return <MapView locationName={locationName} variant="large" />
-  }
-  return null
+  return (
+    <Hud renderPriority={MINIMAP_RENDER_PRIORITY}>
+      <OrthographicCamera
+        bottom={SCREEN_HEIGHT}
+        far={HUD_DEPTH_RANGE}
+        left={0}
+        makeDefault
+        manual
+        near={-HUD_DEPTH_RANGE}
+        right={SCREEN_WIDTH}
+        top={0}
+      />
+      <Suspense fallback={null}>
+        <MinimapView mode={minimapMode} />
+      </Suspense>
+    </Hud>
+  )
 }
 
 export default Minimap

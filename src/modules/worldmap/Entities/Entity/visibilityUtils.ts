@@ -1,17 +1,23 @@
-import { getCategoryForEntity } from './categoryUtils'
+import { VEHICLE_IDS } from '../../../../constants/vehicles'
+import { ENTITY_VEHICLE_CATEGORIES } from '../../../../constants/worldmapEntities'
+import { isOnFootClass, isWalkerClass } from '../../vehicleClasses'
 
-export const isVisibleInCurrentVehicle = (typeCode: number, vehicleId: number): boolean => {
-  const VEHICLE_ON_FOOT = 128
-  const VEHICLE_CACTUAR = 49
-  const category = getCategoryForEntity(typeCode)
+const CATEGORY_BY_TYPE_CODE: ReadonlyMap<number, number> = new Map(
+  ENTITY_VEHICLE_CATEGORIES.flatMap(({ category, typeCodes }) =>
+    typeCodes.map((typeCode) => [typeCode, category] as const),
+  ),
+)
+
+export const isVisibleInCurrentVehicle = (typeCode: number, vehicleId: number) => {
+  const category = CATEGORY_BY_TYPE_CODE.get(typeCode)
   if (category === undefined) {
     return true
   }
-  if (category < 10 || category === VEHICLE_ON_FOOT) {
-    return vehicleId < 10 || vehicleId === VEHICLE_ON_FOOT || vehicleId === VEHICLE_CACTUAR
+  if (isOnFootClass(category)) {
+    return isWalkerClass(vehicleId)
   }
-  if (category === VEHICLE_CACTUAR) {
-    return vehicleId === VEHICLE_CACTUAR
+  if (category === VEHICLE_IDS.CACTUAR) {
+    return vehicleId === VEHICLE_IDS.CACTUAR
   }
   return true
 }

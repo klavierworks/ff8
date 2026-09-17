@@ -2,7 +2,14 @@ use super::char_table;
 use crate::utils::reader::{to_hex, Reader};
 use serde::Serialize;
 
-type Scripts = Vec<Vec<[i32; 3]>>;
+const SCRIPT_OPCODE_SIZE: usize = 4;
+
+#[derive(Serialize)]
+struct Scripts {
+    base_offset: usize,
+    script_starts: Vec<usize>,
+    opcodes: Vec<[i32; 3]>,
+}
 
 #[derive(Serialize)]
 pub struct SectionsJson {
@@ -24,7 +31,6 @@ pub struct SectionsJson {
     section_17_encounter_formations: Section17,
     section_18_region_location_ids: RegionLocationIds,
     section_19_akao_frame_headers: Section19,
-    section_20_akao: Akao,
     section_28_water_block: Raw,
     section_29_animation_frame_data: Raw,
     section_30_animation_descriptors: Section30,
@@ -35,12 +41,6 @@ pub struct SectionsJson {
     section_35_special_locations: Section35,
     section_36_event_scripts: Scripts,
     section_40_palette_animations: Section40,
-    section_42_music: Akao,
-    section_43_music: Akao,
-    section_44_music: Akao,
-    section_45_music: Akao,
-    section_46_music: Akao,
-    section_47_music: Akao,
 }
 
 pub fn parse_wmset(sections: &[&[u8]]) -> SectionsJson {
@@ -63,7 +63,6 @@ pub fn parse_wmset(sections: &[&[u8]]) -> SectionsJson {
         section_17_encounter_formations: parse_section_17(sections[17]),
         section_18_region_location_ids: parse_region_location_ids(sections[18]),
         section_19_akao_frame_headers: parse_section_19(sections[19]),
-        section_20_akao: parse_akao(sections[20]),
         section_28_water_block: parse_raw(sections[28]),
         section_29_animation_frame_data: parse_raw(sections[29]),
         section_30_animation_descriptors: parse_section_30(sections[30]),
@@ -74,16 +73,8 @@ pub fn parse_wmset(sections: &[&[u8]]) -> SectionsJson {
         section_35_special_locations: parse_section_35(sections[35]),
         section_36_event_scripts: parse_scripts(sections[36]),
         section_40_palette_animations: parse_section_40(sections[40]),
-        section_42_music: parse_akao(sections[42]),
-        section_43_music: parse_akao(sections[43]),
-        section_44_music: parse_akao(sections[44]),
-        section_45_music: parse_akao(sections[45]),
-        section_46_music: parse_akao(sections[46]),
-        section_47_music: parse_akao(sections[47]),
     }
 }
-
-// ─── Shared shapes ───
 
 #[derive(Serialize)]
 struct EncounterFlags {
@@ -122,24 +113,11 @@ struct Raw {
     raw_data: String,
 }
 
-#[derive(Serialize)]
-struct Akao {
-    akao_data: String,
-}
-
 fn parse_raw(data: &[u8]) -> Raw {
     Raw {
         raw_data: to_hex(data),
     }
 }
-
-fn parse_akao(data: &[u8]) -> Akao {
-    Akao {
-        akao_data: to_hex(data),
-    }
-}
-
-// ─── Section 0 ───
 
 #[derive(Serialize)]
 struct Section0 {
@@ -171,8 +149,6 @@ fn parse_section_0(data: &[u8]) -> Section0 {
     Section0 { entries }
 }
 
-// ─── Section 1 ───
-
 #[derive(Serialize)]
 struct Section1 {
     region_cells: Vec<u8>,
@@ -189,8 +165,6 @@ fn parse_section_1(data: &[u8]) -> Section1 {
         height: 24,
     }
 }
-
-// ─── Section 3/5 ───
 
 #[derive(Serialize)]
 struct Section3 {
@@ -212,8 +186,6 @@ fn parse_section_3(data: &[u8]) -> Section3 {
         .collect();
     Section3 { groups }
 }
-
-// ─── Section 6 ───
 
 #[derive(Serialize)]
 struct Section6 {
@@ -238,8 +210,6 @@ fn parse_section_6(data: &[u8]) -> Section6 {
         .collect();
     Section6 { entries }
 }
-
-// ─── Section 8 ───
 
 #[derive(Serialize)]
 struct Section8 {
@@ -277,8 +247,6 @@ fn parse_section_8(data: &[u8]) -> Section8 {
     Section8 { positions }
 }
 
-// ─── Section 10 ───
-
 #[derive(Serialize)]
 struct Section10 {
     positions: Vec<EntityPosition>,
@@ -315,8 +283,6 @@ fn parse_section_10(data: &[u8]) -> Section10 {
     Section10 { positions }
 }
 
-// ─── Section 12 ───
-
 #[derive(Serialize)]
 struct Section12 {
     positions: Vec<TrainExitPosition>,
@@ -352,8 +318,6 @@ fn parse_section_12(data: &[u8]) -> Section12 {
         .collect();
     Section12 { positions }
 }
-
-// ─── Section 16 ───
 
 #[derive(Serialize)]
 struct Section16 {
@@ -413,8 +377,6 @@ fn parse_section_16(data: &[u8]) -> Section16 {
     Section16 { descriptors }
 }
 
-// ─── Section 17 ───
-
 #[derive(Serialize)]
 struct Section17 {
     groups: Vec<EncounterFormationGroup>,
@@ -447,8 +409,6 @@ fn parse_section_17(data: &[u8]) -> Section17 {
     Section17 { groups }
 }
 
-// ─── Section 19 ───
-
 #[derive(Serialize)]
 struct Section19 {
     akao_count: u32,
@@ -471,8 +431,6 @@ fn parse_section_19(data: &[u8]) -> Section19 {
         akao_entries,
     }
 }
-
-// ─── Section 30 ───
 
 #[derive(Serialize)]
 struct Section30 {
@@ -513,8 +471,6 @@ fn parse_section_30(data: &[u8]) -> Section30 {
         .collect();
     Section30 { records }
 }
-
-// ─── Section 32 ───
 
 #[derive(Serialize)]
 struct Section32 {
@@ -574,8 +530,6 @@ fn read_rgb_padded(reader: &mut Reader) -> [u8; 3] {
     [r, g, b]
 }
 
-// ─── Section 33 ───
-
 #[derive(Serialize)]
 struct Section33 {
     templates: Vec<TextTemplate>,
@@ -623,8 +577,6 @@ fn parse_section_33(data: &[u8]) -> Section33 {
     Section33 { templates }
 }
 
-// ─── Section 34 ───
-
 #[derive(Serialize)]
 struct Section34 {
     draw_points: Vec<DrawPoint>,
@@ -650,8 +602,6 @@ fn parse_section_34(data: &[u8]) -> Section34 {
     }
     Section34 { draw_points }
 }
-
-// ─── Section 35 ───
 
 #[derive(Serialize)]
 struct Section35 {
@@ -688,8 +638,6 @@ fn parse_section_35(data: &[u8]) -> Section35 {
         .collect();
     Section35 { locations }
 }
-
-// ─── Section 40 ───
 
 #[derive(Serialize)]
 struct Section40 {
@@ -762,8 +710,6 @@ fn parse_section_40(data: &[u8]) -> Section40 {
     Section40 { animations }
 }
 
-// ─── Text sections (13, 31) ───
-
 fn parse_text_list(data: &[u8]) -> TextList {
     TextList {
         dialog: parse_texts(data),
@@ -788,30 +734,26 @@ fn parse_texts(data: &[u8]) -> Vec<String> {
         .collect()
 }
 
-// ─── Scripts (7, 9, 11, 36) ───
-
 fn parse_scripts(data: &[u8]) -> Scripts {
     let offsets = parse_offset_table(data);
+    let base_offset = offsets.iter().copied().min().unwrap_or(data.len());
     let mut reader = Reader::new(data);
-    offsets
-        .iter()
-        .enumerate()
-        .map(|(index, &start)| {
-            reader.seek(start);
-            let end = offsets.get(index + 1).copied().unwrap_or(data.len());
-            let mut opcodes = Vec::new();
-            while reader.tell() < end {
-                let code_id = reader.read_i16() as i32;
-                let param1 = reader.read_u8() as i32;
-                let param2 = reader.read_u8() as i32;
-                opcodes.push([code_id, param1, param2]);
-                if code_id == -234 {
-                    break;
-                }
-            }
-            opcodes
-        })
-        .collect()
+    reader.seek(base_offset);
+    let mut opcodes = Vec::new();
+    while reader.tell() + SCRIPT_OPCODE_SIZE <= data.len() {
+        let code_id = reader.read_i16() as i32;
+        let param1 = reader.read_u8() as i32;
+        let param2 = reader.read_u8() as i32;
+        opcodes.push([code_id, param1, param2]);
+    }
+    Scripts {
+        base_offset,
+        script_starts: offsets
+            .iter()
+            .map(|&offset| (offset - base_offset) / SCRIPT_OPCODE_SIZE)
+            .collect(),
+        opcodes,
+    }
 }
 
 fn parse_offset_table(data: &[u8]) -> Vec<usize> {

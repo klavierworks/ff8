@@ -1,5 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { Scene } from 'three'
 
 import { musicController } from './audio/activeMusicController'
@@ -52,7 +52,8 @@ const Entrypoint = ({ setWorldScene }: EntrypointProps) => {
     setWorldScene(scene)
   }, [scene, setWorldScene])
 
-  useEffect(() => {
+  // A layout effect, so the reset lands before the new module's own mount effects start its music.
+  useLayoutEffect(() => {
     musicController.reset()
   }, [module])
 

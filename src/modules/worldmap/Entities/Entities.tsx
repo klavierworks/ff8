@@ -1,43 +1,40 @@
 import { useFrame } from '@react-three/fiber'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
+import { RAGNAROK_ENTITY_TYPE } from '../../../constants/worldmapEntities'
 import useGlobalStore from '../../../store'
+import { ScriptSection } from '../Scripts/runScript'
 import { getAllEntities, setEntities } from '../Scripts/state'
-import { EntityPosition, PlayerLocationScript } from '../useSections'
+import { EntityPosition } from '../useSections'
 import { buildWorldPosition } from '../worldPosition'
 import {
+  calculateEntityDistances,
   collectEntities,
-  mirrorFacingYaw,
-  pickCandidates,
-  resetEntityDistances,
-  updateEntityDistances,
+  updateFacingYaw,
+  updateInteractionCandidates,
 } from './entitiesUtils'
 import Entity from './Entity/Entity'
 
 type EntitiesProps = {
   positions: readonly EntityPosition[]
-  scripts: readonly PlayerLocationScript[]
+  scripts: ScriptSection
 }
 
 const Entities = ({ positions, scripts }: EntitiesProps) => {
   const characterPosition = useGlobalStore((state) => state.characterPosition)
-  const hasResolvedRef = useRef(false)
   const [isResolved, setIsResolved] = useState(false)
 
   useEffect(() => {
-    if (hasResolvedRef.current || !characterPosition) {
+    if (isResolved || !characterPosition) {
       return
     }
-    hasResolvedRef.current = true
-    const position = buildWorldPosition(characterPosition.x, characterPosition.z)
-    setEntities(collectEntities(scripts, positions, position))
+    setEntities(collectEntities(scripts, positions, buildWorldPosition(characterPosition.x, characterPosition.z)))
     setIsResolved(true)
-  }, [characterPosition, positions, scripts])
+  }, [characterPosition, isResolved, positions, scripts])
 
   useEffect(() => {
     return () => {
       setEntities([])
-      resetEntityDistances()
     }
   }, [])
 
@@ -47,10 +44,8 @@ const Entities = ({ positions, scripts }: EntitiesProps) => {
     if (!current || entities.length === 0) {
       return
     }
-    const player = buildWorldPosition(current.x, current.z)
-    updateEntityDistances(entities, player)
-    pickCandidates()
-    mirrorFacingYaw()
+    updateInteractionCandidates(calculateEntityDistances(entities, current.x, current.z))
+    updateFacingYaw()
   })
 
   if (!isResolved) {
@@ -59,9 +54,9 @@ const Entities = ({ positions, scripts }: EntitiesProps) => {
 
   return (
     <>
-      {getAllEntities().map((entity, index) => (
-        <Entity entity={entity} key={index} />
-      ))}
+      {getAllEntities().map((entity, index) =>
+        entity.typeCode === RAGNAROK_ENTITY_TYPE ? null : <Entity entity={entity} key={index} />,
+      )}
     </>
   )
 }

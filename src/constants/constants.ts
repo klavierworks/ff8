@@ -2,3 +2,5 @@ export const SCREEN_WIDTH = 320
 export const SCREEN_HEIGHT = 224
 
 export const ASPECT_RATIO = SCREEN_WIDTH / SCREEN_HEIGHT
+
+export const SCRIPT_CLOCK_FRAME_PRIORITY = -2

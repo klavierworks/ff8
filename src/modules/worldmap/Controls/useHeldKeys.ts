@@ -1,15 +1,11 @@
 import { useEffect, useRef } from 'react'
 
-type HeldKeysRef = { current: Set<string> }
-
-type UseHeldKeysProps = {
-  onChange: (heldKeys: Set<string>, downCode: null | string) => void
+type UseHeldKeysOptions = {
+  onChange: (heldKeys: ReadonlySet<string>, pressedCode: null | string) => void
   watchedCodes: readonly string[]
 }
 
-const useHeldKeys = ({ onChange, watchedCodes }: UseHeldKeysProps): HeldKeysRef => {
-  const heldKeysRef = useRef<Set<string>>(new Set())
-  const watchedSet = useRef(new Set(watchedCodes))
+const useHeldKeys = ({ onChange, watchedCodes }: UseHeldKeysOptions) => {
   const onChangeRef = useRef(onChange)
 
   useEffect(() => {
@@ -17,14 +13,11 @@ const useHeldKeys = ({ onChange, watchedCodes }: UseHeldKeysProps): HeldKeysRef 
   }, [onChange])
 
   useEffect(() => {
-    watchedSet.current = new Set(watchedCodes)
-  }, [watchedCodes])
-
-  useEffect(() => {
-    const heldKeys = heldKeysRef.current
+    const heldKeys = new Set<string>()
+    const watched = new Set(watchedCodes)
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!watchedSet.current.has(event.code)) {
+      if (!watched.has(event.code)) {
         return
       }
       const wasAlreadyHeld = heldKeys.has(event.code)
@@ -33,14 +26,14 @@ const useHeldKeys = ({ onChange, watchedCodes }: UseHeldKeysProps): HeldKeysRef 
     }
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      if (!watchedSet.current.has(event.code)) {
+      if (!watched.has(event.code)) {
         return
       }
       heldKeys.delete(event.code)
       onChangeRef.current(heldKeys, null)
     }
 
-    const handleClearKeys = () => {
+    const handleBlur = () => {
       if (heldKeys.size === 0) {
         return
       }
@@ -50,16 +43,14 @@ const useHeldKeys = ({ onChange, watchedCodes }: UseHeldKeysProps): HeldKeysRef 
 
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
-    window.addEventListener('blur', handleClearKeys)
+    window.addEventListener('blur', handleBlur)
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
-      window.removeEventListener('blur', handleClearKeys)
+      window.removeEventListener('blur', handleBlur)
     }
-  }, [])
-
-  return heldKeysRef
+  }, [watchedCodes])
 }
 
 export default useHeldKeys

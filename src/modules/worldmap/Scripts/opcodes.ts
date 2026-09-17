@@ -2,6 +2,8 @@ export const WORLDMAP_OPCODES = {
   ADD_ENTITY: -237,
   ADD_ENTITY_ALT: -236,
   ADD_ITEM: -201,
+  BEGIN_BODY: -252,
+  BEGIN_CONDITIONS: -255,
   CHECK_BATTLE_RESULT: -203,
   CHECK_BATTLE_STATE: -223,
   CHECK_BATTLEVAR: -199,
@@ -31,27 +33,25 @@ export const WORLDMAP_OPCODES = {
   COMPARE_SCRIPT_VAR: -211,
   COMPARE_SCRIPT_VAR_GT: -208,
   COMPARE_SCRIPT_VAR_LT: -207,
-  ELSE: -245,
-  ENDIF: -251,
-  EXEC: -252,
+  CONSUME_BUTTON_INPUT: -202,
+  ELSE: -243,
+  ELSE_IF: -244,
+  END_BLOCK: -251,
   FAIL: -226,
   GOTO: -242,
   GREATER_THAN: -253,
-  IF: -255,
-  IFBLOCK: -246,
+  IF: -246,
   LTEQ_THAN: -254,
-  NESTEDELSE: -243,
-  NESTEDIF: -244,
   RETURN: -234,
   RETURN_WITH_CODE_3: -213,
   RETURN_WITH_VALUE: -248,
   SET_BIT_FLAG: -216,
-  SET_GLOBAL_EVENT_TRIGGERED: -202,
   SET_RETURN_VALUE: -235,
   SET_SCRIPT_VAR: -210,
   SET_WORLD_MAP_STATE: -218,
   SHOW_CHOICE_BOX: -221,
   SHOW_TEXT_BOX: -225,
+  THEN: -245,
   X_GREATER_THAN: -241,
   X_LESS_THAN: -239,
   Y_GREATER_THAN: -240,
@@ -60,12 +60,6 @@ export const WORLDMAP_OPCODES = {
 
 export type WorldmapOpcode = keyof typeof WORLDMAP_OPCODES
 
-const buildOpcodeNames = (): Partial<Record<number, WorldmapOpcode>> => {
-  const result: Partial<Record<number, WorldmapOpcode>> = {}
-  for (const [name, id] of Object.entries(WORLDMAP_OPCODES) as [WorldmapOpcode, number][]) {
-    result[id] = name
-  }
-  return result
-}
-
-export const OPCODE_NAMES = buildOpcodeNames()
+export const OPCODE_NAMES: Partial<Record<number, WorldmapOpcode>> = Object.fromEntries(
+  (Object.entries(WORLDMAP_OPCODES) as [WorldmapOpcode, number][]).map(([name, id]) => [id, name]),
+)

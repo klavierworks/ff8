@@ -13,20 +13,14 @@ export const PSX_CONTROLS_MAP = {
   triangle: CONTROLS_MAP.menu,
 }
 
-// World_HandleInputs (0x5573c0) reads the PSX d-pad + face buttons for
-// movement, the L2/R2 shoulder pair for camera yaw, Select for the minimap
-// mode cycle, and Start for the pause/save menu. Walking and vehicle modes
-// share the same physical inputs; the worldmap module decides which axis they
-// drive.
 export const WORLDMAP_CONTROLS_MAP = {
   backward: 'ArrowDown',
-  cameraLookDown: 'PageDown',
-  cameraLookUp: 'PageUp',
   cameraRotateLeft: 'KeyQ',
   cameraRotateRight: 'KeyE',
   cancel: CONTROLS_MAP.cancel,
   card: CONTROLS_MAP.card,
   confirm: CONTROLS_MAP.confirm,
+  debugPlaceRagnarok: 'KeyR',
   forward: 'ArrowUp',
   left: 'ArrowLeft',
   menu: CONTROLS_MAP.menu,
@@ -35,6 +29,21 @@ export const WORLDMAP_CONTROLS_MAP = {
   runModifier: 'ShiftRight',
   toggleCameraMode: 'KeyV',
   toggleMinimap: 'KeyB',
-  toggleRagnarok: 'KeyR',
   walkModifier: 'ShiftLeft',
 }
+
+export const WORLDMAP_PAD_BITS = {
+  backward: 0x4000,
+  cameraRotateLeft: 0x4,
+  cameraRotateRight: 0x8,
+  cancel: 0x10,
+  card: 0x80,
+  confirm: 0x40,
+  forward: 0x1000,
+  left: 0x8000,
+  menu: 0x20,
+  pauseMenu: 0x800,
+  right: 0x2000,
+  toggleCameraMode: 0x2,
+  toggleMinimap: 0x100,
+} satisfies Partial<Record<keyof typeof WORLDMAP_CONTROLS_MAP, number>>

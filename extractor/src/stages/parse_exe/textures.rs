@@ -4,8 +4,7 @@ use serde::Serialize;
 use std::fs;
 use std::path::Path;
 
-use super::exe_build::ExeBuild;
-use super::IMAGE_BASE;
+use crate::utils::exe_build::{ExeBuild, IMAGE_BASE};
 
 // Offsets are v1.2 file offsets. Effect IDs are the game's magic-effect table indices; see ida.md.
 struct KnownTexture {

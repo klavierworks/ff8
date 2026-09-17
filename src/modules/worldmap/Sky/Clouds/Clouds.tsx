@@ -1,9 +1,11 @@
 import { useTexture } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
-import { ClampToEdgeWrapping, Color, DoubleSide, NearestFilter, RepeatWrapping, ShaderMaterial, Texture } from 'three'
+import { RefObject, useMemo, useRef } from 'react'
+import { AdditiveBlending, Color, NearestFilter, ShaderMaterial, Texture, Vector2 } from 'three'
 
+import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../../constants/constants'
 import useWorldmapStore from '../../worldmapStore'
+import { calculateCloudStartX, SCREEN_QUAD_VERTEX_SHADER } from '../skyUtils'
 
 const CLOUD_TEXTURE_URL = Object.values(
   import.meta.glob<string>('@data/worldmap/textures/sky_cloud.png', {
@@ -13,106 +15,91 @@ const CLOUD_TEXTURE_URL = Object.values(
   }),
 )[0]
 
-const CLOUD_WRAPS_PER_REVOLUTION = 16
-const TWO_PI = 2 * Math.PI
-
-const TOP_VERTEX_BRIGHTNESS = 0.5
-const BOTTOM_HORIZON_SCALE = 0.5
-
-const CLOUD_BAND_TOP = 0.32
-const CLOUD_BAND_BOTTOM = 0.04
-
 type CloudsProps = {
   horizon: Color
+  horizonYRef: RefObject<number>
 }
 
-const vert = /* glsl */ `
-  varying vec3 vDirection;
-  void main() {
-    vDirection = normalize(position);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`
-
-const frag = /* glsl */ `
+const FRAGMENT_SHADER = /* glsl */ `
   precision highp float;
   uniform sampler2D uCloudTexture;
   uniform vec3 uHorizon;
-  uniform float uScroll;
-  uniform float uBandTop;
-  uniform float uBandBottom;
-  uniform float uTopBrightness;
-  uniform float uBottomScale;
-  uniform float uWrapsPerRevolution;
-  varying vec3 vDirection;
+  uniform vec2 uResolution;
+  uniform float uHorizonY;
+  uniform float uStartX;
+
+  const float SCREEN_WIDTH = ${SCREEN_WIDTH.toFixed(1)};
+  const float SCREEN_HEIGHT = ${SCREEN_HEIGHT.toFixed(1)};
+  const float BAND_ABOVE_HORIZON = 48.0;
+  const float BAND_HEIGHT = 64.0;
+  const float QUAD_WIDTH = 256.0;
+  const vec2 TEXTURE_SIZE = vec2(256.0, 64.0);
+  const vec2 UV_MIN = vec2(1.0, 1.0);
+  const vec2 UV_SPAN = vec2(253.0, 61.0);
+  const vec3 TOP_VERTEX_COLOR = vec3(0.5);
 
   void main() {
-    vec3 direction = normalize(vDirection);
-    if (direction.y < uBandBottom || direction.y > uBandTop) {
+    float pixelsPerScreenUnit = uResolution.y / SCREEN_HEIGHT;
+    float screenX = (gl_FragCoord.x - 0.5 * (uResolution.x - SCREEN_WIDTH * pixelsPerScreenUnit)) / pixelsPerScreenUnit;
+    float screenY = (1.0 - gl_FragCoord.y / uResolution.y) * SCREEN_HEIGHT;
+    float bandFraction = (screenY - (uHorizonY - BAND_ABOVE_HORIZON)) / BAND_HEIGHT;
+    if (bandFraction < 0.0 || bandFraction > 1.0) {
       discard;
     }
-    float bandFraction = (direction.y - uBandBottom) / (uBandTop - uBandBottom);
-    float azimuth = atan(direction.z, direction.x) / (2.0 * 3.14159265);
-    vec2 uv = vec2(azimuth * uWrapsPerRevolution + uScroll, 1.0 - bandFraction);
-    vec4 sampleColor = texture2D(uCloudTexture, uv);
-    if (sampleColor.a < 0.01) {
+    float quadFraction = mod(screenX - uStartX, QUAD_WIDTH) / QUAD_WIDTH;
+    vec2 texel = UV_MIN + vec2(quadFraction, bandFraction) * UV_SPAN;
+    vec4 sampleColor = texture2D(uCloudTexture, vec2(texel.x, TEXTURE_SIZE.y - texel.y) / TEXTURE_SIZE);
+    if (sampleColor.a < 0.5) {
       discard;
     }
-    vec3 topColor = vec3(uTopBrightness);
-    vec3 bottomColor = uHorizon * uBottomScale;
-    vec3 vertexColor = mix(bottomColor, topColor, bandFraction);
-    gl_FragColor = vec4(sampleColor.rgb * vertexColor * 2.0, sampleColor.a);
+    vec3 vertexColor = mix(TOP_VERTEX_COLOR, uHorizon, bandFraction);
+    gl_FragColor = vec4(sampleColor.rgb * vertexColor, 1.0);
   }
 `
 
-const Clouds = ({ horizon }: CloudsProps) => {
-  const materialRef = useRef<ShaderMaterial>(null)
+const configureCloudTexture = (texture: Texture | Texture[]) => {
+  const single = texture as Texture
+  single.magFilter = NearestFilter
+  single.minFilter = NearestFilter
+}
 
-  const cloudTexture = useTexture(CLOUD_TEXTURE_URL, (texture) => {
-    const single = texture as Texture
-    single.wrapS = RepeatWrapping
-    single.wrapT = ClampToEdgeWrapping
-    single.magFilter = NearestFilter
-    single.minFilter = NearestFilter
-  })
+const Clouds = ({ horizon, horizonYRef }: CloudsProps) => {
+  const materialRef = useRef<ShaderMaterial>(null)
+  const cloudTexture = useTexture(CLOUD_TEXTURE_URL, configureCloudTexture)
 
   const uniforms = useMemo(
     () => ({
-      uBandBottom: { value: CLOUD_BAND_BOTTOM },
-      uBandTop: { value: CLOUD_BAND_TOP },
-      uBottomScale: { value: BOTTOM_HORIZON_SCALE },
-      uCloudTexture: { value: cloudTexture as Texture },
+      uCloudTexture: { value: cloudTexture },
       uHorizon: { value: new Color() },
-      uScroll: { value: 0 },
-      uTopBrightness: { value: TOP_VERTEX_BRIGHTNESS },
-      uWrapsPerRevolution: { value: CLOUD_WRAPS_PER_REVOLUTION },
+      uHorizonY: { value: 0 },
+      uResolution: { value: new Vector2(1, 1) },
+      uStartX: { value: 0 },
     }),
     [cloudTexture],
   )
 
-  useFrame(() => {
+  useFrame(({ gl }) => {
     const material = materialRef.current
     if (!material) {
       return
     }
-    const yawRadians = useWorldmapStore.getState().camera.yawRadians
-    const yawLowByte = ((yawRadians / TWO_PI) * 256 + 256) % 256
-    material.uniforms.uScroll.value = (256 - yawLowByte) / 256
+    material.uniforms.uStartX.value = calculateCloudStartX(useWorldmapStore.getState().camera.yawRadians)
+    material.uniforms.uHorizonY.value = horizonYRef.current
     material.uniforms.uHorizon.value.copy(horizon)
+    gl.getDrawingBufferSize(material.uniforms.uResolution.value)
   })
 
   return (
     <mesh frustumCulled={false} renderOrder={-999}>
-      <sphereGeometry args={[480, 64, 32]} />
+      <planeGeometry args={[2, 2]} />
       <shaderMaterial
+        blending={AdditiveBlending}
         depthTest={false}
         depthWrite={false}
-        fragmentShader={frag}
+        fragmentShader={FRAGMENT_SHADER}
         ref={materialRef}
-        side={DoubleSide}
-        transparent
         uniforms={uniforms}
-        vertexShader={vert}
+        vertexShader={SCREEN_QUAD_VERTEX_SHADER}
       />
     </mesh>
   )

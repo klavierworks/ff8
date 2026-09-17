@@ -1,18 +1,20 @@
-import { PSX_ANGLE_UNITS } from '../constants'
+import { MathUtils } from 'three'
 
-const TWO_PI = 2 * Math.PI
+import { PSX_ANGLE_TO_RAD, PSX_ANGLE_UNITS } from '../constants'
 
-export const wrapPsxAngle = (angle: number): number => ((angle % PSX_ANGLE_UNITS) + PSX_ANGLE_UNITS) % PSX_ANGLE_UNITS
+export const wrapPsxAngle = (angle: number) => MathUtils.euclideanModulo(angle, PSX_ANGLE_UNITS)
 
-export const radiansToPsx = (radians: number): number => wrapPsxAngle((radians / TWO_PI) * PSX_ANGLE_UNITS)
+export const radiansToPsx = (radians: number) => wrapPsxAngle(radians / PSX_ANGLE_TO_RAD)
 
-export const psxToRadians = (psx: number): number => (psx / PSX_ANGLE_UNITS) * TWO_PI
+export const psxToRadians = (psx: number) => psx * PSX_ANGLE_TO_RAD
 
-export const shortestPsxDelta = (current: number, target: number): number => {
+export const shortestPsxDelta = (current: number, target: number) => {
   const delta = wrapPsxAngle(target - current)
   return delta > PSX_ANGLE_UNITS / 2 ? delta - PSX_ANGLE_UNITS : delta
 }
 
-export const shortestRadiansDelta = (delta: number): number => {
-  return (((delta % TWO_PI) + 3 * Math.PI) % TWO_PI) - Math.PI
-}
+const mirrorPsxAngle = (angle: number) => wrapPsxAngle(PSX_ANGLE_UNITS / 2 - angle)
+
+export const convertHeadingToFieldDirection = mirrorPsxAngle
+
+export const convertFieldDirectionToHeading = mirrorPsxAngle

@@ -5,20 +5,22 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import useGlobalStore from '../../../store'
 import { MEMORY } from '../../field/Scripts/Script/handlers'
 import { WORLDMAP_SCALE } from '../constants'
+import { getWorldStateVariable } from '../worldmapSaveData'
 import Tile from './Tile/Tile'
 import TilePrecompiler from './TilePrecompiler/TilePrecompiler'
+import { getActiveVariantOverrides } from './tileState'
 import {
-  buildVariantOverrides,
-  computeVisibleTiles,
-  getWorldStateVariable,
+  getSegmentPosition,
+  getTilesAround,
   isDDistrictPrisonAboveGround,
-  positionToSegmentColumn,
-  positionToSegmentRow,
   preloadTileUrl,
-  tileKey,
+  SegmentPosition,
 } from './tilesUtils'
 
-type SegmentPosition = { column: number; row: number }
+const VISIBLE_TILE_RADIUS = 3
+const PRELOAD_TILE_RADIUS = 4
+
+const isSameSegment = (a: null | SegmentPosition, b: SegmentPosition) => a?.column === b.column && a.row === b.row
 
 const Tiles = () => {
   const [segment, setSegment] = useState<null | SegmentPosition>(null)
@@ -29,45 +31,37 @@ const Tiles = () => {
     if (!position) {
       return
     }
-    const column = positionToSegmentColumn(position.x)
-    const row = positionToSegmentRow(position.z)
-    const current = segmentRef.current
-    if (current && column === current.column && row === current.row) {
+    const next = getSegmentPosition(position)
+    if (isSameSegment(segmentRef.current, next)) {
       return
     }
-    segmentRef.current = { column, row }
-    setSegment({ column, row })
+    segmentRef.current = next
+    setSegment(next)
   })
 
   const variantOverrides = useMemo(
-    () => buildVariantOverrides(getWorldStateVariable(MEMORY), isDDistrictPrisonAboveGround(MEMORY)),
+    () => getActiveVariantOverrides(getWorldStateVariable(MEMORY), isDDistrictPrisonAboveGround(MEMORY)),
     [],
   )
 
   const visibleTiles = useMemo(
-    () => (segment ? computeVisibleTiles(segment.column, segment.row, 3, variantOverrides) : []),
+    () => (segment ? getTilesAround(segment, VISIBLE_TILE_RADIUS, variantOverrides) : []),
     [segment, variantOverrides],
   )
 
   const preloadTiles = useMemo(
-    () => (segment ? computeVisibleTiles(segment.column, segment.row, 4, variantOverrides) : []),
+    () => (segment ? getTilesAround(segment, PRELOAD_TILE_RADIUS, variantOverrides) : []),
     [segment, variantOverrides],
   )
 
-  const visibleKeySet = useMemo(() => new Set(visibleTiles.map(tileKey)), [visibleTiles])
-
-  const outerRingTiles = useMemo(
-    () => preloadTiles.filter((tile) => !visibleKeySet.has(tileKey(tile))),
-    [preloadTiles, visibleKeySet],
-  )
+  const outerRingTiles = useMemo(() => {
+    const visibleKeys = new Set(visibleTiles.map((tile) => tile.key))
+    return preloadTiles.filter((tile) => !visibleKeys.has(tile.key))
+  }, [preloadTiles, visibleTiles])
 
   useEffect(() => {
     preloadTiles.forEach((tile) => {
-      if (tile.kind === 'segment') {
-        preloadTileUrl(tile.segmentIndex, undefined, useGLTF.preload)
-      } else {
-        preloadTileUrl(undefined, tile.variantIndex, useGLTF.preload)
-      }
+      preloadTileUrl(tile.assetPath, useGLTF.preload)
     })
   }, [preloadTiles])
 
@@ -78,31 +72,13 @@ const Tiles = () => {
   return (
     <group scale={WORLDMAP_SCALE}>
       {visibleTiles.map((tile) => (
-        <Suspense fallback={null} key={tileKey(tile)}>
-          {tile.kind === 'segment' ? (
-            <Tile
-              offset={tile.offset}
-              segmentIndex={tile.segmentIndex}
-              targetColumn={tile.targetColumn}
-              targetRow={tile.targetRow}
-            />
-          ) : (
-            <Tile
-              offset={tile.offset}
-              targetColumn={tile.targetColumn}
-              targetRow={tile.targetRow}
-              variantIndex={tile.variantIndex}
-            />
-          )}
+        <Suspense fallback={null} key={tile.key}>
+          <Tile assetPath={tile.assetPath} offset={tile.offset} />
         </Suspense>
       ))}
       {outerRingTiles.map((tile) => (
-        <Suspense fallback={null} key={`pre/${tileKey(tile)}`}>
-          {tile.kind === 'segment' ? (
-            <TilePrecompiler segmentIndex={tile.segmentIndex} />
-          ) : (
-            <TilePrecompiler variantIndex={tile.variantIndex} />
-          )}
+        <Suspense fallback={null} key={`preload/${tile.key}`}>
+          <TilePrecompiler assetPath={tile.assetPath} />
         </Suspense>
       ))}
     </group>

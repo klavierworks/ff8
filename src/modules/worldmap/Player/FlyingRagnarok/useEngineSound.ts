@@ -1,79 +1,72 @@
 import { useFrame } from '@react-three/fiber'
-import { Howl } from 'howler'
-import { MutableRefObject, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 
-import { TARGET_FPS } from '../../../../timing'
-import { WORLDMAP_SCALE } from '../../constants'
+import {
+  RAGNAROK_ENGINE_BASE_VOLUME,
+  RAGNAROK_ENGINE_MAX_VOLUME,
+  RAGNAROK_ENGINE_SOUND_ID,
+  RAGNAROK_ENGINE_SPEED_VOLUME_DIVISOR,
+  SFX_PAN_CENTRE,
+} from '../../../../constants/audio'
+import { VEHICLE_IDS } from '../../../../constants/vehicles'
+import { getSoundFromId } from '../../../field/Scripts/Script/SFXController/utils'
+import {
+  AudioSourceNode,
+  createAudioSource,
+  playSource,
+  setupUserActivation,
+  setVolumeForSource,
+  stopSource,
+} from '../../../field/Scripts/Script/SFXController/webAudio'
 import useWorldmapStore from '../../worldmapStore'
-import { VEHICLE_RAGNAROK } from './flightConstants'
+import { getRagnarokOutputs } from './ragnarokState'
 
-const RAGNAROK_TOP_SPEED = 200 * TARGET_FPS * WORLDMAP_SCALE
-import { FlightAttitude } from './useFlight'
+const calculateEngineVolume = (psxSpeedPerFrame: number) =>
+  Math.min(
+    RAGNAROK_ENGINE_MAX_VOLUME,
+    RAGNAROK_ENGINE_BASE_VOLUME + Math.floor(psxSpeedPerFrame / RAGNAROK_ENGINE_SPEED_VOLUME_DIVISOR),
+  )
 
-// The Ragnarok engine loop (PSX asset 500002, see ida.md) starts on the first
-// frame aboard the Ragnarok and stops when the player dismounts. Volume is the
-// idle baseline plus speed / 4, clamped to 0..127 — it modulates upward with
-// ground velocity.
-//
-// That PSX sound id isn't present in the port's audio extraction yet. Once the
-// wave is extracted, set RAGNAROK_ENGINE_SOUND_URL to its path — until then the
-// hook stays silent but the wiring is verified.
-const RAGNAROK_ENGINE_SOUND_URL: null | string = null
+const getEngineVolume = () => calculateEngineVolume(Math.abs(getRagnarokOutputs().velocity))
 
-// PSX volume → Howler 0..1 — full-range volume in the original is 127.
-const PSX_VOLUME_MAX = 127
-const IDLE_VOLUME = 80
-// Per-axis speed scaling: PSX `speed / 4` over `[0, 200] PSX/frame` adds up
-// to ~50 above the idle baseline at top speed. Stay in PSX units for clarity.
-const ragnarokVolumeForSpeed = (speed: number): number => {
-  const speedFraction = Math.min(1, Math.max(0, speed / RAGNAROK_TOP_SPEED))
-  const psxVolume = IDLE_VOLUME + speedFraction * (PSX_VOLUME_MAX - IDLE_VOLUME)
-  return Math.min(1, psxVolume / PSX_VOLUME_MAX)
-}
-
-type UseEngineSoundArgs = {
-  attitudeRef: MutableRefObject<FlightAttitude>
-}
-
-const useEngineSound = ({ attitudeRef }: UseEngineSoundArgs) => {
-  const vehicleId = useWorldmapStore((state) => state.vehicleId)
-  const howlRef = useRef<Howl | null>(null)
-  const soundIdRef = useRef<null | number>(null)
+const useEngineSound = () => {
+  const isAboard = useWorldmapStore((state) => state.vehicleId === VEHICLE_IDS.RAGNAROK)
+  const sourceRef = useRef<AudioSourceNode | null>(null)
 
   useEffect(() => {
-    if (!RAGNAROK_ENGINE_SOUND_URL) {
+    if (!isAboard) {
       return
     }
-    if (vehicleId !== VEHICLE_RAGNAROK) {
-      return
-    }
-    const howl = new Howl({
-      autoplay: false,
-      loop: true,
-      preload: true,
-      src: [RAGNAROK_ENGINE_SOUND_URL],
-      volume: ragnarokVolumeForSpeed(0),
-    })
-    howlRef.current = howl
-    soundIdRef.current = howl.play()
+
+    setupUserActivation()
+    let isCancelled = false
+
+    createAudioSource(getSoundFromId(RAGNAROK_ENGINE_SOUND_ID), getEngineVolume(), SFX_PAN_CENTRE)
+      .then((source) => {
+        if (isCancelled) {
+          return
+        }
+        sourceRef.current = source
+        playSource(source)
+      })
+      .catch((error: unknown) => {
+        console.warn('Unable to start the Ragnarok engine sound', error)
+      })
+
     return () => {
-      howl.stop()
-      howl.unload()
-      howlRef.current = null
-      soundIdRef.current = null
+      isCancelled = true
+      if (sourceRef.current) {
+        stopSource(sourceRef.current)
+        sourceRef.current = null
+      }
     }
-  }, [vehicleId])
+  }, [isAboard])
 
   useFrame(() => {
-    if (!RAGNAROK_ENGINE_SOUND_URL) {
+    if (!sourceRef.current) {
       return
     }
-    const howl = howlRef.current
-    const soundId = soundIdRef.current
-    if (!howl || soundId === null) {
-      return
-    }
-    howl.volume(ragnarokVolumeForSpeed(attitudeRef.current.speed), soundId)
+    setVolumeForSource(sourceRef.current, getEngineVolume())
   })
 }
 

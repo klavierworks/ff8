@@ -1,37 +1,49 @@
+import { VEHICLE_IDS } from '../../../constants/vehicles'
+import {
+  ALTERNATE_ENTITY_SUBTYPE,
+  ALTERNATE_SUBTYPE_ENTITY_TYPE,
+  LOOSE_CANDIDATE_DISTANCE,
+  MAX_WORLDMAP_ENTITIES,
+  RAGNAROK_ENTITY_TYPE,
+  TIGHT_CANDIDATE_DISTANCE,
+  UNTRACKED_GARDEN_ENTITY_TYPES,
+} from '../../../constants/worldmapEntities'
 import useGlobalStore from '../../../store'
-import { runScript, WorldmapScript } from '../Scripts/runScript'
-import { beginSpawnCollection, endSpawnCollection, EntityRecord, RawSpawn, WORLDMAP_STATE } from '../Scripts/state'
+import { MEMORY } from '../../field/Scripts/Script/handlers'
+import { convertFieldDirectionToHeading } from '../Player/playerAngles'
+import { worldXToPsx, worldZToPsx } from '../Player/playerUtils'
+import { ScriptSection } from '../Scripts/runScript'
+import { collectSpawns, RawSpawn } from '../Scripts/sectionRunners'
+import { EntityRecord, WORLDMAP_STATE } from '../Scripts/state'
 import { WorldPosition } from '../types'
 import { EntityPosition } from '../useSections'
+import { readSavedRagnarok } from '../worldmapSaveData'
 import useWorldmapStore from '../worldmapStore'
 
-// The engine picks two interaction candidates per frame by projecting each
-// entity through the camera: a tight ("touching") and a loose ("in vicinity")
-// distance. We approximate the projection with planar PSX distance; thresholds
-// are tuned to PSX-unit scale (2048 per tile).
-const TIGHT_CANDIDATE_DISTANCE = 200
-const LOOSE_CANDIDATE_DISTANCE = 600
+const buildSavedRagnarokEntity = (): EntityRecord => {
+  const saved = readSavedRagnarok(MEMORY)
+  return {
+    pitch: 0,
+    positionVerticalY: saved.altitude,
+    positionX: saved.x,
+    positionY: saved.y,
+    subType: 0,
+    typeCode: RAGNAROK_ENTITY_TYPE,
+    yaw: saved.yaw,
+  }
+}
 
-// While the boarded vehicle is Balamb Garden the picker short-circuits to none:
-// you cannot interact with NPCs while flying the school.
-const VEHICLE_BLOCKS_INTERACTION = 48
+const isUntrackedGardenType = (typeCode: number) =>
+  (UNTRACKED_GARDEN_ENTITY_TYPES as readonly number[]).includes(typeCode)
 
-// The spawn slot table caps at 64 entries.
-const MAX_ENTITIES = 64
+const getSpawnSubType = (typeCode: number) =>
+  typeCode === ALTERNATE_SUBTYPE_ENTITY_TYPE ? ALTERNATE_ENTITY_SUBTYPE : 0
 
-// Type codes 1, 64, 65 read a live vehicle position struct rather than a static
-// spawn position; no port equivalent exists yet, so they are skipped.
-const VEHICLE_BACKED_TYPES: ReadonlySet<number> = new Set([1, 64, 65])
-
-// Type 80 spawns with subType 4; every other type spawns with subType 0.
-const SUBTYPE_FOR_TYPE_80 = 80
-
-const resolveSpawn = (
-  typeCode: number,
-  positionIndex: number,
-  positions: readonly EntityPosition[],
-): EntityRecord | undefined => {
-  if (VEHICLE_BACKED_TYPES.has(typeCode)) {
+const resolveSpawn = ({ positionIndex, typeCode }: RawSpawn, positions: readonly EntityPosition[]) => {
+  if (typeCode === RAGNAROK_ENTITY_TYPE) {
+    return buildSavedRagnarokEntity()
+  }
+  if (isUntrackedGardenType(typeCode)) {
     return undefined
   }
   const position = positions[positionIndex]
@@ -42,74 +54,49 @@ const resolveSpawn = (
     pitch: position.pitch,
     positionVerticalY: position.y,
     positionX: position.x,
-    positionY: position.z,
-    subType: typeCode === SUBTYPE_FOR_TYPE_80 ? 4 : 0,
+    positionY: -position.z,
+    subType: getSpawnSubType(typeCode),
     typeCode,
     yaw: position.yaw,
   }
 }
 
-export const updateEntityDistances = (entities: readonly EntityRecord[], player: WorldPosition) => {
-  const distances: Record<number, number> = {}
-  for (let index = 0; index < entities.length; index++) {
-    const entity = entities[index]
-    const dx = entity.positionX - player.psxX
-    const dy = entity.positionY - player.psxY
-    distances[index] = Math.sqrt(dx * dx + dy * dy)
-  }
-  useWorldmapStore.setState({ entityDistances: distances })
+export const calculateEntityDistances = (entities: readonly EntityRecord[], playerX: number, playerZ: number) => {
+  const psxX = worldXToPsx(playerX)
+  const psxY = worldZToPsx(playerZ)
+  return entities.map((entity) => Math.hypot(entity.positionX - psxX, entity.positionY - psxY))
 }
 
-export const resetEntityDistances = () => {
-  useWorldmapStore.setState({ entityDistances: {} })
+const findClosestEntity = (distances: readonly number[]) =>
+  distances.reduce((closest, distance, index) => (distance < closest.distance ? { distance, index } : closest), {
+    distance: Infinity,
+    index: -1,
+  })
+
+const clearInteractionCandidates = () => {
+  WORLDMAP_STATE.tightCandidate = -1
+  WORLDMAP_STATE.looseCandidate = -1
 }
 
-const findClosestEntity = (distances: Record<number, number>): { distance: number; index: number } =>
-  Object.keys(distances).reduce(
-    (closest, key) => {
-      const index = Number(key)
-      const distance = distances[index]
-      return distance < closest.distance ? { distance, index } : closest
-    },
-    { distance: Infinity, index: -1 },
-  )
-
-export const pickCandidates = () => {
-  if (useWorldmapStore.getState().vehicleId === VEHICLE_BLOCKS_INTERACTION) {
-    WORLDMAP_STATE.tightCandidate = -1
-    WORLDMAP_STATE.looseCandidate = -1
+export const updateInteractionCandidates = (distances: readonly number[]) => {
+  if (useWorldmapStore.getState().vehicleId === VEHICLE_IDS.BALAMB_GARDEN) {
+    clearInteractionCandidates()
     return
   }
-  const { distance, index } = findClosestEntity(useWorldmapStore.getState().entityDistances)
+  const { distance, index } = findClosestEntity(distances)
   WORLDMAP_STATE.tightCandidate = distance <= TIGHT_CANDIDATE_DISTANCE ? index : -1
   WORLDMAP_STATE.looseCandidate = distance <= LOOSE_CANDIDATE_DISTANCE ? index : -1
 }
 
-export const mirrorFacingYaw = () => {
-  WORLDMAP_STATE.facingYaw = useGlobalStore.getState().fieldDirection
+export const updateFacingYaw = () => {
+  WORLDMAP_STATE.facingYaw = convertFieldDirectionToHeading(useGlobalStore.getState().fieldDirection)
 }
-
-const resolveSpawns = (collector: readonly RawSpawn[], positions: readonly EntityPosition[]): readonly EntityRecord[] =>
-  collector
-    .flatMap((spawn) => {
-      const record = resolveSpawn(spawn.typeCode, spawn.positionIndex, positions)
-      return record ? [record] : []
-    })
-    .slice(0, MAX_ENTITIES)
 
 export const collectEntities = (
-  scripts: readonly WorldmapScript[],
+  section: ScriptSection,
   positions: readonly EntityPosition[],
   position: WorldPosition,
-): readonly EntityRecord[] => {
-  for (const script of scripts) {
-    const collector = beginSpawnCollection()
-    const result = runScript(script, position)
-    endSpawnCollection()
-    if (!result.didExecuteBody) {
-      continue
-    }
-    return resolveSpawns(collector, positions)
-  }
-  return []
-}
+) =>
+  collectSpawns(section, position)
+    .flatMap((spawn) => resolveSpawn(spawn, positions) ?? [])
+    .slice(0, MAX_WORLDMAP_ENTITIES)

@@ -1,19 +1,12 @@
 mod cards;
 mod draw_points;
-mod exe_build;
 mod textures;
 
 use crate::stage::{Context, Stage};
+use crate::utils::exe_build::{detect_exe_build, EXE_PATH};
 use crate::utils::ff8_text::TextCodec;
 use anyhow::{Context as _, Result};
-use exe_build::detect_exe_build;
 use std::fs;
-
-const EXE_PATH: &str = "FF8.exe";
-
-// file offset + IMAGE_BASE = virtual address; the data this stage reads sits in the flat-mapped
-// region where that identity holds.
-pub(super) const IMAGE_BASE: usize = 0x40_0000;
 
 pub struct ParseExe;
 

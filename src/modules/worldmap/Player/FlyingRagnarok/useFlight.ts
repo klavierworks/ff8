@@ -1,97 +1,113 @@
-import { useFrame, useThree } from '@react-three/fiber'
-import { MutableRefObject } from 'react'
+import { useThree } from '@react-three/fiber'
+import { Object3D, Vector3 } from 'three'
 
+import { VEHICLE_IDS } from '../../../../constants/vehicles'
 import useGlobalStore from '../../../../store'
-import { TARGET_FPS } from '../../../../timing'
-import { WORLD_WRAP_X, WORLD_WRAP_Z, WORLDMAP_SCALE } from '../../constants'
+import { convertRadiansToCameraYaw } from '../../Camera/cameraUtils'
+import { WORLDMAP_STATE } from '../../Scripts/state'
+import useScriptTick from '../../useScriptTick'
 import useWorldmapStore, { WORLD_MAP_STATE_FREE_ROAM } from '../../worldmapStore'
-import { psxToRadians, radiansToPsx } from '../playerAngles'
-import { findGroundY } from '../playerUtils'
-import { VEHICLE_RAGNAROK } from './flightConstants'
-
-const RAGNAROK_ALTITUDE_RATE_PER_AXIS = (120 / 256) * TARGET_FPS * WORLDMAP_SCALE
+import { MOVEMENT_FRAME_PRIORITY } from '../constants'
+import { isPadInputIgnored } from '../onFootInput'
+import { convertFieldDirectionToHeading, convertHeadingToFieldDirection } from '../playerAngles'
+import { isShipBlockedByEntity } from './boardingUtils'
 import {
-  buildRagnarokInputAxes,
-  horizontalVelocity,
-  ragnarokVerticalVelocity,
-  stepRagnarokBank,
-  stepRagnarokCameraTilt,
-  stepRagnarokSpeed,
-  stepRagnarokYaw,
-  wrapWorldAxis,
+  calculateHeadingStep,
+  clampShipAltitude,
+  FlightCamera,
+  readRagnarokInput,
+  stepShipAltitude,
+  stepShipBank,
+  stepShipVelocity,
+  stepShipYaw,
 } from './flightUtils'
+import { getRagnarokOutputs, setRagnarokOutputs } from './ragnarokState'
+import {
+  findTopTriangle,
+  getTriangleAltitude,
+  readShipPose,
+  ShipPose,
+  wrapMapX,
+  wrapMapZ,
+  writeShipPose,
+} from './shipPose'
 
-export type FlightAttitude = {
-  bankRadians: number
-  speed: number
+const readInputForTick = (tick: number) =>
+  readRagnarokInput(useWorldmapStore.getState().controls.padButtons, isPadInputIgnored(tick))
+
+const readFlightCamera = (): FlightCamera => {
+  const { camera, cameraModeIndex } = useWorldmapStore.getState()
+  return { cameraModeIndex, cameraYaw: convertRadiansToCameraYaw(camera.yawRadians) }
 }
 
-const RAGNAROK_MIN_CLEARANCE = 60 * WORLDMAP_SCALE
-
-const _velocity: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 }
-
-type UseFlightArgs = {
-  attitudeRef: MutableRefObject<FlightAttitude>
+const calculateTargetPose = (pose: ShipPose, shipYaw: number, velocity: number, altitudeInput: number): ShipPose => {
+  const step = calculateHeadingStep(velocity, shipYaw)
+  return {
+    altitude: stepShipAltitude(pose.altitude, altitudeInput),
+    x: wrapMapX(pose.x + step.x),
+    z: wrapMapZ(pose.z + step.z),
+  }
 }
 
-const useFlight = ({ attitudeRef }: UseFlightArgs) => {
+const settleOnTerrain = (scene: Object3D, target: ShipPose): ShipPose => {
+  const ground = findTopTriangle(scene, target.x, target.z)
+  WORLDMAP_STATE.locationTriangle = ground
+  return { ...target, altitude: clampShipAltitude(target.altitude, ground && getTriangleAltitude(ground)) }
+}
+
+const moveShip = (scene: Object3D, position: Vector3, shipYaw: number, velocity: number, altitudeInput: number) => {
+  const pose = readShipPose(position)
+  const target = calculateTargetPose(pose, shipYaw, velocity, altitudeInput)
+  if (isShipBlockedByEntity(target)) {
+    writeShipPose(position, pose)
+    return 0
+  }
+  writeShipPose(position, settleOnTerrain(scene, target))
+  return velocity
+}
+
+const updateFieldDirection = (shipYaw: number) => {
+  const fieldDirection = convertHeadingToFieldDirection(shipYaw)
+  if (fieldDirection !== useGlobalStore.getState().fieldDirection) {
+    useGlobalStore.setState({ fieldDirection })
+  }
+}
+
+const runFlightTick = (scene: Object3D, position: Vector3, tick: number) => {
+  const input = readInputForTick(tick)
+  const camera = readFlightCamera()
+  const outputs = getRagnarokOutputs()
+  const shipYaw = stepShipYaw(
+    convertFieldDirectionToHeading(useGlobalStore.getState().fieldDirection),
+    input.turn,
+    camera,
+  )
+  const bank = stepShipBank(outputs.bank, input.turn)
+
+  if (useWorldmapStore.getState().worldMapState !== WORLD_MAP_STATE_FREE_ROAM) {
+    setRagnarokOutputs({ ...outputs, bank })
+    return
+  }
+
+  const velocity = stepShipVelocity(outputs.velocity, input.throttle, shipYaw, camera)
+  const movedVelocity = moveShip(scene, position, shipYaw, velocity, input.altitude)
+  setRagnarokOutputs({ ...outputs, bank, velocity: movedVelocity })
+  updateFieldDirection(shipYaw)
+}
+
+const useFlight = () => {
   const scene = useThree((state) => state.scene)
 
-  useFrame((_, delta) => {
-    const store = useGlobalStore.getState()
-    const position = store.characterPosition
-    if (!position) {
-      return
-    }
-
-    const worldmap = useWorldmapStore.getState()
-    if (worldmap.vehicleId !== VEHICLE_RAGNAROK) {
-      return
-    }
-    if (worldmap.worldMapState !== WORLD_MAP_STATE_FREE_ROAM) {
-      return
-    }
-    const controls = worldmap.controls
-    const axes = buildRagnarokInputAxes(controls)
-    const attitude = attitudeRef.current
-
-    const nextSpeed = stepRagnarokSpeed(attitude.speed, axes.throttleAxis, delta)
-
-    const currentYawRadians = psxToRadians(store.fieldDirection)
-    const targetYawRadians = worldmap.camera.yawRadians
-    const nextYawRadians = stepRagnarokYaw(currentYawRadians, axes.yawAxis, targetYawRadians, delta)
-
-    const nextBankRadians = stepRagnarokBank(attitude.bankRadians, axes.yawAxis, delta)
-
-    horizontalVelocity(nextYawRadians, nextSpeed, _velocity)
-    _velocity.y = ragnarokVerticalVelocity(axes.altitudeAxis, RAGNAROK_ALTITUDE_RATE_PER_AXIS)
-
-    const tentativeX = wrapWorldAxis(position.x + _velocity.x * delta, WORLD_WRAP_X)
-    const tentativeZ = wrapWorldAxis(position.z + _velocity.z * delta, WORLD_WRAP_Z)
-    const integratedY = position.y + _velocity.y * delta
-
-    // Port-side floor: the original doesn't bound altitude — it's a free
-    // vertical integration. We add a minimum-clearance floor so the ship
-    // doesn't sink into the walkmesh near the ground. No ceiling — climb is
-    // unbounded. Over open ocean/void `findGroundY` returns undefined; there is
-    // no terrain to clamp against, so the integrated altitude is used as-is
-    // (clamping to a phantom ground at y=0 would teleport the ship upward).
-    const groundY = findGroundY(scene, tentativeX, tentativeZ)
-    const floorY = groundY === undefined ? undefined : groundY + RAGNAROK_MIN_CLEARANCE
-    const tentativeY = floorY !== undefined && integratedY < floorY ? floorY : integratedY
-
-    position.set(tentativeX, tentativeY, tentativeZ)
-
-    attitudeRef.current = {
-      bankRadians: nextBankRadians,
-      speed: nextSpeed,
-    }
-
-    const nextTiltPsx = stepRagnarokCameraTilt(worldmap.ragnarokCameraTiltPsx, axes.altitudeAxis, delta)
-
-    useGlobalStore.setState({ fieldDirection: radiansToPsx(nextYawRadians) })
-    useWorldmapStore.setState({ ragnarokCameraTiltPsx: nextTiltPsx })
-  })
+  useScriptTick(
+    (tick) => {
+      const position = useGlobalStore.getState().characterPosition
+      if (!position || useWorldmapStore.getState().vehicleId !== VEHICLE_IDS.RAGNAROK) {
+        return
+      }
+      runFlightTick(scene, position, tick)
+    },
+    { priority: MOVEMENT_FRAME_PRIORITY },
+  )
 }
 
 export default useFlight

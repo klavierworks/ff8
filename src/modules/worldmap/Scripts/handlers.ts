@@ -1,221 +1,198 @@
+import type { ScriptOpcode } from './runScript'
+
+import { VEHICLE_IDS } from '../../../constants/vehicles'
+import { signExtend8, signExtend16 } from '../../../utils'
 import { MEMORY } from '../../field/Scripts/Script/handlers'
+import { TILES_PER_SEGMENT, WORLD_GRID_COLS } from '../constants'
+import { radiansToPsx, shortestPsxDelta } from '../Player/playerAngles'
+import { convertMapXToEntityX, convertMapZToEntityY } from '../Player/playerUtils'
 import { WorldPosition } from '../types'
-import useWorldmapStore from '../worldmapStore'
-import { closeDialog, getSlotState, showDialog } from './dialog'
-import { WorldmapOpcode } from './opcodes'
-import { EntityRecord, getAllEntities, getEntity, isReservedSlot, pushSpawn, WORLDMAP_STATE } from './state'
+import { isCarClass, isChocoboClass, isVehicleInRange } from '../vehicleClasses'
+import { getFlagWordIndex, readSavedBattleState, readSavedFlagBit, readSavedScriptVariable } from '../worldmapSaveData'
+import useWorldmapStore, {
+  WORLD_MAP_STATE_GARDEN_LANDING,
+  WORLD_MAP_STATE_GARDEN_TAKEOFF,
+  WORLD_MAP_STATE_RAGNAROK_LANDING,
+  WORLD_MAP_STATE_RAGNAROK_TAKEOFF,
+} from '../worldmapStore'
+import {
+  ANY_BUTTON,
+  BATTLE_STATE_BIT,
+  ENTITY_PROXIMITY_DISTANCE_SQUARED,
+  FACING_TOLERANCE,
+  FIRST_PROXIMITY_ENTITY,
+  FLAG_BIT_MASK,
+  LOCATION_INDEX_MASK,
+  RANDOM_NUMBER_RANGE,
+  STORY_PROGRESS_HIGH_ADDRESS,
+  STORY_PROGRESS_LOW_ADDRESS,
+  TILE_MODE_OFFSET_SHIFT,
+  TILE_POSITION_ROW_STRIDE,
+  WON_BATTLE_RESULT,
+} from './constants'
+import { getSlotState } from './dialog'
+import { OPCODE_NAMES, WorldmapOpcode } from './opcodes'
+import {
+  EntityRecord,
+  getAllEntities,
+  getEntity,
+  isLocationTriggerSet,
+  isOnFootCode,
+  isReservedSlot,
+  WORLDMAP_STATE,
+} from './state'
 
-type Handler = (args: HandlerArgs) => boolean | void
+type Condition = (opcode: ScriptOpcode, position: WorldPosition) => boolean
 
-type HandlerArgs = {
-  p1: number
-  p2: number
-  param: number
-  position: WorldPosition
+type ConditionResult = 'fail' | 'none' | 'pass'
+
+type VehicleClassMatcher = (vehicleId: number) => boolean
+
+const VEHICLE_LANDING_STATE: Partial<Record<number, number>> = {
+  [VEHICLE_IDS.BALAMB_GARDEN]: WORLD_MAP_STATE_GARDEN_LANDING,
+  [VEHICLE_IDS.RAGNAROK]: WORLD_MAP_STATE_RAGNAROK_LANDING,
 }
 
-const VEHICLE_BOARDED_STATE: Partial<Record<number, number>> = { 48: 8, 50: 5 }
-const VEHICLE_ENTERING_STATE: Partial<Record<number, number>> = { 48: 9, 50: 6 }
-
-const noopAction: Handler = () => undefined
-const noopCondition: Handler = () => false
-
-const getBit = (value: number, bitIndex: number): number => (value >> bitIndex) & 1
-
-const getBitFlag = (bit: number): number => {
-  const word = bit < 32 ? WORLDMAP_STATE.bitFlags[0] : WORLDMAP_STATE.bitFlags[1]
-  return (word >>> (bit & 31)) & 1
+const VEHICLE_TAKEOFF_STATE: Partial<Record<number, number>> = {
+  [VEHICLE_IDS.BALAMB_GARDEN]: WORLD_MAP_STATE_GARDEN_TAKEOFF,
+  [VEHICLE_IDS.RAGNAROK]: WORLD_MAP_STATE_RAGNAROK_TAKEOFF,
 }
 
-const setBitFlag = (bit: number, isSet: boolean | number) => {
-  const wordIndex = bit < 32 ? 0 : 1
-  const mask = 1 << (bit & 31)
-  const previous = WORLDMAP_STATE.bitFlags[wordIndex]
-  WORLDMAP_STATE.bitFlags[wordIndex] = isSet ? previous | mask : previous & ~mask
+const VEHICLE_CLASS_MATCHERS: Partial<Record<number, VehicleClassMatcher>> = {
+  129: (vehicleId) => vehicleId < 2,
+  130: (vehicleId) => isVehicleInRange(vehicleId, 8, 9),
+  131: isChocoboClass,
+  132: isCarClass,
+  133: (vehicleId) => isVehicleInRange(vehicleId, 34, VEHICLE_IDS.CAR_CLASS_MAX),
+  [VEHICLE_IDS.BALAMB_GARDEN]: (vehicleId) => vehicleId === VEHICLE_IDS.BALAMB_GARDEN,
+  [VEHICLE_IDS.BIKE]: (vehicleId) => vehicleId === VEHICLE_IDS.BIKE,
+  [VEHICLE_IDS.CACTUAR]: (vehicleId) => vehicleId === VEHICLE_IDS.CACTUAR,
+  [VEHICLE_IDS.ON_FOOT]: isOnFootCode,
+  [VEHICLE_IDS.RAGNAROK]: (vehicleId) => vehicleId === VEHICLE_IDS.RAGNAROK,
 }
 
-const toUint16 = (value: number): number => value & 0xffff
+const toFlag = (isSet: boolean) => (isSet ? 1 : 0)
 
-const TILE_MODE_SUB_TILE_COUNT = 4
-const TILE_MODE_X_SHIFT = 11
-const TILE_MODE_Y_STRIDE = 32
+const getStoryProgress = () =>
+  (MEMORY[STORY_PROGRESS_LOW_ADDRESS] ?? 0) | ((MEMORY[STORY_PROGRESS_HIGH_ADDRESS] ?? 0) << 8)
 
-const packTileModeX = (tileX: number): number => (tileX % TILE_MODE_SUB_TILE_COUNT) << TILE_MODE_X_SHIFT
+const getBearingFromPlayer = (entity: EntityRecord, position: WorldPosition) =>
+  Math.round(
+    radiansToPsx(
+      Math.atan2(
+        entity.positionY - convertMapZToEntityY(position.psxY),
+        entity.positionX - convertMapXToEntityX(position.psxX),
+      ),
+    ),
+  )
 
-const packTileModeY = (tileY: number): number => (tileY % TILE_MODE_SUB_TILE_COUNT) << TILE_MODE_X_SHIFT
+const isSignedBearingWithinFacingTolerance = (entity: EntityRecord, position: WorldPosition) =>
+  shortestPsxDelta(WORLDMAP_STATE.facingYaw, getBearingFromPlayer(entity, position)) <= FACING_TOLERANCE
 
-const packTileModeCoordinate = (tileX: number, tileY: number): number =>
-  packTileModeX(tileX) + tileY * TILE_MODE_Y_STRIDE
-
-const PSX_ANGLE_UNITS = 4096
-const FACING_CONE_HALF_WIDTH = 1536
-
-const LOCATION_FLAG_BIT = 3
-
-const getButtonsChangedThisFrame = (current: number, previous: number, mask: number): number =>
-  (current ^ previous) & mask
-
-// Planar PSX squared-distance approximation of the original post-projection proximity test (~3000 PSX units).
-const ENTITY_PROXIMITY_DISTANCE_SQUARED = 0x895440
-
-const bearingFromPlayer = (entity: EntityRecord, position: WorldPosition): number => {
-  const radians = Math.atan2(position.psxY - entity.positionY, entity.positionX - position.psxX)
-  return Math.round((radians * PSX_ANGLE_UNITS) / (2 * Math.PI))
+const isVehicleClass = (vehicleClass: number) => {
+  const matcher = VEHICLE_CLASS_MATCHERS[vehicleClass]
+  return matcher ? matcher(useWorldmapStore.getState().vehicleId) : true
 }
 
-const isWithinFacingCone = (entity: EntityRecord, position: WorldPosition): boolean => {
-  const raw = bearingFromPlayer(entity, position) - WORLDMAP_STATE.facingYaw
-  const wrapped = ((raw % PSX_ANGLE_UNITS) + PSX_ANGLE_UNITS) % PSX_ANGLE_UNITS
-  const delta = wrapped > PSX_ANGLE_UNITS / 2 ? wrapped - PSX_ANGLE_UNITS : wrapped
-  return Math.abs(delta) <= FACING_CONE_HALF_WIDTH
-}
+const isWorldMapState = (state: number | undefined) => useWorldmapStore.getState().worldMapState === state
 
-export const OPCODE_HANDLERS: Partial<Record<WorldmapOpcode, Handler>> = {
-  ADD_ENTITY: ({ p1, p2 }) => {
-    pushSpawn(p1, p2)
-  },
-  ADD_ENTITY_ALT: ({ p1, p2 }) => {
-    pushSpawn(p1, p2)
-  },
-  ADD_ITEM: noopAction,
-  CHECK_BATTLE_RESULT: () => WORLDMAP_STATE.battleResult === 4,
-  CHECK_BATTLE_STATE: ({ param }) => WORLDMAP_STATE.battleResult === param,
-  CHECK_BATTLEVAR: noopCondition,
-  CHECK_BIT_FLAG: ({ p1, p2 }) => getBitFlag(p1) === p2,
-  CHECK_BUTTON_INPUT: ({ param }) => {
-    if (WORLDMAP_STATE.isInputLocked) {
-      return false
-    }
-    const { inputCurrent, inputPrevious } = WORLDMAP_STATE
-    if (param === 0xffff) {
-      return inputCurrent !== inputPrevious
-    }
-    return getButtonsChangedThisFrame(inputCurrent, inputPrevious, param) !== 0
-  },
-  CHECK_CHARACTER_DISTANCE: ({ param, position }) => {
-    const index = WORLDMAP_STATE.looseCandidate
-    const entity = getEntity(index)
-    if (!entity || entity.typeCode !== param || isReservedSlot(index)) {
-      return false
-    }
-    return isWithinFacingCone(entity, position)
-  },
-  CHECK_CHARACTER_LOCATION: ({ param }) => {
-    const entity = getEntity(WORLDMAP_STATE.tightCandidate)
-    return entity !== undefined && entity.typeCode === param
-  },
-  CHECK_CHARACTER_LOCATION_2: ({ param, position }) => {
-    const entity = getEntity(WORLDMAP_STATE.looseCandidate)
-    if (!entity || entity.typeCode !== param) {
-      return false
-    }
-    return isWithinFacingCone(entity, position)
-  },
-  CHECK_CHARACTER_LOCATION_EX: ({ param }) => {
-    const index = WORLDMAP_STATE.tightCandidate
-    const entity = getEntity(index)
-    return entity !== undefined && entity.typeCode === param && !isReservedSlot(index)
-  },
-  CHECK_COMBAT_SCENE_ID: ({ param }) => WORLDMAP_STATE.lastCombatSceneId === param,
-  CHECK_DIALOG_CONFIRMED: ({ p1, p2 }) => {
-    const isConfirmed = getSlotState(p1) >= 0 ? 1 : 0
-    return p2 === isConfirmed
-  },
-  CHECK_DIALOG_STATE: ({ param }) => {
-    const state = getSlotState(param)
-    WORLDMAP_STATE.dialogChoice = state
-    return state >= 0
-  },
-  CHECK_ENTITY_PROXIMITY: ({ param, position }) => {
-    const entities = getAllEntities()
-    for (let index = 0; index < entities.length; index++) {
-      const entity = entities[index]
-      if (entity.typeCode !== param) {
-        continue
-      }
-      const dx = entity.positionX - position.psxX
-      const dy = entity.positionY - position.psxY
-      if (dx * dx + dy * dy <= ENTITY_PROXIMITY_DISTANCE_SQUARED) {
-        return true
-      }
-    }
+const getPressedButtons = () => WORLDMAP_STATE.padCurrent & (WORLDMAP_STATE.padCurrent ^ WORLDMAP_STATE.padPrevious)
+
+const isButtonInputPassing = (buttons: number) => {
+  if (WORLDMAP_STATE.isTileMode) {
+    return true
+  }
+  if (WORLDMAP_STATE.isButtonInputConsumed) {
     return false
+  }
+  const pressed = getPressedButtons()
+  return buttons === ANY_BUTTON ? pressed !== 0 : (buttons & pressed) !== 0
+}
+
+const isEntityNearPlayer = (entity: EntityRecord, position: WorldPosition) => {
+  const deltaX = signExtend16(entity.positionX - convertMapXToEntityX(position.psxX))
+  const deltaZ = signExtend16(entity.positionY - convertMapZToEntityY(position.psxY))
+  return deltaX * deltaX + deltaZ * deltaZ <= ENTITY_PROXIMITY_DISTANCE_SQUARED
+}
+
+const isNearEntityOfType = (typeCode: number, position: WorldPosition) =>
+  getAllEntities()
+    .slice(FIRST_PROXIMITY_ENTITY)
+    .some((entity) => entity.typeCode === typeCode && isEntityNearPlayer(entity, position))
+
+const isCandidateOfType = (index: number, typeCode: number) => getEntity(index)?.typeCode === typeCode
+
+const isFacingCandidateOfType = (index: number, typeCode: number, position: WorldPosition) => {
+  const entity = getEntity(index)
+  return entity?.typeCode === typeCode && isSignedBearingWithinFacingTolerance(entity, position)
+}
+
+const getTileModeRegion = (position: WorldPosition) =>
+  Math.floor(position.tileX / TILES_PER_SEGMENT) + WORLD_GRID_COLS * Math.floor(position.tileY / TILES_PER_SEGMENT)
+
+const getTileModeOffset = (tile: number) => (tile % TILES_PER_SEGMENT) << TILE_MODE_OFFSET_SHIFT
+
+const getPositionX = (position: WorldPosition) =>
+  WORLDMAP_STATE.isTileMode ? getTileModeOffset(position.tileX) : position.subSegmentX
+
+const getPositionY = (position: WorldPosition) =>
+  WORLDMAP_STATE.isTileMode ? getTileModeOffset(position.tileY) : position.subSegmentY
+
+const readScriptVariable = (index: number) => readSavedScriptVariable(MEMORY, signExtend8(index))
+
+const CONDITIONS: Partial<Record<WorldmapOpcode, Condition>> = {
+  CHECK_BATTLE_RESULT: ({ param }) => param === toFlag(WORLDMAP_STATE.battleResult === WON_BATTLE_RESULT),
+  CHECK_BATTLE_STATE: ({ param }) =>
+    WORLDMAP_STATE.isTileMode || (readSavedBattleState(MEMORY) & BATTLE_STATE_BIT) === param,
+  CHECK_BATTLEVAR: () => false,
+  CHECK_BIT_FLAG: ({ p1, p2, param }) => p2 === readSavedFlagBit(MEMORY, getFlagWordIndex(p1), param & FLAG_BIT_MASK),
+  CHECK_BUTTON_INPUT: ({ param }) => isButtonInputPassing(param),
+  CHECK_CHARACTER_DISTANCE: ({ param }, position) =>
+    isFacingCandidateOfType(WORLDMAP_STATE.looseCandidate, param, position) &&
+    !isReservedSlot(WORLDMAP_STATE.looseCandidate),
+  CHECK_CHARACTER_LOCATION: ({ param }) => isCandidateOfType(WORLDMAP_STATE.tightCandidate, param),
+  CHECK_CHARACTER_LOCATION_2: ({ param }, position) =>
+    isFacingCandidateOfType(WORLDMAP_STATE.looseCandidate, param, position),
+  CHECK_CHARACTER_LOCATION_EX: ({ param }) =>
+    isCandidateOfType(WORLDMAP_STATE.tightCandidate, param) && !isReservedSlot(WORLDMAP_STATE.tightCandidate),
+  CHECK_COMBAT_SCENE_ID: ({ param }) => WORLDMAP_STATE.lastCombatSceneId === param,
+  CHECK_DIALOG_CONFIRMED: ({ p1, p2 }) => p2 === toFlag(getSlotState(p1) >= 0),
+  CHECK_DIALOG_STATE: ({ param }) => {
+    WORLDMAP_STATE.dialogChoice = getSlotState(param)
+    return WORLDMAP_STATE.dialogChoice >= 0
   },
-  CHECK_LOCATION_DRAW_REGISTER: ({ param }) => {
-    const diff = WORLDMAP_STATE.currentLocationIndex - WORLDMAP_STATE.previousLocationIndex - 1
-    return toUint16(diff) === param
-  },
-  CHECK_LOCATION_FLAG: ({ param }) => getBit(WORLDMAP_STATE.currentLocationFlags, LOCATION_FLAG_BIT) === param,
-  CHECK_MOVEMENT: ({ param }) => (WORLDMAP_STATE.isMoving ? 1 : 0) === param,
-  CHECK_RANDOM_NUMBER: ({ param }) => Math.floor(Math.random() * 0x10000) < param,
-  CHECK_REGION_NUMBER: ({ param, position }) => {
-    if (WORLDMAP_STATE.isTileMode) {
-      return param === packTileModeCoordinate(position.tileX, position.tileY)
-    }
-    return param === position.regionId
-  },
-  CHECK_TILE_POSITION: ({ param, position }) => param === position.tileX + 128 * position.tileY,
-  CHECK_VEHICLE_BOARDED: ({ param }) => WORLDMAP_STATE.worldMapState === VEHICLE_BOARDED_STATE[param],
-  CHECK_VEHICLE_ENTERING: ({ param }) => WORLDMAP_STATE.worldMapState === VEHICLE_ENTERING_STATE[param],
-  CHECK_VEHICLE_TYPE: ({ param }) => param === useWorldmapStore.getState().vehicleId,
-  CHECK_WORLD_MAP_STATE: ({ param }) => WORLDMAP_STATE.worldMapState === param,
-  CLOSE_TEXT_BOX: ({ param }) => closeDialog(param),
+  CHECK_ENTITY_PROXIMITY: ({ param }, position) => isNearEntityOfType(param, position),
+  CHECK_LOCATION_DRAW_REGISTER: ({ param }) =>
+    ((WORLDMAP_STATE.currentLocationIndex - WORLDMAP_STATE.previousLocationIndex - 1) & LOCATION_INDEX_MASK) === param,
+  CHECK_LOCATION_FLAG: ({ param }) => param !== toFlag(!isLocationTriggerSet()),
+  CHECK_MOVEMENT: ({ param }) => param === toFlag(WORLDMAP_STATE.isMoving),
+  CHECK_RANDOM_NUMBER: ({ param }) => Math.floor(Math.random() * RANDOM_NUMBER_RANGE) < param,
+  CHECK_REGION_NUMBER: ({ param }, position) =>
+    param === (WORLDMAP_STATE.isTileMode ? getTileModeRegion(position) : position.regionId),
+  CHECK_TILE_POSITION: ({ param }, position) => param === position.tileX + TILE_POSITION_ROW_STRIDE * position.tileY,
+  CHECK_VEHICLE_BOARDED: ({ param }) => isWorldMapState(VEHICLE_LANDING_STATE[param]),
+  CHECK_VEHICLE_ENTERING: ({ param }) => isWorldMapState(VEHICLE_TAKEOFF_STATE[param]),
+  CHECK_VEHICLE_TYPE: ({ param }) => WORLDMAP_STATE.isTileMode || isVehicleClass(param),
+  CHECK_WORLD_MAP_STATE: ({ param }) => isWorldMapState(param),
   COMPARE_DIALOG_RESPONSE: ({ param }) => WORLDMAP_STATE.dialogChoice === param,
-  COMPARE_LOCATION_BYTE: noopCondition,
-  COMPARE_SCRIPT_VAR: ({ p1, p2 }) => p1 < 2 && WORLDMAP_STATE.scriptVars[p1 as 0 | 1] === p2,
-  COMPARE_SCRIPT_VAR_GT: ({ p1, p2 }) => p1 < 2 && p2 > WORLDMAP_STATE.scriptVars[p1 as 0 | 1],
-  COMPARE_SCRIPT_VAR_LT: ({ p1, p2 }) => p1 < 2 && p2 < WORLDMAP_STATE.scriptVars[p1 as 0 | 1],
-  FAIL: noopCondition,
-  GREATER_THAN: ({ param }) => param > (MEMORY[256] ?? 0),
-  LTEQ_THAN: ({ param }) => param <= (MEMORY[256] ?? 0),
-  SET_BIT_FLAG: ({ p1, p2 }) => {
-    setBitFlag(p1, p2)
-  },
-  SET_GLOBAL_EVENT_TRIGGERED: () => {
-    WORLDMAP_STATE.isGlobalEventTriggered = true
-  },
-  SET_SCRIPT_VAR: ({ p1, p2 }) => {
-    if (p1 < 2) {
-      WORLDMAP_STATE.scriptVars[p1 as 0 | 1] = p2
-    }
-  },
-  SET_WORLD_MAP_STATE: ({ p1 }) => {
-    WORLDMAP_STATE.worldMapState = p1
-  },
-  SHOW_CHOICE_BOX: ({ p1, p2 }) => {
-    // The synchronous VM does not await this dialog; the choice lands in dialogChoice
-    // asynchronously and is read back by a later opcode on a subsequent frame.
-    showDialog(p1, p2, { blocked: undefined, cancel: undefined, default: undefined, first: 0, last: undefined }).then(
-      (selectedIndex) => {
-        WORLDMAP_STATE.dialogChoice = selectedIndex
-      },
-    )
-  },
-  SHOW_TEXT_BOX: ({ p1, p2 }) => {
-    showDialog(p1, p2)
-  },
-  X_GREATER_THAN: ({ param, position }) => {
-    if (WORLDMAP_STATE.isTileMode) {
-      return param > packTileModeX(position.tileX)
-    }
-    return param > position.subSegmentX
-  },
-  X_LESS_THAN: ({ param, position }) => {
-    if (WORLDMAP_STATE.isTileMode) {
-      return param < packTileModeX(position.tileX)
-    }
-    return param < position.subSegmentX
-  },
-  Y_GREATER_THAN: ({ param, position }) => {
-    if (WORLDMAP_STATE.isTileMode) {
-      return param > packTileModeY(position.tileY)
-    }
-    return param > position.subSegmentY
-  },
-  Y_LESS_THAN: ({ param, position }) => {
-    if (WORLDMAP_STATE.isTileMode) {
-      return param < packTileModeY(position.tileY)
-    }
-    return param < position.subSegmentY
-  },
+  COMPARE_LOCATION_BYTE: ({ p1 }) => p1 === WORLDMAP_STATE.locationTriangle?.groundType,
+  COMPARE_SCRIPT_VAR: ({ p1, p2 }) => p2 === readScriptVariable(p1),
+  COMPARE_SCRIPT_VAR_GT: ({ p1, p2 }) => p2 > readScriptVariable(p1),
+  COMPARE_SCRIPT_VAR_LT: ({ p1, p2 }) => p2 < readScriptVariable(p1),
+  FAIL: () => false,
+  GREATER_THAN: ({ param }) => param > getStoryProgress(),
+  LTEQ_THAN: ({ param }) => param <= getStoryProgress(),
+  X_GREATER_THAN: ({ param }, position) => param > getPositionX(position),
+  X_LESS_THAN: ({ param }, position) => param < getPositionX(position),
+  Y_GREATER_THAN: ({ param }, position) => param > getPositionY(position),
+  Y_LESS_THAN: ({ param }, position) => param < getPositionY(position),
+}
+
+export const checkCondition = (opcode: ScriptOpcode, position: WorldPosition): ConditionResult => {
+  const name = OPCODE_NAMES[opcode.op]
+  const condition = name ? CONDITIONS[name] : undefined
+  if (!condition) {
+    return 'none'
+  }
+  return condition(opcode, position) ? 'pass' : 'fail'
 }

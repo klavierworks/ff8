@@ -1,4 +1,6 @@
+mod akao;
 mod char_table;
+mod effects;
 mod file_header;
 mod models;
 mod sections;
@@ -7,6 +9,7 @@ mod wm2field;
 mod wmx;
 
 use crate::stage::{Context, Stage};
+use crate::utils::exe_build::{detect_exe_build, EXE_PATH};
 use anyhow::{Context as _, Result};
 use serde::Serialize;
 use std::fs;
@@ -32,6 +35,9 @@ impl Stage for ParseWorldmap {
         write_json_pretty(&out_dir.join("sections.json"), &parsed)?;
         println!("  wmset: sections.json");
 
+        let akao_count = akao::export(&out_dir, &section_slices)?;
+        println!("  wmset: {akao_count} AKAO sections");
+
         let texture_sets = textures::export(
             &out_dir,
             section_slices[37],
@@ -41,12 +47,22 @@ impl Stage for ParseWorldmap {
         )?;
         println!("  wmset: textures");
 
+        let exe_path = context.install_dir.join(EXE_PATH);
+        let exe = fs::read(&exe_path).with_context(|| format!("reading {}", exe_path.display()))?;
+        let effect_count = effects::export(
+            &out_dir,
+            &exe,
+            detect_exe_build(&exe)?,
+            &texture_sets.world,
+            section_slices[37],
+        )?;
+        println!("  exe: {effect_count} worldmap effects");
+
         models::export(&out_dir, section_slices[15], &texture_sets.objects)?;
         println!("  wmset: models");
 
-        let wmx_bytes = fs::read(world_dir.join("wmx.obj")).with_context(|| "reading wmx.obj")?;
-        let texl_bytes =
-            fs::read(world_dir.join("texl.obj")).with_context(|| "reading texl.obj")?;
+        let wmx_bytes = fs::read(world_dir.join("wmx.obj")).context("reading wmx.obj")?;
+        let texl_bytes = fs::read(world_dir.join("texl.obj")).context("reading texl.obj")?;
         wmx::export(
             &out_dir.join("tiles"),
             &wmx_bytes,

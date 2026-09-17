@@ -150,11 +150,6 @@ type GlobalState = {
   sleepingParty: number[]
   spuValue: number
   systemSfxController: ReturnType<typeof createSFXController>
-
-  // Mirror of `useWorldmapStore.vehicleId` for cross-module consumers (Tiles,
-  // field code, etc.) — kept in sync by the worldmap store subscription in
-  // Worldmap.tsx. The canonical source of truth is the worldmap store; this
-  // copy exists so non-worldmap modules can read it without that dependency.
   vehicleId: number
   walkmeshController: undefined | WalkmeshMovementController
 }
