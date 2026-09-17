@@ -1,15 +1,4 @@
-import {
-  Box3,
-  BufferAttribute,
-  BufferGeometry,
-  Material,
-  MathUtils,
-  Mesh,
-  MeshBasicMaterial,
-  MeshStandardMaterial,
-  Object3D,
-  Vector3,
-} from 'three'
+import { Material, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector3 } from 'three'
 
 import { loadAssetUrl, preloadAssetUrl } from '../../../loadAssetUrl'
 import {
@@ -44,10 +33,6 @@ const TILE_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldma
 
 const SAVEMAP_PRISON_FLAG_BYTE = 264
 const SAVEMAP_PRISON_ABOVE_GROUND_MASK = 0x08
-
-const SEAM_EXPANSION_PSX = 1
-const SEAM_BOUNDARY_TOLERANCE = 0.5
-const SEAMS_EXPANDED_FLAG = 'seamsExpanded'
 
 export const getTileUrl = (assetPath: string) => loadAssetUrl(TILE_LOADERS, assetPath)
 
@@ -120,53 +105,6 @@ export const getTilesAround = (
   )
 }
 
-const isNearBoundary = (value: number, boundary: number) => Math.abs(value - boundary) < SEAM_BOUNDARY_TOLERANCE
-
-const expandCoordinate = (value: number, min: number, max: number) => {
-  if (isNearBoundary(value, min)) {
-    return value - SEAM_EXPANSION_PSX
-  }
-  if (isNearBoundary(value, max)) {
-    return value + SEAM_EXPANSION_PSX
-  }
-  return value
-}
-
-const expandGeometryToTileBounds = (geometry: BufferGeometry, tileBounds: Box3) => {
-  const positions = geometry.getAttribute('position')
-  if (!(positions instanceof BufferAttribute)) {
-    return
-  }
-  for (let i = 0; i < positions.count; i++) {
-    positions.setX(i, expandCoordinate(positions.getX(i), tileBounds.min.x, tileBounds.max.x))
-    positions.setZ(i, expandCoordinate(positions.getZ(i), tileBounds.min.z, tileBounds.max.z))
-  }
-  positions.needsUpdate = true
-}
-
-const calculateTileBounds = (scene: Object3D) => {
-  const tileBounds = new Box3()
-  scene.traverse((object) => {
-    if (!(object instanceof Mesh)) {
-      return
-    }
-    object.geometry.computeBoundingBox()
-    if (object.geometry.boundingBox) {
-      tileBounds.union(object.geometry.boundingBox)
-    }
-  })
-  return tileBounds
-}
-
-const expandTileSeams = (scene: Object3D) => {
-  const tileBounds = calculateTileBounds(scene)
-  scene.traverse((object) => {
-    if (object instanceof Mesh) {
-      expandGeometryToTileBounds(object.geometry, tileBounds)
-    }
-  })
-}
-
 export const getMeshMaterials = (mesh: Mesh): Material[] =>
   Array.isArray(mesh.material) ? mesh.material : [mesh.material]
 
@@ -193,10 +131,6 @@ const configureTileMesh = (object: Object3D) => {
 }
 
 export const prepareTileScene = (scene: Object3D) => {
-  if (!scene.userData[SEAMS_EXPANDED_FLAG]) {
-    expandTileSeams(scene)
-    scene.userData[SEAMS_EXPANDED_FLAG] = true
-  }
   scene.traverse(configureTileMesh)
   return scene
 }

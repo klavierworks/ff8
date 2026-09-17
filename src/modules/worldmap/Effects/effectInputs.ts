@@ -1,8 +1,14 @@
 import { Scene, Vector3 } from 'three'
 
-import { WORLDMAP_SCALE } from '../constants'
+import { FORCE_FIELD_ENTITY_TYPE } from '../../../constants/worldmapEntities'
+import { BOAT_RIDE_RIDDEN_CAR_INDEX } from '../../../constants/worldmapTrains'
+import { PSX_ANGLE_TO_RAD, WORLDMAP_SCALE } from '../constants'
+import { convertEntityXToMapX, convertEntityYToMapZ, worldXToPsx, worldZToPsx } from '../Player/playerUtils'
+import { getEntity } from '../Scripts/state'
 import { queryTerrain, selectTopTriangle } from '../terrain'
+import { TrainSession } from '../Trains/trainSession'
 import { PsxVector } from './effectPool'
+import { EffectPose, toSignedWord } from './emitterUtils'
 
 export type GroundProbe = {
   groundType: number | undefined
@@ -17,6 +23,8 @@ export type PlayerMotion = {
 }
 
 const RUN_CYCLE_FRAMES = 20
+const BOAT_WAKE_TRAIN_SLOT = 0
+const CAR_YAW_OFFSET = 2048
 const FRAME_UNITS_PER_KEYFRAME = 16
 const TELEPORT_DISTANCE = 4096
 
@@ -61,3 +69,37 @@ export const advancePlayerMotion = (motion: PlayerMotion, position: PsxVector): 
 
 export const getRunFrameUnits = (motion: PlayerMotion) =>
   motion.speed > 0 ? ((motion.runFrames - 1) % RUN_CYCLE_FRAMES) * FRAME_UNITS_PER_KEYFRAME : undefined
+
+const calculateGameAngle = (dx: number, dy: number) => toSignedWord(Math.round(Math.atan2(dx, dy) / PSX_ANGLE_TO_RAD))
+
+// Rail z runs opposite to the port's z axis, so the car's yaw is negated; its pitch is unaffected.
+export const getBoatWakePose = (session: null | TrainSession): EffectPose | undefined => {
+  const train = session?.trains[BOAT_WAKE_TRAIN_SLOT]
+  const car = train?.cars[BOAT_RIDE_RIDDEN_CAR_INDEX]
+  const link = train?.links[BOAT_RIDE_RIDDEN_CAR_INDEX] ?? 0
+  const neighbour = train?.cars[BOAT_RIDE_RIDDEN_CAR_INDEX + link]
+  if (!car || !neighbour || link === 0) {
+    return undefined
+  }
+  const dx = toSignedWord(neighbour.x - car.x)
+  const dAltitude = toSignedWord(neighbour.altitude - car.altitude)
+  const dz = toSignedWord(neighbour.z - car.z)
+  const yaw = calculateGameAngle(-dz, dx) + CAR_YAW_OFFSET
+  const pitch = calculateGameAngle(-dAltitude, Math.trunc(Math.hypot(dx, dz)))
+  return {
+    position: { x: convertEntityXToMapX(car.x), y: car.altitude, z: convertEntityYToMapZ(-car.z) },
+    rotation: { x: 0, y: -yaw, z: pitch },
+  }
+}
+
+// Entity positions store the port's z, which runs opposite to the engine's, so the bearing is
+// taken against the negated z delta and then negated like the boat's yaw.
+export const getForceFieldFlashYaw = (candidate: number, previousCandidate: number, playerPosition: Vector3) => {
+  const entity = getEntity(candidate)
+  if (candidate === previousCandidate || entity?.typeCode !== FORCE_FIELD_ENTITY_TYPE) {
+    return undefined
+  }
+  const dx = toSignedWord(entity.positionX - worldXToPsx(playerPosition.x))
+  const dz = toSignedWord(entity.positionY - worldZToPsx(playerPosition.z))
+  return -calculateGameAngle(dx, -dz)
+}

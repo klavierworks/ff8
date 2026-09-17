@@ -28,7 +28,7 @@ pub struct SectionsJson {
     section_12_train_exit_positions: Section12,
     section_13_dialog_text: TextList,
     section_16_animated_texture_descriptors: Section16,
-    section_17_encounter_formations: Section17,
+    section_17_ride_camera_tracks: Section17,
     section_18_region_location_ids: RegionLocationIds,
     section_19_akao_frame_headers: Section19,
     section_28_water_block: Raw,
@@ -60,7 +60,7 @@ pub fn parse_wmset(sections: &[&[u8]]) -> SectionsJson {
         section_12_train_exit_positions: parse_section_12(sections[12]),
         section_13_dialog_text: parse_text_list(sections[13]),
         section_16_animated_texture_descriptors: parse_section_16(sections[16]),
-        section_17_encounter_formations: parse_section_17(sections[17]),
+        section_17_ride_camera_tracks: parse_section_17(sections[17]),
         section_18_region_location_ids: parse_region_location_ids(sections[18]),
         section_19_akao_frame_headers: parse_section_19(sections[19]),
         section_28_water_block: parse_raw(sections[28]),
@@ -377,33 +377,90 @@ fn parse_section_16(data: &[u8]) -> Section16 {
     Section16 { descriptors }
 }
 
+const OFFSET_SIZE: usize = 4;
+const CAMERA_KEY_SIZE: usize = 32;
+const CAMERA_TRACK_END: i16 = -1;
+
 #[derive(Serialize)]
 struct Section17 {
-    groups: Vec<EncounterFormationGroup>,
+    groups: Vec<RideCameraGroup>,
 }
 
 #[derive(Serialize)]
-struct EncounterFormationGroup {
-    formation_offsets: Vec<u32>,
+struct RideCameraGroup {
+    tracks: Vec<Vec<RideCameraKey>>,
 }
 
-fn parse_section_17(data: &[u8]) -> Section17 {
+// A key's frame is -2 for a marker the ride skips to while the train waits at a station, and -1
+// for the last key.
+#[derive(Serialize)]
+struct RideCameraKey {
+    frame: i16,
+    eye_anchor: u8,
+    target_anchor: u8,
+    interpolation: u8,
+    eye: [i32; 3],
+    target: [i32; 3],
+}
+
+fn read_offset_list(data: &[u8], start: usize) -> Vec<usize> {
     let mut reader = Reader::new(data);
-    let group_offsets: Vec<usize> = (0..16).map(|_| reader.read_u32() as usize).collect();
-    let groups = group_offsets
-        .iter()
-        .map(|&start| {
-            let mut group_reader = Reader::new(data);
-            group_reader.seek(start);
-            let mut formation_offsets = Vec::new();
-            loop {
-                let offset = group_reader.read_u32();
-                if offset == 0 {
-                    break;
-                }
-                formation_offsets.push(offset);
-            }
-            EncounterFormationGroup { formation_offsets }
+    reader.seek(start);
+    std::iter::from_fn(|| Some(reader.read_u32() as usize))
+        .take_while(|&offset| offset != 0)
+        .collect()
+}
+
+fn read_vector(reader: &mut Reader) -> [i32; 3] {
+    [reader.read_i32(), reader.read_i32(), reader.read_i32()]
+}
+
+fn read_camera_key(data: &[u8], offset: usize) -> RideCameraKey {
+    let mut reader = Reader::new(data);
+    reader.seek(offset);
+    let frame = reader.read_i16();
+    let eye_anchor = reader.read_u8();
+    let target_anchor = reader.read_u8();
+    let interpolation = reader.read_u8();
+    reader.seek(offset + 8);
+    let eye = read_vector(&mut reader);
+    let target = read_vector(&mut reader);
+    RideCameraKey {
+        frame,
+        eye_anchor,
+        target_anchor,
+        interpolation,
+        eye,
+        target,
+    }
+}
+
+fn read_camera_track(data: &[u8], start: usize) -> Vec<RideCameraKey> {
+    let mut keys = Vec::new();
+    let mut offset = start;
+    while offset + CAMERA_KEY_SIZE <= data.len() {
+        let key = read_camera_key(data, offset);
+        let is_last = key.frame == CAMERA_TRACK_END;
+        keys.push(key);
+        if is_last {
+            break;
+        }
+        offset += CAMERA_KEY_SIZE;
+    }
+    keys
+}
+
+// The group table has no count; it ends where the first group's offset list begins.
+fn parse_section_17(data: &[u8]) -> Section17 {
+    let group_count = Reader::new(data).read_u32() as usize / OFFSET_SIZE;
+    let groups = read_offset_list(data, 0)
+        .into_iter()
+        .take(group_count)
+        .map(|start| RideCameraGroup {
+            tracks: read_offset_list(data, start)
+                .into_iter()
+                .map(|track_start| read_camera_track(data, track_start))
+                .collect(),
         })
         .collect();
     Section17 { groups }

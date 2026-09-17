@@ -2,6 +2,8 @@ import { create } from 'zustand'
 
 import { VEHICLE_IDS } from '../../constants/vehicles'
 import { WORLDMAP_CAMERA_DEPTH_DEFAULT, WORLDMAP_CURVATURE_START_DEFAULT } from '../../constants/worldmapCamera'
+import { TRAIN_UNSET_BYTE } from '../../constants/worldmapTrains'
+import { WORLDMAP_ENTRY_FROM_FIELD } from '../../constants/worldmapTransitions'
 import useGlobalStore from '../../store'
 
 export type WorldmapCameraState = {
@@ -21,17 +23,25 @@ export type WorldmapControlsState = {
 }
 
 export const WORLD_MAP_STATE_FREE_ROAM = 0
+export const WORLD_MAP_STATE_BOAT_RIDE = 1
+export const WORLD_MAP_STATE_SCRIPTED_TRAIN_RIDE = 2
+export const WORLD_MAP_STATE_RIDING_TRAIN_0 = 3
+export const WORLD_MAP_STATE_RIDING_TRAIN_1 = 4
 export const WORLD_MAP_STATE_RAGNAROK_LANDING = 5
 export const WORLD_MAP_STATE_RAGNAROK_TAKEOFF = 6
 export const WORLD_MAP_STATE_GARDEN_LANDING = 8
 export const WORLD_MAP_STATE_GARDEN_TAKEOFF = 9
+export const WORLD_MAP_STATE_HELD_PROMPT = 14
 
 export type WorldmapState = {
   camera: WorldmapCameraState
   cameraModeIndex: number
   controls: WorldmapControlsState
+  entryCameraYaw: number | undefined
   entryMode: number
+  isExiting: boolean
   minimapMode: number
+  rideDestinationEntrance: number
   skyLightColor1: [number, number, number]
   skyLightColor2: [number, number, number]
   spawnPointId: number
@@ -51,8 +61,11 @@ const INITIAL_STATE: WorldmapState = {
     moveY: 0,
     padButtons: 0,
   },
-  entryMode: 0,
+  entryCameraYaw: undefined,
+  entryMode: WORLDMAP_ENTRY_FROM_FIELD,
+  isExiting: false,
   minimapMode: 0,
+  rideDestinationEntrance: TRAIN_UNSET_BYTE,
   skyLightColor1: [64, 64, 64],
   skyLightColor2: [128, 128, 128],
   spawnPointId: 0,

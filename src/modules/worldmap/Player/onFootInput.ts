@@ -1,7 +1,8 @@
 import { WORLDMAP_PAD_BITS } from '../../../constants/controls'
 import { MINIMAP_MODE_LARGE } from '../Minimap/constants'
+import { getEntryDelayFrames } from '../worldmapEntry'
 import useWorldmapStore, { WORLD_MAP_STATE_FREE_ROAM, WorldmapControlsState } from '../worldmapStore'
-import { DPAD_DIAGONAL_MAGNITUDE, DPAD_MAGNITUDE, INPUT_IGNORED_TICKS_AFTER_ENTRY } from './constants'
+import { DPAD_DIAGONAL_MAGNITUDE, DPAD_MAGNITUDE } from './constants'
 import { getWorldmapEntryTick } from './movementState'
 
 export type OnFootInput = {
@@ -14,9 +15,10 @@ export type OnFootInput = {
 const IDLE_INPUT: OnFootInput = { isMoving: false, isNoSteering: true, x: 0, z: 0 }
 
 export const isPadInputIgnored = (tick: number) => {
-  const { minimapMode, worldMapState } = useWorldmapStore.getState()
+  const { entryMode, isExiting, minimapMode, worldMapState } = useWorldmapStore.getState()
   return (
-    tick - getWorldmapEntryTick() < INPUT_IGNORED_TICKS_AFTER_ENTRY ||
+    tick - getWorldmapEntryTick() < getEntryDelayFrames(entryMode) ||
+    isExiting ||
     worldMapState !== WORLD_MAP_STATE_FREE_ROAM ||
     minimapMode === MINIMAP_MODE_LARGE
   )

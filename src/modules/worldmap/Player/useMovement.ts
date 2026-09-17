@@ -5,13 +5,15 @@ import { Object3D, Vector3 } from 'three'
 import useGlobalStore from '../../../store'
 import { WORLDMAP_STATE } from '../Scripts/state'
 import { getOnFootPsxHeight, psxHeightToWorldY, worldYToPsxHeight } from '../terrain'
+import { isStepBlockedByTrain } from '../Trains/trainCollision'
 import useScriptTick from '../useScriptTick'
 import useWorldmapStore, { WORLD_MAP_STATE_FREE_ROAM } from '../worldmapStore'
 import { MOVEMENT_FRAME_PRIORITY } from './constants'
+import { ON_FOOT_GROUND } from './groundProfiles'
+import { getPressedSlideSet, GroundStep, resolveGroundStep, SlideSet } from './groundStep'
 import { setMovementOutputs } from './movementState'
 import { isPadInputIgnored, OnFootInput, readOnFootInput } from './onFootInput'
 import { calculateOnFootVelocity, calculateTargetHeadingPsx, OnFootVelocity, stepOnFootHeading } from './onFootMotion'
-import { getPreferredSlideSet, OnFootStep, resolveOnFootStep, SlideSet } from './onFootStep'
 
 type MovementMemory = {
   blockedTicks: number
@@ -47,7 +49,7 @@ const calculateHeading = (
 const updateCollisionMemory = (
   memory: MovementMemory,
   preferredSet: SlideSet,
-  step: OnFootStep | undefined,
+  step: GroundStep | undefined,
 ): MovementMemory => {
   if (!step) {
     return { ...memory, blockedTicks: memory.blockedTicks + 1, lastSlideAnglePsx: 0, preferredSet }
@@ -61,7 +63,7 @@ const updateCollisionMemory = (
   }
 }
 
-const applyStep = (position: Vector3, step: OnFootStep) => {
+const applyStep = (position: Vector3, step: GroundStep) => {
   if (useWorldmapStore.getState().worldMapState === WORLD_MAP_STATE_FREE_ROAM) {
     position.set(step.x, psxHeightToWorldY(getOnFootPsxHeight(step.triangle)), step.z)
   }
@@ -78,17 +80,20 @@ const runMovementTick = (scene: Object3D, memory: MovementMemory, tick: number):
   const input = readInputForTick(tick)
   const velocity = calculateOnFootVelocity(input, camera.yawRadians)
   const heading = calculateHeading(fieldDirection, input, velocity, memory.lastSlideAnglePsx)
-  const preferredSet = getPreferredSlideSet(controls.padButtons, memory.padButtons, memory.preferredSet)
+  const preferredSet = getPressedSlideSet(controls.padButtons, memory.padButtons, memory.preferredSet)
 
-  const step = resolveOnFootStep(scene, {
+  const resolvedStep = resolveGroundStep(scene, {
     blockedTicks: memory.blockedTicks,
     currentGroundType: memory.groundType,
     currentPsxY: worldYToPsxHeight(position.y),
     preferredSet,
+    profile: ON_FOOT_GROUND,
     velocity,
     x: position.x,
     z: position.z,
   })
+  const step =
+    resolvedStep && !isStepBlockedByTrain(resolvedStep.x, position.y, resolvedStep.z) ? resolvedStep : undefined
   if (step) {
     applyStep(position, step)
   }

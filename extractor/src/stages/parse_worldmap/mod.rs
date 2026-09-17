@@ -3,6 +3,7 @@ mod char_table;
 mod effects;
 mod file_header;
 mod models;
+mod rails;
 mod sections;
 mod textures;
 mod wm2field;
@@ -80,6 +81,11 @@ impl Stage for ParseWorldmap {
         let wm2field = wm2field::parse(&wm2field_bytes);
         write_json_pretty(&out_dir.join("wm2field.json"), &wm2field)?;
         println!("  wm2field: {} entries", wm2field.len());
+
+        let rail_bytes = fs::read(world_dir.join("rail.obj")).context("reading rail.obj")?;
+        let rails = rails::parse(&rail_bytes).context("parsing rail.obj")?;
+        write_json_pretty(&out_dir.join("rails.json"), &rails)?;
+        println!("  rail: {} rails", rails.len());
 
         Ok(())
     }

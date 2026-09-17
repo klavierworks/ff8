@@ -4,6 +4,7 @@ import { DIALOG_POSITION, DIALOG_STATE_PENDING } from './constants'
 let dialogText: readonly string[] = []
 let nextDialogSequence = 0
 const openMessageIdsBySlot = new Map<number, string>()
+const stringIdsBySlot = new Map<number, number>()
 const slotStates = new Map<number, number>()
 
 export const setDialogText = (text: readonly string[]) => {
@@ -16,9 +17,12 @@ export const getSlotState = (slot: number) => slotStates.get(slot) ?? DIALOG_STA
 
 const createDialogId = (slot: number) => `worldmap-${slot}-${Date.now()}-${nextDialogSequence++}`
 
+export const isSlotAssigned = (slot: number, stringId: number) => stringIdsBySlot.get(slot) === stringId
+
 export const showDialog = (slot: number, stringId: number, askOptions?: AskOptions) => {
   const id = createDialogId(slot)
   openMessageIdsBySlot.set(slot, id)
+  stringIdsBySlot.set(slot, stringId)
   slotStates.set(slot, DIALOG_STATE_PENDING)
   const placement: MessagePlacement = { ...DIALOG_POSITION, channel: slot, height: undefined, width: undefined }
   return openMessage(id, [getDialogLine(stringId)], placement, true, askOptions)
@@ -35,10 +39,16 @@ export const showDialog = (slot: number, stringId: number, askOptions?: AskOptio
 
 export const closeDialog = (slot: number) => {
   slotStates.set(slot, DIALOG_STATE_PENDING)
+  stringIdsBySlot.delete(slot)
   const id = openMessageIdsBySlot.get(slot)
   if (id === undefined) {
     return
   }
   openMessageIdsBySlot.delete(slot)
   closeMessage(id, undefined)
+}
+
+export const closeAllDialogs = () => {
+  Array.from(stringIdsBySlot.keys()).forEach(closeDialog)
+  slotStates.clear()
 }

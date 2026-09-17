@@ -65,6 +65,13 @@ impl Stage for EmitTypes {
             "wm2field.json",
             "Wm2Field",
         )?;
+        count += emit_named(
+            converted,
+            &types_dir,
+            "worldmap",
+            "rails.json",
+            "WorldmapRails",
+        )?;
         count += emit_named(converted, &types_dir, "exe", "cards.json", "Cards")?;
         count += emit_named(
             converted,

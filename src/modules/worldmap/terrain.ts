@@ -51,7 +51,9 @@ export const queryTerrain = (root: Object3D, x: number, z: number) => {
 
 export const isCanopyGroundType = (groundType: number) => groundType <= CANOPY_GROUND_TYPE_MAX
 
-export const isOnFootAccessible = (triangle: TerrainTriangle) => (triangle.accessFlags & ON_FOOT_ACCESS_BIT) !== 0
+export const hasAccessBit = (triangle: TerrainTriangle, bit: number) => (triangle.accessFlags & bit) !== 0
+
+export const isOnFootAccessible = (triangle: TerrainTriangle) => hasAccessBit(triangle, ON_FOOT_ACCESS_BIT)
 
 export const isGroundTypeCanopy = (groundType: number | undefined) =>
   groundType !== undefined && isCanopyGroundType(groundType)

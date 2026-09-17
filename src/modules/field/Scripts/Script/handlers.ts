@@ -11,12 +11,14 @@ import {
   SEED_RANK_POINTS_MAX,
   SEED_RANK_POINTS_MIN,
 } from '../../../../constants/party'
+import { WORLDMAP_ENTRY_FROM_FIELD } from '../../../../constants/worldmapTransitions'
 import LerpValue from '../../../../LerpValue'
 import useGlobalStore from '../../../../store'
 import { framesToMs } from '../../../../timing'
 import { cardGameController } from '../../../../UI/CardGame/CardGameController'
 import { addCardToCollection, getOwnedCardCount, removeCardFromCollection } from '../../../../UI/CardGame/collection'
 import { floatingPointToNumber, numberToFloatingPoint, signExtend16, vectorToFloatingPoint } from '../../../../utils'
+import { startVibration } from '../../../../vibration'
 import useWorldmapStore from '../../../worldmap/worldmapStore'
 import { createBackgroundDraw, startBackgroundAnimation } from '../../backgroundAnimation'
 import { preloadField } from '../../fieldPreloader'
@@ -66,6 +68,7 @@ import createSFXController from './SFXController/SFXController'
 import { preloadSound } from './SFXController/webAudio'
 import createScriptState, { ScriptState } from './state'
 import {
+  addInventoryItem,
   closeMessage,
   enableMessageToClose,
   openMessage,
@@ -184,15 +187,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   ADDITEM: ({ STACK }) => {
     const itemId = STACK.pop() as number
     const quantity = STACK.pop() as number
-    if (itemId === 0) {
-      return
-    }
-    useGlobalStore.setState((state) => ({
-      inventory: {
-        ...state.inventory,
-        [itemId]: Math.min((state.inventory[itemId] ?? 0) + quantity, 100),
-      },
-    }))
+    addInventoryItem(itemId, quantity)
   },
 
   ADDMAGIC: ({ STACK }) => {
@@ -2268,7 +2263,10 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     })
   },
   SETVIBRATE: ({ STACK }) => {
-    STACK.splice(-2)
+    const priority = STACK.pop() as number
+    const patternIndex = STACK.pop() as number
+    // The engine always ORs 1 into script-requested priorities.
+    startVibration('field', patternIndex, priority | 1)
   },
   SETWITCH: ({ STACK }) => {
     STACK.pop() as number
@@ -2608,11 +2606,20 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       y,
     }
   },
-  WORLDMAPJUMP: ({ STACK }) => {
-    STACK.pop() as number
-    STACK.pop() as number
+  WORLDMAPJUMP: async ({ STACK }) => {
+    const rideDestinationEntrance = STACK.pop() as number
+    const vehicleId = STACK.pop() as number
     const spawnPointId = STACK.pop() as number
-    useWorldmapStore.setState({ spawnPointId })
+    if (useGlobalStore.getState().isMapFadeEnabled) {
+      triggerFadeout()
+      await awaitFadesync()
+    }
+    useWorldmapStore.setState({
+      entryMode: WORLDMAP_ENTRY_FROM_FIELD,
+      rideDestinationEntrance,
+      spawnPointId,
+      vehicleId,
+    })
     useGlobalStore.setState({
       characterPosition: undefined,
       module: 'worldmap',

@@ -1,7 +1,7 @@
 import { RAGNAROK_ENTITY_TYPE } from '../../../../constants/worldmapEntities'
 import { addEntity, EntityRecord, getEntity, replaceEntity, WORLDMAP_STATE } from '../../Scripts/state'
 import { convertEntityXToMapX, convertEntityYToMapZ, convertMapXToEntityX, convertMapZToEntityY } from '../playerUtils'
-import { ShipPose, wrapMapX, wrapMapZ } from './shipPose'
+import { ShipPose, wrapMapX, wrapMapZ } from '../shipPose'
 
 const PARTY_SLOT = 0
 const RAGNAROK_SLOT = 3

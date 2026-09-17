@@ -1,8 +1,9 @@
-import { Suspense, useEffect, useLayoutEffect } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useMemo } from 'react'
 
 import { MEMORY } from '../field/Scripts/Script/handlers'
 import Camera from './Camera/Camera'
 import Controls from './Controls/Controls'
+import Director from './Director/Director'
 import Effects from './Effects/Effects'
 import Entities from './Entities/Entities'
 import Lighting from './Lighting/Lighting'
@@ -14,21 +15,34 @@ import Player from './Player/Player'
 import { setDialogText } from './Scripts/dialog'
 import Sky from './Sky/Sky'
 import Tiles from './Tiles/Tiles'
-import TriggerZones from './TriggerZones/TriggerZones'
+import Trains from './Trains/Trains'
 import useSections from './useSections'
-import { restoreWorldmapEntryState, saveWorldmapExitState } from './worldmapPersistence'
+import VehicleSounds from './VehicleSounds/VehicleSounds'
+import { enterWorldmap, saveWorldmapExitState } from './worldmapPersistence'
 import useWorldmapStore, { mirrorVehicleIdToGlobalStore } from './worldmapStore'
 
 const Worldmap = () => {
   const sections = useSections()
   const isFullMapShown = useWorldmapStore(selectIsFullMapShown)
+  const trainStations = useMemo(
+    () => ({
+      cameraGroups: sections.section_17_ride_camera_tracks.groups,
+      exits: sections.section_12_train_exit_positions.positions,
+      scripts: sections.section_11_vehicle_warp_scripts,
+    }),
+    [sections],
+  )
 
   useLayoutEffect(() => {
-    restoreWorldmapEntryState(MEMORY)
+    enterWorldmap(
+      MEMORY,
+      sections.section_8_field_landing_positions.positions,
+      sections.section_17_ride_camera_tracks.groups,
+    )
     return () => {
       saveWorldmapExitState(MEMORY)
     }
-  }, [])
+  }, [sections])
 
   useEffect(() => {
     setDialogText(sections.section_13_dialog_text.dialog)
@@ -46,12 +60,18 @@ const Worldmap = () => {
       </group>
       <Location regionLocationIds={sections.section_18_region_location_ids.region_location_ids} />
       <Music />
+      <VehicleSounds />
       <group visible={!isFullMapShown}>
-        <Player landings={sections.section_8_field_landing_positions.positions} />
+        <Player />
+        <Trains />
         <Effects />
         <Sky zones={sections.section_32_sky_color_zones.zones} />
       </group>
-      <TriggerZones locationScripts={sections.section_7_player_location_scripts} />
+      <Director
+        eventScripts={sections.section_36_event_scripts}
+        locationScripts={sections.section_7_player_location_scripts}
+        trainStations={trainStations}
+      />
       <group visible={!isFullMapShown}>
         <Entities
           positions={sections.section_10_entity_spawn_positions.positions}

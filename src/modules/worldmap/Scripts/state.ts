@@ -1,7 +1,7 @@
-import { VEHICLE_IDS } from '../../../constants/vehicles'
-import { COMPANION_ENTITY_TYPES, RAGNAROK_ENTITY_TYPE } from '../../../constants/worldmapEntities'
+import { COMPANION_ENTITY_TYPES, GARDEN_ENTITY_TYPES, RAGNAROK_ENTITY_TYPE } from '../../../constants/worldmapEntities'
 import { TerrainTriangle } from '../terrain'
 import { isOnFootClass } from '../vehicleClasses'
+import { isCarEntityType } from '../vehicleEntities'
 import { LOCATION_TRIGGER_BIT } from './constants'
 
 export type EntityRecord = {
@@ -20,7 +20,7 @@ type TypeCodePredicate = (code: number) => boolean
 
 export const isOnFootCode = (code: number) => code >= 0 && isOnFootClass(code)
 
-export const WORLDMAP_STATE = {
+const createInitialScriptState = () => ({
   battleResult: 0,
   currentLocationIndex: 0,
   dialogChoice: 0,
@@ -36,7 +36,9 @@ export const WORLDMAP_STATE = {
   previousLocationIndex: 0,
   reservedSlots: [-1, -1, -1, -1, -1, -1, -1] as ReservedSlots,
   tightCandidate: -1,
-}
+})
+
+export const WORLDMAP_STATE = createInitialScriptState()
 
 export const isLocationTriggerSet = () =>
   ((WORLDMAP_STATE.locationTriangle?.triggerFlags ?? 0) & LOCATION_TRIGGER_BIT) !== 0
@@ -56,9 +58,9 @@ const RESERVED_SLOT_PREDICATES: readonly TypeCodePredicate[] = [
   (code) => code === COMPANION_ENTITY_TYPES[0],
   (code) => code === COMPANION_ENTITY_TYPES[1],
   (code) => code === RAGNAROK_ENTITY_TYPE,
-  () => false,
-  (code) => code === VEHICLE_IDS.BOAT_DEFAULT,
-  (code) => code === VEHICLE_IDS.BOAT_INSIDE,
+  isCarEntityType,
+  (code) => code === GARDEN_ENTITY_TYPES[0],
+  (code) => code === GARDEN_ENTITY_TYPES[1],
 ]
 
 const findReservedSlots = (records: readonly EntityRecord[]) =>
@@ -83,4 +85,9 @@ export const replaceEntity = (index: number, record: EntityRecord) => {
 
 export const addEntity = (record: EntityRecord) => {
   setEntities([...entities, record])
+}
+
+export const resetScriptState = () => {
+  Object.assign(WORLDMAP_STATE, createInitialScriptState())
+  entities = []
 }

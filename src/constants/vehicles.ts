@@ -13,5 +13,5 @@ export const VEHICLE_IDS = {
 } as const
 
 export const WORLDMAP_ON_FOOT_CLASS_LIMIT = 10
-export const WORLDMAP_CHOCOBO_MIN = 16
-export const WORLDMAP_CHOCOBO_MAX = 22
+export const WORLDMAP_TRAIN_MIN = 16
+export const WORLDMAP_TRAIN_MAX = 22

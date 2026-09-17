@@ -1,7 +1,6 @@
 import type { FieldData as RawFieldData } from '@data/types/field/FieldData'
 
 import areaNames from '@data/menu/area-names.json'
-import namedic from '@data/menu/namedic.json'
 import { useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { Group } from 'three'
@@ -10,6 +9,7 @@ import { CAMERA_SHAKE_OFF } from '../../constants/camera'
 import { LADDER_CLIMB_SPEED } from '../../constants/ladders'
 import MAP_NAMES from '../../constants/maps'
 import useGlobalStore, { createEmptyParticleEmitters } from '../../store'
+import { resolveNameDictionaryTokens } from '../../UI/textUtils'
 import Background from './Background/Background'
 import Camera from './Camera/Camera'
 import { getFieldData, getRequestedSpawn } from './fieldUtils'
@@ -54,10 +54,7 @@ type FieldProps = {
 const Field = ({ data }: FieldProps) => {
   const currentLocationPlaceName = useGlobalStore((state) => state.currentLocationPlaceName as number)
   useEffect(() => {
-    const resolveNamedic = (text: string) =>
-      text.replace(/\{x0e([0-9a-f]{2})\}/g, (_, hex: string) => namedic[parseInt(hex, 16) - 0x20] ?? '')
-
-    const name = resolveNamedic(areaNames[currentLocationPlaceName])
+    const name = resolveNameDictionaryTokens(areaNames[currentLocationPlaceName])
 
     if (name) {
       document.title = `${name} - Final Fantasy VIII GL`

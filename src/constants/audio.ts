@@ -23,6 +23,21 @@ export const RAGNAROK_ENGINE_BASE_VOLUME = 80
 export const RAGNAROK_ENGINE_SPEED_VOLUME_DIVISOR = 4
 export const RAGNAROK_ENGINE_MAX_VOLUME = 127
 
+export const WORLDMAP_SOUND_MAX_VOLUME = 127
+export const CAR_ENGINE_SOUND_ID = 10058
+export const LATE_CAR_ENGINE_SOUND_ID = 500001
+export const LATE_CAR_VEHICLE_IDS: ReadonlySet<number> = new Set([39, 40])
+export const GROUND_ENGINE_BASE_VOLUME = 60
+export const GROUND_ENGINE_SPEED_SHIFT = 1
+export const GARDEN_ENGINE_SOUND_ID = 500004
+export const GARDEN_WATER_SOUND_ID = 500005
+export const GARDEN_WATER_BASE_VOLUME = 64
+export const GARDEN_WATER_ALTITUDE_SHIFT = 2
+export const BOAT_SOUND_ID = 10059
+export const BOAT_SOUND_DEPTH_SHIFT = 6
+export const BOAT_SOUND_MIN_VOLUME = 90
+export const BOAT_SOUND_MAX_VOLUME = 126
+
 // ─── Audio: footsteps ───
 
 export const FOOTSTEP_SOUNDS_MALE = { firstFoot: 3, secondFoot: 2 }

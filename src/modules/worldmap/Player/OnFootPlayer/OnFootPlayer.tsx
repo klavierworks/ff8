@@ -1,6 +1,6 @@
 import { useGLTF } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { Suspense, useCallback, useEffect, useRef } from 'react'
+import { Suspense, useCallback, useRef } from 'react'
 import { Group } from 'three'
 
 import { loadAssetUrl } from '../../../../loadAssetUrl'
@@ -8,11 +8,9 @@ import useGlobalStore from '../../../../store'
 import { buildCharaoneKey, CHARAONE_LOADERS } from '../../charaoneAssets'
 import { CHARAONE_MODEL_PITCH_X, CHARAONE_MODEL_SCALE } from '../../constants'
 import CharaModel from '../../Entities/Entity/CharaModel/CharaModel'
-import { FieldLandingPosition } from '../../useSections'
-import useWorldmapStore from '../../worldmapStore'
 import { ON_FOOT_CHARAONE_SECTION, ON_FOOT_TAG } from '../constants'
 import { psxToRadians } from '../playerAngles'
-import { createSpawnPosition, getSpawnFieldDirection, isOnCanopyGround } from '../playerUtils'
+import { isOnCanopyGround } from '../playerUtils'
 import useCharacterAnimation from '../useCharacterAnimation'
 import useMovement from '../useMovement'
 
@@ -26,24 +24,8 @@ const disableRaycastForSubtree = (root: Group) => {
   })
 }
 
-const placeAtLandingIfUnplaced = (landing: FieldLandingPosition) => {
-  if (useGlobalStore.getState().characterPosition) {
-    return
-  }
-  useGlobalStore.setState({
-    characterPosition: createSpawnPosition(landing),
-    fieldDirection: getSpawnFieldDirection(landing),
-  })
-}
-
-type OnFootPlayerProps = {
-  landings: readonly FieldLandingPosition[]
-}
-
-const OnFootPlayer = ({ landings }: OnFootPlayerProps) => {
-  const spawnPointId = useWorldmapStore((state) => state.spawnPointId)
+const OnFootPlayer = () => {
   const characterPosition = useGlobalStore((state) => state.characterPosition)
-  const landing = landings[spawnPointId]
   const groupRef = useRef<Group>(null)
   const meshGroupRef = useRef<Group>(null)
 
@@ -58,12 +40,6 @@ const OnFootPlayer = ({ landings }: OnFootPlayerProps) => {
       disableRaycastForSubtree(group)
     }
   }, [])
-
-  useEffect(() => {
-    if (landing) {
-      placeAtLandingIfUnplaced(landing)
-    }
-  }, [landing])
 
   useFrame(() => {
     const group = groupRef.current

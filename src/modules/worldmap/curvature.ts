@@ -23,8 +23,9 @@ uniform vec3 uCurvatureEye;
 uniform vec3 uCurvatureForward;
 uniform float uCurvatureStart;
 
+const float psxPerWorld = ${(1 / WORLDMAP_SCALE).toFixed(1)};
+
 float calculateCurvedWorldY(vec3 worldPosition) {
-  float psxPerWorld = ${(1 / WORLDMAP_SCALE).toFixed(1)};
   float depth = clamp(floor(dot(worldPosition - uCurvatureEye, uCurvatureForward) * psxPerWorld), 0.0, ${WORLDMAP_CURVATURE_MAX_DEPTH.toFixed(1)});
   float bend = floor(depth / ${WORLDMAP_CURVATURE_DEPTH_DIVISOR.toFixed(1)}) - uCurvatureStart;
   if (bend < 0.0) {
@@ -39,6 +40,7 @@ float calculateCurvedWorldY(vec3 worldPosition) {
 
 const CURVED_PROJECTION = /* glsl */ `
 vec4 curvedWorldPosition = modelMatrix * vec4(transformed, 1.0);
+curvedWorldPosition.xyz = floor(curvedWorldPosition.xyz * psxPerWorld + 0.5) / psxPerWorld;
 curvedWorldPosition.y = calculateCurvedWorldY(curvedWorldPosition.xyz);
 vec4 mvPosition = viewMatrix * curvedWorldPosition;
 gl_Position = projectionMatrix * mvPosition;

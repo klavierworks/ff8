@@ -6,8 +6,9 @@ import { calculateCurvedEntityY } from '../../curvature'
 import { psxXToWorld, psxZToWorld } from '../../Player/playerUtils'
 import { EntityRecord } from '../../Scripts/state'
 import useWorldmapStore from '../../worldmapStore'
+import { getCurrentEntityYaw, isEntityDriven, placeDrivenEntity } from './drivenEntityUtils'
 import EntityModel from './EntityModel/EntityModel'
-import { findGroundWorldY, getEntityRotation, getFallbackWorldY } from './entityUtils'
+import { calculateModelYaw, findGroundWorldY, getEntityRotation, getFallbackWorldY } from './entityUtils'
 import { getModelForEntity, getModelPitch, getModelScale } from './modelUtils'
 import Placeholder from './Placeholder/Placeholder'
 import { isVisibleInCurrentVehicle } from './visibilityUtils'
@@ -30,6 +31,7 @@ const Entity = ({ entity }: EntityProps) => {
   const worldX = psxXToWorld(entity.positionX)
   const worldZ = psxZToWorld(entity.positionY)
   const fallbackY = getFallbackWorldY(entity)
+  const model = getModelForEntity(entity.typeCode)
 
   useEffect(() => {
     setGround({ hasResolved: true, worldY: findGroundWorldY(scene, worldX, worldZ) })
@@ -41,20 +43,24 @@ const Entity = ({ entity }: EntityProps) => {
   )
 
   useFrame(() => {
-    if (!groupRef.current) {
+    const group = groupRef.current
+    if (!group) {
       return
     }
-    groupRef.current.position.y = calculateCurvedEntityY(groundedPosition)
+    if (isEntityDriven(entity)) {
+      placeDrivenEntity(group)
+    } else {
+      group.position.set(groundedPosition.x, calculateCurvedEntityY(groundedPosition), groundedPosition.z)
+    }
+    group.rotation.y = calculateModelYaw(entity.typeCode, getCurrentEntityYaw(entity), model)
   })
 
   if (!isVisibleInCurrentVehicle(entity.typeCode, vehicleId) || !ground.hasResolved) {
     return null
   }
 
-  const model = getModelForEntity(entity.typeCode)
-
   return (
-    <group position={groundedPosition} ref={groupRef} rotation={getEntityRotation(entity)}>
+    <group position={groundedPosition} ref={groupRef} rotation={getEntityRotation(entity, model)}>
       <group rotation={[getModelPitch(model), 0, 0]} scale={getModelScale(model)}>
         <Suspense fallback={<Placeholder />}>
           <EntityModel model={model} />

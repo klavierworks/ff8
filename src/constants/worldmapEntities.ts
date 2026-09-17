@@ -1,10 +1,14 @@
 // ─── Entity type codes ───
 export const RAGNAROK_ENTITY_TYPE = 1
+export const FORCE_FIELD_ENTITY_TYPE = 93
 export const DRAW_POINT_ENTITY_TYPE = 94
 export const COMPANION_ENTITY_TYPES = [2, 3] as const
 export const FIRST_WMSET_ENTITY_TYPE = 64
 export const WMSET_MODEL_COUNT = 32
-export const UNTRACKED_GARDEN_ENTITY_TYPES = [64, 65] as const
+export const GARDEN_ENTITY_TYPES = [64, 65] as const
+export const ROLLING_ENTITY_SUBTYPE = 1
+export const SPINNING_ENTITY_SUBTYPE = 2
+export const ENTITY_SPIN_YAW_PER_FRAME = 8
 export const ALTERNATE_SUBTYPE_ENTITY_TYPE = 80
 export const ALTERNATE_ENTITY_SUBTYPE = 4
 export const MAX_WORLDMAP_ENTITIES = 64
@@ -36,7 +40,17 @@ export const ENTITY_VEHICLE_CATEGORIES = [
   { category: 131, typeCodes: [70] },
 ] as const
 
+// ─── Entity model yaw offsets ───
+export const CAR_MODEL_YAW_OFFSET = -1024
+export const GARDEN_MODEL_YAW_OFFSET = 1024
+export const MODEL_YAW_OFFSETS_BY_TYPE: ReadonlyMap<number, number> = new Map([
+  [79, 1024],
+  [80, 2048],
+])
+
 // ─── Entity models ───
+export const WMSET_MODEL_ALPHA_TEST = 0.5
+export const WMSET_MODEL_TINT_NEUTRAL = 128
 export const CHARAONE_SECTION_COUNT = 7
 export const CHARAONE_MESH_SLOTS: ReadonlyMap<number, readonly number[]> = new Map([
   [0, [0, 1]],

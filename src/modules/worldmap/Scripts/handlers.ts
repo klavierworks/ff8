@@ -7,7 +7,7 @@ import { TILES_PER_SEGMENT, WORLD_GRID_COLS } from '../constants'
 import { radiansToPsx, shortestPsxDelta } from '../Player/playerAngles'
 import { convertMapXToEntityX, convertMapZToEntityY } from '../Player/playerUtils'
 import { WorldPosition } from '../types'
-import { isCarClass, isChocoboClass, isVehicleInRange } from '../vehicleClasses'
+import { isCarClass, isTrainClass, isVehicleInRange } from '../vehicleClasses'
 import { getFlagWordIndex, readSavedBattleState, readSavedFlagBit, readSavedScriptVariable } from '../worldmapSaveData'
 import useWorldmapStore, {
   WORLD_MAP_STATE_GARDEN_LANDING,
@@ -61,7 +61,7 @@ const VEHICLE_TAKEOFF_STATE: Partial<Record<number, number>> = {
 const VEHICLE_CLASS_MATCHERS: Partial<Record<number, VehicleClassMatcher>> = {
   129: (vehicleId) => vehicleId < 2,
   130: (vehicleId) => isVehicleInRange(vehicleId, 8, 9),
-  131: isChocoboClass,
+  131: isTrainClass,
   132: isCarClass,
   133: (vehicleId) => isVehicleInRange(vehicleId, 34, VEHICLE_IDS.CAR_CLASS_MAX),
   [VEHICLE_IDS.BALAMB_GARDEN]: (vehicleId) => vehicleId === VEHICLE_IDS.BALAMB_GARDEN,

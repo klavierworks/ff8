@@ -9,7 +9,6 @@ import useGlobalStore from '../../../store'
 import { calculateFOV } from '../../field/Camera/cameraUtils'
 import { getScriptFrame } from '../../field/scriptClock'
 import { WORLDMAP_SCALE } from '../constants'
-import useSections from '../useSections'
 import { advanceCameraMemory, applyCameraMemory } from './cameraBridge'
 import { CameraMemory } from './cameraTick'
 
@@ -20,7 +19,6 @@ const Camera = () => {
   const cameraRef = useRef<PerspectiveCameraImpl>(null)
   const memoryRef = useRef<CameraMemory | null>(null)
   const scene = useThree((state) => state.scene)
-  const sections = useSections()
 
   useFrame(() => {
     const camera = cameraRef.current
@@ -32,8 +30,7 @@ const Camera = () => {
     if (memoryRef.current?.lastTick === tick) {
       return
     }
-    const landings = sections.section_8_field_landing_positions.positions
-    memoryRef.current = advanceCameraMemory(memoryRef.current, { camera, landings, playerPosition, scene, tick })
+    memoryRef.current = advanceCameraMemory(memoryRef.current, { camera, playerPosition, scene, tick })
     applyCameraMemory(camera, memoryRef.current)
   })
 

@@ -1,8 +1,8 @@
 import {
   VEHICLE_IDS,
-  WORLDMAP_CHOCOBO_MAX,
-  WORLDMAP_CHOCOBO_MIN,
   WORLDMAP_ON_FOOT_CLASS_LIMIT,
+  WORLDMAP_TRAIN_MAX,
+  WORLDMAP_TRAIN_MIN,
 } from '../../constants/vehicles'
 
 export const isVehicleInRange = (vehicleId: number, min: number, max: number) => vehicleId >= min && vehicleId <= max
@@ -12,8 +12,7 @@ export const isOnFootClass = (vehicleId: number) =>
 
 export const isWalkerClass = (vehicleId: number) => isOnFootClass(vehicleId) || vehicleId === VEHICLE_IDS.CACTUAR
 
-export const isChocoboClass = (vehicleId: number) =>
-  isVehicleInRange(vehicleId, WORLDMAP_CHOCOBO_MIN, WORLDMAP_CHOCOBO_MAX)
+export const isTrainClass = (vehicleId: number) => isVehicleInRange(vehicleId, WORLDMAP_TRAIN_MIN, WORLDMAP_TRAIN_MAX)
 
 export const isCarClass = (vehicleId: number) =>
   isVehicleInRange(vehicleId, VEHICLE_IDS.CAR_CLASS_MIN, VEHICLE_IDS.CAR_CLASS_MAX) ||

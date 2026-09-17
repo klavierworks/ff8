@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber'
-import { useEffect, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 
 import { RAGNAROK_ENTITY_TYPE } from '../../../constants/worldmapEntities'
 import useGlobalStore from '../../../store'
@@ -10,6 +10,8 @@ import { buildWorldPosition } from '../worldPosition'
 import {
   calculateEntityDistances,
   collectEntities,
+  countRefresh,
+  subscribeToVehicleChanges,
   updateFacingYaw,
   updateInteractionCandidates,
 } from './entitiesUtils'
@@ -23,6 +25,9 @@ type EntitiesProps = {
 const Entities = ({ positions, scripts }: EntitiesProps) => {
   const characterPosition = useGlobalStore((state) => state.characterPosition)
   const [isResolved, setIsResolved] = useState(false)
+  const [, refreshEntities] = useReducer(countRefresh, 0)
+
+  useEffect(() => subscribeToVehicleChanges(refreshEntities), [])
 
   useEffect(() => {
     if (isResolved || !characterPosition) {

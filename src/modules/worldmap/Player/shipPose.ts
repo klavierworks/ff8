@@ -1,7 +1,7 @@
 import { MathUtils, Object3D, Vector3 } from 'three'
 
-import { WORLD_DEPTH_PSX, WORLD_WIDTH_PSX, WORLDMAP_SCALE } from '../../constants'
-import { queryTerrain, selectTopTriangle, TerrainTriangle } from '../../terrain'
+import { WORLD_DEPTH_PSX, WORLD_WIDTH_PSX, WORLDMAP_SCALE } from '../constants'
+import { queryTerrain, selectTopTriangle, TerrainTriangle } from '../terrain'
 
 export type ShipPose = {
   altitude: number

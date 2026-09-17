@@ -2,26 +2,22 @@ import { useThree } from '@react-three/fiber'
 import { Object3D, Vector3 } from 'three'
 
 import { VEHICLE_IDS } from '../../../../constants/vehicles'
+import { RAGNAROK_DRIVING } from '../../../../constants/worldmapVehicles'
 import useGlobalStore from '../../../../store'
 import { convertRadiansToCameraYaw } from '../../Camera/cameraUtils'
 import { WORLDMAP_STATE } from '../../Scripts/state'
 import useScriptTick from '../../useScriptTick'
 import useWorldmapStore, { WORLD_MAP_STATE_FREE_ROAM } from '../../worldmapStore'
 import { MOVEMENT_FRAME_PRIORITY } from '../constants'
-import { isPadInputIgnored } from '../onFootInput'
-import { convertFieldDirectionToHeading, convertHeadingToFieldDirection } from '../playerAngles'
-import { isShipBlockedByEntity } from './boardingUtils'
 import {
   calculateHeadingStep,
-  clampShipAltitude,
-  FlightCamera,
-  readRagnarokInput,
-  stepShipAltitude,
-  stepShipBank,
-  stepShipVelocity,
-  stepShipYaw,
-} from './flightUtils'
-import { getRagnarokOutputs, setRagnarokOutputs } from './ragnarokState'
+  DrivingCamera,
+  readDrivingInput,
+  stepVehicleVelocity,
+  stepVehicleYaw,
+} from '../drivingUtils'
+import { isPadInputIgnored } from '../onFootInput'
+import { convertFieldDirectionToHeading, convertHeadingToFieldDirection } from '../playerAngles'
 import {
   findTopTriangle,
   getTriangleAltitude,
@@ -30,12 +26,15 @@ import {
   wrapMapX,
   wrapMapZ,
   writeShipPose,
-} from './shipPose'
+} from '../shipPose'
+import { isShipBlockedByEntity } from './boardingUtils'
+import { clampShipAltitude, stepShipAltitude, stepShipBank } from './flightUtils'
+import { getRagnarokOutputs, setRagnarokOutputs } from './ragnarokState'
 
 const readInputForTick = (tick: number) =>
-  readRagnarokInput(useWorldmapStore.getState().controls.padButtons, isPadInputIgnored(tick))
+  readDrivingInput(useWorldmapStore.getState().controls.padButtons, isPadInputIgnored(tick))
 
-const readFlightCamera = (): FlightCamera => {
+const readFlightCamera = (): DrivingCamera => {
   const { camera, cameraModeIndex } = useWorldmapStore.getState()
   return { cameraModeIndex, cameraYaw: convertRadiansToCameraYaw(camera.yawRadians) }
 }
@@ -77,10 +76,11 @@ const runFlightTick = (scene: Object3D, position: Vector3, tick: number) => {
   const input = readInputForTick(tick)
   const camera = readFlightCamera()
   const outputs = getRagnarokOutputs()
-  const shipYaw = stepShipYaw(
+  const shipYaw = stepVehicleYaw(
     convertFieldDirectionToHeading(useGlobalStore.getState().fieldDirection),
     input.turn,
     camera,
+    RAGNAROK_DRIVING,
   )
   const bank = stepShipBank(outputs.bank, input.turn)
 
@@ -89,7 +89,7 @@ const runFlightTick = (scene: Object3D, position: Vector3, tick: number) => {
     return
   }
 
-  const velocity = stepShipVelocity(outputs.velocity, input.throttle, shipYaw, camera)
+  const velocity = stepVehicleVelocity(outputs.velocity, input.throttle, shipYaw, camera, RAGNAROK_DRIVING)
   const movedVelocity = moveShip(scene, position, shipYaw, velocity, input.altitude)
   setRagnarokOutputs({ ...outputs, bank, velocity: movedVelocity })
   updateFieldDirection(shipYaw)

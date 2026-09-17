@@ -1,3 +1,5 @@
+import namedic from '@data/menu/namedic.json'
+
 import { CONTROLS_MAP } from '../constants/controls'
 import { MESSAGE_VARS } from '../modules/field/Scripts/Script/handlers'
 import { Modifier } from './textTypes'
@@ -142,8 +144,17 @@ const findAndReplaceVarPatterns = (inputString: string, replacementFn: (string: 
   })
 }
 
+const FIRST_NAME_DICTIONARY_CODE = 0x20
+const NAME_DICTIONARY_TOKEN = /\{x0e([0-9a-f]{2})\}/g
+
+export const resolveNameDictionaryTokens = (text: string) =>
+  text.replace(
+    NAME_DICTIONARY_TOKEN,
+    (_, hex: string) => (namedic as string[])[parseInt(hex, 16) - FIRST_NAME_DICTIONARY_CODE] ?? '',
+  )
+
 export const formatNameTags = (string: string) => {
-  let formattedString = string
+  let formattedString = resolveNameDictionaryTokens(string)
   Object.entries(NAME_TAGS).forEach(([tag, name]) => {
     formattedString = formattedString.replaceAll(tag, name)
   })

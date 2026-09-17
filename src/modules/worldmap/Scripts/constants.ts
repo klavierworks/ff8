@@ -1,6 +1,7 @@
 // ─── Scripts: dialog ───
 export const DIALOG_STATE_PENDING = -1
 export const DIALOG_POSITION = { x: 5, y: 5 } as const
+export const EVENT_CHOICE_OPTIONS: AskOptions = { blocked: undefined, cancel: 2, default: 1, first: 1, last: 2 }
 
 // ─── Scripts: interpreter ───
 export const SCRIPT_OPCODE_SIZE = 4
@@ -10,7 +11,6 @@ export const OPCODE_PARAM_HIGH_BYTE_FACTOR = 256
 // ─── Scripts: location ───
 export const LOCATION_TRIGGER_BIT = 0x08
 export const LOCATION_INDEX_MASK = 0xffff
-export const LOCATION_SCRIPT_ENTRY_DELAY_FRAMES = 24
 
 // ─── Scripts: conditions ───
 export const TILE_MODE_OFFSET_SHIFT = 11
@@ -25,3 +25,6 @@ export const FLAG_BIT_MASK = 0x1f
 export const RANDOM_NUMBER_RANGE = 0x10000
 export const STORY_PROGRESS_LOW_ADDRESS = 256
 export const STORY_PROGRESS_HIGH_ADDRESS = 257
+
+// ─── Scripts: event actions ───
+export const MAX_WRITABLE_SCRIPT_VARIABLE = 1

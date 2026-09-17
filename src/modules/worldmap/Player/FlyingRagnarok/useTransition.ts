@@ -14,9 +14,9 @@ import useWorldmapStore, {
 } from '../../worldmapStore'
 import { MOVEMENT_FRAME_PRIORITY, RAGNAROK_FOLDED_FRAME } from '../constants'
 import { convertFieldDirectionToHeading } from '../playerAngles'
+import { findGroundAltitude, readShipPose, writeShipPose } from '../shipPose'
 import { storeRagnarokPose } from './ragnarokEntity'
 import { getRagnarokOutputs, getRagnarokTrip, setRagnarokOutputs } from './ragnarokState'
-import { findGroundAltitude, readShipPose, writeShipPose } from './shipPose'
 import {
   advanceTransition,
   createLanding,

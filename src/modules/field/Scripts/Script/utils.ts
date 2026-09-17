@@ -122,6 +122,18 @@ export const enableMessageToClose = (id: string) => {
   })
 }
 
+export const addInventoryItem = (itemId: number, quantity: number) => {
+  if (itemId === 0) {
+    return
+  }
+  useGlobalStore.setState((state) => ({
+    inventory: {
+      ...state.inventory,
+      [itemId]: Math.min((state.inventory[itemId] ?? 0) + quantity, 100),
+    },
+  }))
+}
+
 export const convert256ToRadians = (value: number) => ((value % 256) / 256) * 2 * Math.PI
 
 export const convertRadiansToAngle256 = (radians: number) => (radians / (2 * Math.PI)) * 256

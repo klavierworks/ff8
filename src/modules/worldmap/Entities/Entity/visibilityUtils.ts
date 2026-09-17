@@ -1,15 +1,9 @@
 import { VEHICLE_IDS } from '../../../../constants/vehicles'
-import { ENTITY_VEHICLE_CATEGORIES } from '../../../../constants/worldmapEntities'
 import { isOnFootClass, isWalkerClass } from '../../vehicleClasses'
-
-const CATEGORY_BY_TYPE_CODE: ReadonlyMap<number, number> = new Map(
-  ENTITY_VEHICLE_CATEGORIES.flatMap(({ category, typeCodes }) =>
-    typeCodes.map((typeCode) => [typeCode, category] as const),
-  ),
-)
+import { getEntityVehicleCategory } from '../../vehicleEntities'
 
 export const isVisibleInCurrentVehicle = (typeCode: number, vehicleId: number) => {
-  const category = CATEGORY_BY_TYPE_CODE.get(typeCode)
+  const category = getEntityVehicleCategory(typeCode)
   if (category === undefined) {
     return true
   }

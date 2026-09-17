@@ -2,10 +2,10 @@ import { VEHICLE_IDS } from '../../../../constants/vehicles'
 import { RAGNAROK_FOOTPRINT } from '../../../../constants/worldmapEntities'
 import useGlobalStore from '../../../../store'
 import useWorldmapStore, { WORLD_MAP_STATE_FREE_ROAM } from '../../worldmapStore'
+import { calculateHeadingStep } from '../drivingUtils'
 import { convertFieldDirectionToHeading } from '../playerAngles'
-import { calculateHeadingStep } from './flightUtils'
+import { readShipPose, wrapMapX, wrapMapZ } from '../shipPose'
 import { placeRagnarokEntity } from './ragnarokEntity'
-import { readShipPose, wrapMapX, wrapMapZ } from './shipPose'
 
 export const placeDebugRagnarokBesidePlayer = () => {
   const { characterPosition, fieldDirection } = useGlobalStore.getState()

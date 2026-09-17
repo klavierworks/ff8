@@ -48,10 +48,10 @@ const getEntityFootprint = (typeCode: number): Footprint | undefined => {
   return WMSET_ENTITY_FOOTPRINTS[typeCode - FIRST_WMSET_ENTITY_TYPE]
 }
 
-const calculateFootprintRadius = ({ depth, shape, width }: Footprint) =>
+export const calculateFootprintRadius = ({ depth, shape, width }: Footprint) =>
   shape === FOOTPRINT_SHAPE_WIDE ? Math.max(width, depth >> 1) : Math.max(width >> 1, depth >> 1)
 
-const wrapDelta = (delta: number, size: number) => {
+export const wrapDelta = (delta: number, size: number) => {
   const wrapped = MathUtils.euclideanModulo(delta, size)
   return wrapped > size / 2 ? wrapped - size : wrapped
 }
@@ -87,3 +87,10 @@ export const findCollidingEntity = (entities: readonly EntityRecord[], query: Co
   entities.findIndex(
     (entity, index) => !isEntityExcluded(entity, index, query.excludedIndices) && isEntityHit(entity, query),
   )
+
+export const getEntityFootprintHeight = (typeCode: number) => getEntityFootprint(typeCode)?.height ?? 0
+
+export const getEntityFootprintRadius = (typeCode: number) => {
+  const footprint = getEntityFootprint(typeCode)
+  return footprint ? calculateFootprintRadius(footprint) : 0
+}

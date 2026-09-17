@@ -14,11 +14,12 @@ import Entrypoint from './Entrypoint'
 import Loading from './Loading/Loading'
 import Memory from './Memory/Memory'
 import { MEMORY } from './modules/field/Scripts/Script/handlers'
-import useWorldmapStore from './modules/worldmap/worldmapStore'
+import { applyWorldmapUrlParams } from './modules/worldmap/worldmapUrl'
 import Queues from './Queues/Queues'
 import useGlobalStore from './store'
 import Ui from './UI/UI'
 import useIsTabActive from './useIsTabActive'
+import useUrlSync from './useUrlSync'
 
 const requestedProgress = new URLSearchParams(window.location.search).get('progress')
 if (requestedProgress) {
@@ -33,13 +34,6 @@ if (namedField) {
   })
 }
 
-const spawnPointId = new URLSearchParams(window.location.search).get('spawnPointId')
-if (spawnPointId) {
-  useWorldmapStore.setState({
-    spawnPointId: parseInt(spawnPointId),
-  })
-}
-
 const module = new URLSearchParams(window.location.search).get('module')
 if (module === 'menu' || module === 'worldmap') {
   useGlobalStore.setState({
@@ -48,33 +42,28 @@ if (module === 'menu' || module === 'worldmap') {
     pendingFieldId: undefined,
   })
 }
+if (module === 'worldmap') {
+  applyWorldmapUrlParams(new URLSearchParams(window.location.search), MEMORY)
+}
 
 const App = () => {
   const isTabActive = useIsTabActive()
 
   const fieldId = useGlobalStore((state) => state.fieldId)
-  const progress = MEMORY[256]
   const isDebugMode = useGlobalStore((state) => state.isDebugMode)
 
   const [isDisclaimerHidden, setIsDisclaimerHidden] = useState(!!namedField || import.meta.env.DEV)
 
   const module = useGlobalStore((state) => state.module)
 
+  useUrlSync()
+
   useEffect(() => {
-    if (!fieldId) {
+    if (!fieldId || module === 'menu') {
       return
     }
-    const url = new URL(window.location.href)
-    url.searchParams.set('field', fieldId)
-    const progress = MEMORY[256] ?? 0
-
-    url.searchParams.set('progress', progress.toString())
-    window.history.pushState({}, '', url.toString())
-
-    if (module !== 'menu') {
-      setIsDisclaimerHidden(true)
-    }
-  }, [fieldId, module, progress])
+    setIsDisclaimerHidden(true)
+  }, [fieldId, module])
 
   const [worldScene, setWorldScene] = useState<Scene>()
 
@@ -93,7 +82,7 @@ const App = () => {
             stencil: false,
           }}
         >
-          <EffectComposer>
+          <EffectComposer multisampling={0}>
             <PerspectiveCamera
               aspect={ASPECT_RATIO}
               far={1000}

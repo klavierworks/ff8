@@ -1,13 +1,14 @@
 import { Object3D, PerspectiveCamera, Vector3 } from 'three'
 
-import { WORLDMAP_LANDING_YAW_SCALE } from '../../../constants/worldmapCamera'
 import useGlobalStore from '../../../store'
 import { updateCurvatureUniforms } from '../curvature'
 import { getMovementOutputs } from '../Player/movementState'
 import { isPadInputIgnored } from '../Player/onFootInput'
 import { convertFieldDirectionToHeading } from '../Player/playerAngles'
 import { isOnCanopyGround } from '../Player/playerUtils'
-import { FieldLandingPosition } from '../useSections'
+import { placeRideCamera } from '../Trains/trainPlacement'
+import { getRideCameraView } from '../Trains/trainRide'
+import { getTrainSession } from '../Trains/trainSession'
 import { isWalkerClass } from '../vehicleClasses'
 import useWorldmapStore, { WorldmapCameraState } from '../worldmapStore'
 import { hasTerrainPitchDip } from './cameraPitch'
@@ -23,7 +24,6 @@ import {
 
 type CameraSceneContext = {
   camera: PerspectiveCamera
-  landings: readonly FieldLandingPosition[]
   playerPosition: Vector3
   scene: Object3D
   tick: number
@@ -63,20 +63,15 @@ const readCameraTickInput = ({ camera, playerPosition, scene, tick }: CameraScen
   }
 }
 
-const getSpawnCameraYaw = (landings: readonly FieldLandingPosition[]) => {
-  const entry = landings[useWorldmapStore.getState().spawnPointId]
-  return entry ? entry.player_yaw * WORLDMAP_LANDING_YAW_SCALE : undefined
-}
-
-const readInitialCameraMemory = ({ landings, playerPosition, tick }: CameraSceneContext) => {
-  const { cameraModeIndex, vehicleId, worldMapState } = useWorldmapStore.getState()
+const readInitialCameraMemory = ({ playerPosition, tick }: CameraSceneContext) => {
+  const { cameraModeIndex, entryCameraYaw, vehicleId, worldMapState } = useWorldmapStore.getState()
   return createCameraMemory({
     cameraModeIndex,
     player: convertWorldToPsxPoint(playerPosition),
     tick,
     vehicleId,
     worldMapState,
-    yaw: getSpawnCameraYaw(landings) ?? readPlayerHeading(),
+    yaw: entryCameraYaw ?? readPlayerHeading(),
   })
 }
 
@@ -93,8 +88,18 @@ const publishCameraState = (next: WorldmapCameraState) => {
   useWorldmapStore.setState({ camera: next })
 }
 
-export const applyCameraMemory = (camera: PerspectiveCamera, { focus, rig }: CameraMemory) => {
+const placeCamera = (camera: PerspectiveCamera, { focus, rig }: CameraMemory) => {
+  const rideView = getRideCameraView(getTrainSession(), useWorldmapStore.getState().worldMapState)
+  if (rideView) {
+    placeRideCamera(camera, rideView)
+    return
+  }
   placeWorldmapCamera(camera, rig, focus, useWorldmapStore.getState().vehicleId)
+}
+
+export const applyCameraMemory = (camera: PerspectiveCamera, memory: CameraMemory) => {
+  const { rig } = memory
+  placeCamera(camera, memory)
   updateCameraProjection(camera, rig.zoom)
   updateCurvatureUniforms(camera, rig.curvatureStart)
   publishCameraState({

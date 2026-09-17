@@ -1,5 +1,6 @@
 import { signExtend8 } from '../../../utils'
 import { WorldPosition } from '../types'
+import { runEventScriptBody } from './eventActions'
 import { WORLDMAP_OPCODES } from './opcodes'
 import { findScriptBody, readScriptBody, ScriptSection } from './runScript'
 import { isLocationTriggerSet } from './state'
@@ -26,3 +27,8 @@ export const collectSpawns = (section: ScriptSection, position: WorldPosition): 
   readMatchingScriptBody(section, position)
     .filter((opcode) => isSpawnOpcode(opcode.op))
     .map((opcode) => ({ positionIndex: signExtend8(opcode.p2), typeCode: opcode.p1 }))
+
+export const runEventScripts = (section: ScriptSection, position: WorldPosition) => {
+  const bodyIndex = findScriptBody(section, position, true)
+  return bodyIndex === undefined ? undefined : runEventScriptBody(readScriptBody(section, bodyIndex))
+}

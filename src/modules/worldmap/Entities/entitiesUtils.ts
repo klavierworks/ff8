@@ -2,11 +2,12 @@ import { VEHICLE_IDS } from '../../../constants/vehicles'
 import {
   ALTERNATE_ENTITY_SUBTYPE,
   ALTERNATE_SUBTYPE_ENTITY_TYPE,
+  GARDEN_ENTITY_TYPES,
   LOOSE_CANDIDATE_DISTANCE,
   MAX_WORLDMAP_ENTITIES,
   RAGNAROK_ENTITY_TYPE,
+  SPINNING_ENTITY_SUBTYPE,
   TIGHT_CANDIDATE_DISTANCE,
-  UNTRACKED_GARDEN_ENTITY_TYPES,
 } from '../../../constants/worldmapEntities'
 import useGlobalStore from '../../../store'
 import { MEMORY } from '../../field/Scripts/Script/handlers'
@@ -17,34 +18,50 @@ import { collectSpawns, RawSpawn } from '../Scripts/sectionRunners'
 import { EntityRecord, WORLDMAP_STATE } from '../Scripts/state'
 import { WorldPosition } from '../types'
 import { EntityPosition } from '../useSections'
-import { readSavedRagnarok } from '../worldmapSaveData'
+import { getEntityVehicleCategory, isGardenEntityType } from '../vehicleEntities'
+import {
+  readSavedCarEntityType,
+  readSavedRagnarok,
+  readSavedVehiclePosition,
+  SavedVehiclePosition,
+} from '../worldmapSaveData'
 import useWorldmapStore from '../worldmapStore'
 
-const buildSavedRagnarokEntity = (): EntityRecord => {
-  const saved = readSavedRagnarok(MEMORY)
-  return {
-    pitch: 0,
-    positionVerticalY: saved.altitude,
-    positionX: saved.x,
-    positionY: saved.y,
-    subType: 0,
-    typeCode: RAGNAROK_ENTITY_TYPE,
-    yaw: saved.yaw,
-  }
+const buildSavedEntity = (saved: SavedVehiclePosition, typeCode: number, subType: number): EntityRecord => ({
+  pitch: 0,
+  positionVerticalY: saved.altitude,
+  positionX: saved.x,
+  positionY: saved.y,
+  subType,
+  typeCode,
+  yaw: saved.yaw,
+})
+
+const buildSavedVehicleEntity = (vehicleId: number, typeCode: number, subType: number) => {
+  const saved = readSavedVehiclePosition(MEMORY, vehicleId)
+  return saved && buildSavedEntity(saved, typeCode, subType)
 }
 
-const isUntrackedGardenType = (typeCode: number) =>
-  (UNTRACKED_GARDEN_ENTITY_TYPES as readonly number[]).includes(typeCode)
+const getGardenSubType = (typeCode: number) => (typeCode === GARDEN_ENTITY_TYPES[1] ? SPINNING_ENTITY_SUBTYPE : 0)
+
+const buildSavedCarEntity = () => {
+  const typeCode = readSavedCarEntityType(MEMORY)
+  const vehicleId = typeCode === undefined ? undefined : getEntityVehicleCategory(typeCode)
+  if (typeCode === undefined || vehicleId === undefined) {
+    return undefined
+  }
+  return buildSavedVehicleEntity(vehicleId, typeCode, 0)
+}
 
 const getSpawnSubType = (typeCode: number) =>
   typeCode === ALTERNATE_SUBTYPE_ENTITY_TYPE ? ALTERNATE_ENTITY_SUBTYPE : 0
 
 const resolveSpawn = ({ positionIndex, typeCode }: RawSpawn, positions: readonly EntityPosition[]) => {
   if (typeCode === RAGNAROK_ENTITY_TYPE) {
-    return buildSavedRagnarokEntity()
+    return buildSavedEntity(readSavedRagnarok(MEMORY), RAGNAROK_ENTITY_TYPE, 0)
   }
-  if (isUntrackedGardenType(typeCode)) {
-    return undefined
+  if (isGardenEntityType(typeCode)) {
+    return buildSavedVehicleEntity(VEHICLE_IDS.BALAMB_GARDEN, typeCode, getGardenSubType(typeCode))
   }
   const position = positions[positionIndex]
   if (!position) {
@@ -97,6 +114,15 @@ export const collectEntities = (
   positions: readonly EntityPosition[],
   position: WorldPosition,
 ) =>
-  collectSpawns(section, position)
-    .flatMap((spawn) => resolveSpawn(spawn, positions) ?? [])
+  [...collectSpawns(section, position).map((spawn) => resolveSpawn(spawn, positions)), buildSavedCarEntity()]
+    .filter((entity): entity is EntityRecord => entity !== undefined)
     .slice(0, MAX_WORLDMAP_ENTITIES)
+
+export const countRefresh = (count: number) => count + 1
+
+export const subscribeToVehicleChanges = (onChange: () => void) =>
+  useWorldmapStore.subscribe((state, previousState) => {
+    if (state.vehicleId !== previousState.vehicleId) {
+      onChange()
+    }
+  })

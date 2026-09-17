@@ -13,7 +13,7 @@ import {
   WORLDMAP_ZOOM_CLOSE,
   WORLDMAP_ZOOM_DEFAULT,
 } from '../../../constants/worldmapCamera'
-import { isBoatClass, isCarOrGarden, isChocoboClass, isRagnarok } from '../vehicleClasses'
+import { isBoatClass, isCarOrGarden, isRagnarok, isTrainClass } from '../vehicleClasses'
 
 export type CameraRig = {
   curvatureStart: number
@@ -24,7 +24,7 @@ export type CameraRig = {
 }
 
 const hasFixedFraming = (vehicleId: number) =>
-  isCarOrGarden(vehicleId) || isChocoboClass(vehicleId) || isBoatClass(vehicleId)
+  isCarOrGarden(vehicleId) || isTrainClass(vehicleId) || isBoatClass(vehicleId)
 
 export const calculateRagnarokPitch = (altitude: number) =>
   WORLDMAP_PITCH_RAGNAROK_BASE - Math.trunc(altitude / WORLDMAP_PITCH_RAGNAROK_ALTITUDE_DIVISOR)

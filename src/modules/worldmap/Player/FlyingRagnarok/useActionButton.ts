@@ -18,10 +18,10 @@ import useWorldmapStore, {
 import { MOVEMENT_FRAME_PRIORITY } from '../constants'
 import { isPadInputIgnored } from '../onFootInput'
 import { convertFieldDirectionToHeading, convertHeadingToFieldDirection } from '../playerAngles'
+import { readShipPose, writeShipPose } from '../shipPose'
 import { findBoardableRagnarok, findLandingSpot } from './boardingUtils'
 import { readRagnarokEntityPose } from './ragnarokEntity'
 import { getRagnarokOutputs, getRagnarokTrip, setRagnarokOutputs, setRagnarokTrip } from './ragnarokState'
-import { readShipPose, writeShipPose } from './shipPose'
 
 const CONFIRM_BIT = WORLDMAP_PAD_BITS.confirm
 const CAMERA_MODE_BIT = WORLDMAP_PAD_BITS.toggleCameraMode

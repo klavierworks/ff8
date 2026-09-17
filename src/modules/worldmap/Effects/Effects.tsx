@@ -62,7 +62,11 @@ const buildTextureSizes = (textures: Texture[]) =>
     }),
   )
 
-const createTickState = (): EffectTickState => ({ footLatches: [false, false], motion: createPlayerMotion() })
+const createTickState = (): EffectTickState => ({
+  footLatches: [false, false],
+  motion: createPlayerMotion(),
+  previousCandidate: -1,
+})
 
 const Effects = () => {
   const textures = useTexture(SPRITE_URLS, setNearestFiltering) as Texture[]
