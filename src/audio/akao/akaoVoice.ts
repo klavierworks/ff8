@@ -49,6 +49,7 @@ type SoundingNote = {
   getPlaybackRateFor: (semitone: number) => number
   playbackRate: AutomatedParameter
   releaseSeconds: number
+  releaseTimeConstant?: number
   source: AudioBufferSourceNode
 }
 
@@ -58,9 +59,17 @@ const getEnvelopePoints = (envelope: AdsrEnvelope, time: number): AutomationPoin
 
   return [
     { time: peakTime, value: 1 },
-    ...(envelope.decaySeconds > 0 ? [{ time: sustainTime, value: envelope.sustainLevel }] : []),
+    ...(envelope.decaySeconds > 0
+      ? [{ time: sustainTime, timeConstant: envelope.decayTimeConstant, value: envelope.sustainLevel }]
+      : []),
     ...(envelope.sustainSeconds > 0
-      ? [{ time: sustainTime + envelope.sustainSeconds, value: envelope.sustainTarget }]
+      ? [
+          {
+            time: sustainTime + envelope.sustainSeconds,
+            timeConstant: envelope.sustainTimeConstant,
+            value: envelope.sustainTarget,
+          },
+        ]
       : []),
   ]
 }
@@ -127,9 +136,10 @@ export const createAkaoVoice = ({ audioContext, dryBus, instruments, reverbBus }
     if (!soundingNote) {
       return
     }
-    const { envelopeGain, releaseSeconds, source } = soundingNote
-    envelopeGain.rampTo(0, time, releaseSeconds)
-    source.stop(time + releaseSeconds)
+    const { envelopeGain, releaseSeconds, releaseTimeConstant, source } = soundingNote
+    const releaseEnd = { time: time + releaseSeconds, timeConstant: releaseTimeConstant, value: 0 }
+    envelopeGain.scheduleCurve(envelopeGain.getValueAt(time), time, [releaseEnd])
+    source.stop(releaseEnd.time)
     soundingNote = undefined
   }
 
@@ -220,6 +230,7 @@ export const createAkaoVoice = ({ audioContext, dryBus, instruments, reverbBus }
       getPlaybackRateFor: sound.getPlaybackRateFor,
       playbackRate: createAutomatedParameter(source.playbackRate),
       releaseSeconds: Math.max(envelope.releaseSeconds, MINIMUM_RAMP_SECONDS),
+      releaseTimeConstant: envelope.releaseTimeConstant,
       source,
     }
     voiceScale.rampTo(getVoiceScaleGain(note.volumeScale), note.time, 0)

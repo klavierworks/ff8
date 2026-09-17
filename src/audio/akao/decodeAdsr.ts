@@ -8,13 +8,17 @@ const EXPONENTIAL_KNEE_SLOWDOWN = 4
 const EXPONENTIAL_FLOOR = 0x100
 const DECREASE_STEP = 8
 
+// A phase with a time constant falls exponentially toward silence rather than along a straight line.
 export type AdsrEnvelope = {
   attackSeconds: number
   decaySeconds: number
+  decayTimeConstant: number
   releaseSeconds: number
+  releaseTimeConstant?: number
   sustainLevel: number
   sustainSeconds: number
   sustainTarget: number
+  sustainTimeConstant?: number
 }
 
 type Rate = {
@@ -32,10 +36,10 @@ const linearSeconds = (levels: number, rate: Rate) =>
 
 // An exponential decrease scales its step by the current level, which integrates to a plain
 // exponential decay with this time constant.
-const exponentialSeconds = (fromLevel: number, toLevel: number, rate: Rate) => {
-  const timeConstant = ((MAX_LEVEL + 1) * rate.cyclesPerStep) / (rate.levelsPerStep * SAMPLE_RATE)
-  return timeConstant * Math.log(Math.max(fromLevel, 1) / Math.max(toLevel, EXPONENTIAL_FLOOR))
-}
+const getTimeConstant = (rate: Rate) => ((MAX_LEVEL + 1) * rate.cyclesPerStep) / (rate.levelsPerStep * SAMPLE_RATE)
+
+const exponentialSeconds = (fromLevel: number, toLevel: number, rate: Rate) =>
+  getTimeConstant(rate) * Math.log(Math.max(fromLevel, 1) / Math.max(toLevel, EXPONENTIAL_FLOOR))
 
 const attackSeconds = (register: number) => {
   const rate = readRate((register >> 10) & 0x1f, 7 - ((register >> 8) & 0x3))
@@ -56,15 +60,22 @@ const sustainPhase = (register: number, sustainLevel: number) => {
   const target = isDecreasing ? 0 : MAX_LEVEL
 
   if (isDecreasing && isExponential) {
-    return { sustainSeconds: exponentialSeconds(sustainLevel, 0, rate), sustainTarget: 0 }
+    return {
+      sustainSeconds: exponentialSeconds(sustainLevel, 0, rate),
+      sustainTarget: 0,
+      sustainTimeConstant: getTimeConstant(rate),
+    }
   }
   return { sustainSeconds: linearSeconds(Math.abs(target - sustainLevel), rate), sustainTarget: target / MAX_LEVEL }
 }
 
-const releaseSeconds = (register: number, sustainLevel: number) => {
+const releasePhase = (register: number, sustainLevel: number) => {
   const rate = readRate(register & 0x1f, DECREASE_STEP)
   const isExponential = (register & 0x20) !== 0
-  return isExponential ? exponentialSeconds(sustainLevel, 0, rate) : linearSeconds(sustainLevel, rate)
+  if (isExponential) {
+    return { releaseSeconds: exponentialSeconds(sustainLevel, 0, rate), releaseTimeConstant: getTimeConstant(rate) }
+  }
+  return { releaseSeconds: linearSeconds(sustainLevel, rate) }
 }
 
 // Turns the two SPU envelope registers each instrument carries into phase times the mixer can
@@ -77,8 +88,9 @@ export const decodeAdsr = (adsr1: number, adsr2: number): AdsrEnvelope => {
   return {
     attackSeconds: attackSeconds(adsr1),
     decaySeconds: exponentialSeconds(MAX_LEVEL, sustainLevel, decayRate),
-    releaseSeconds: releaseSeconds(adsr2, sustainLevel),
+    decayTimeConstant: getTimeConstant(decayRate),
     sustainLevel: sustainLevel / MAX_LEVEL,
+    ...releasePhase(adsr2, sustainLevel),
     ...sustainPhase(adsr2, sustainLevel),
   }
 }
