@@ -59,13 +59,14 @@ export const isTouching = (thisId: number, target: Object3D | string, scene: Sce
 }
 
 export const KEY_FLAGS = {
-  16: PSX_CONTROLS_MAP.circle, // 'Cancel'
-  32: PSX_CONTROLS_MAP.triangle, // 'Menu'
-  64: PSX_CONTROLS_MAP.cross, // 'OK/Accept'
-  128: PSX_CONTROLS_MAP.square, //'Card game button'
-
-  192: PSX_CONTROLS_MAP.cross, // 'OK/Accept',
-
+  4: PSX_CONTROLS_MAP.l1,
+  8: PSX_CONTROLS_MAP.r1,
+  16: PSX_CONTROLS_MAP.circle,
+  32: PSX_CONTROLS_MAP.triangle,
+  64: PSX_CONTROLS_MAP.cross,
+  128: PSX_CONTROLS_MAP.square,
+  256: PSX_CONTROLS_MAP.select,
+  2048: PSX_CONTROLS_MAP.start,
   4096: 'ArrowUp',
   8192: 'ArrowRight',
   16384: 'ArrowDown',
@@ -77,16 +78,12 @@ const PRESS_EDGE_LIFETIME_FRAMES = 2
 let heldKeys: string[] = []
 const pressedAtFrame = new Map<string, number>()
 
-export const isKeyDown = (keyFlag: keyof typeof KEY_FLAGS) => {
-  return heldKeys.includes(KEY_FLAGS[keyFlag])
-}
+const getKeysForMask = (mask: number) =>
+  Object.entries(KEY_FLAGS)
+    .filter(([bit]) => (mask & Number(bit)) !== 0)
+    .map(([, key]) => key)
 
-export const wasKeyPressed = (keyFlag: keyof typeof KEY_FLAGS) => {
-  const key = KEY_FLAGS[keyFlag]
-  if (!key) {
-    return false
-  }
-
+const consumePressEdge = (key: string) => {
   const pressedFrame = pressedAtFrame.get(key)
   if (pressedFrame === undefined || getScriptFrame() - pressedFrame >= PRESS_EDGE_LIFETIME_FRAMES) {
     return false
@@ -95,6 +92,10 @@ export const wasKeyPressed = (keyFlag: keyof typeof KEY_FLAGS) => {
   pressedAtFrame.delete(key)
   return true
 }
+
+export const isKeyDown = (mask: number) => getKeysForMask(mask).some((key) => heldKeys.includes(key))
+
+export const wasKeyPressed = (mask: number) => getKeysForMask(mask).some(consumePressEdge)
 
 const keydownListener = (event: KeyboardEvent) => {
   const { currentMessages, isCardGameActive } = useGlobalStore.getState()

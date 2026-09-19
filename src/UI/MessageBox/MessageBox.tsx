@@ -9,7 +9,7 @@ import { saveGame } from '../../modules/field/fieldUtils.ts'
 import { closeMessage } from '../../modules/field/Scripts/Script/utils.ts'
 import useGlobalStore from '../../store.ts'
 import { framesToMs, TARGET_FPS } from '../../timing.ts'
-import { FontColor, Modifier, Placement } from '../textTypes.ts'
+import { FontColor, Modifier } from '../textTypes.ts'
 import { formatNameTags } from '../textUtils.ts'
 import {
   calculateSafePlacement,
@@ -300,32 +300,25 @@ const MessageBox = ({ isCloseableFocus, isSavePoint, message, worldScene }: Mess
           return
         }
 
-        if ('type' in placement && placement.type === 'color' && placement.color) {
-          currentColor = placement.color
-          isBlinkingOff = !!(placement.isBlinking && isBlinkOff(textProgressRef.current, BLINK_DELAY))
-          if (placement.isBlinking) {
-            invalidate()
+        if ('type' in placement) {
+          if (placement.type === 'color' && placement.color) {
+            currentColor = placement.color
+            isBlinkingOff = !!(placement.isBlinking && isBlinkOff(textProgressRef.current, BLINK_DELAY))
+            if (placement.isBlinking) {
+              invalidate()
+            }
           }
-          displayedCount++
-          return
-        }
 
-        if ('type' in placement && placement.type === 'wait') {
-          isPaused = handleWait(placement, index)
+          if (placement.type === 'wait') {
+            isPaused = handleWait(placement, index)
+          }
+
           displayedCount++
           return
         }
 
         const alpha = isBlinkingOff ? 0 : 1
-        drawCharacter(
-          ctx,
-          fontTextures[currentColor].image,
-          placement as Placement,
-          xPos,
-          yPos,
-          messageStyle.color / 4096,
-          alpha,
-        )
+        drawCharacter(ctx, fontTextures[currentColor].image, placement, xPos, yPos, messageStyle.color / 4096, alpha)
         displayedCount++
       })
 

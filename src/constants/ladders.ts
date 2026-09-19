@@ -14,10 +14,10 @@ export const LADDER_TRAIL_DELAY_FRAMES = 15
 
 // ─── Ladder: input ───
 
-export const LADDER_UP_KEYS = [4096, 8192] as const
+export const LADDER_UP_MASK = 4096 | 8192
 
-export const LADDER_DOWN_KEYS = [16384, 32768] as const
+export const LADDER_DOWN_MASK = 16384 | 32768
 
-export const LADDER_STRICT_UP_KEYS = [4096] as const
+export const LADDER_STRICT_UP_MASK = 4096
 
-export const LADDER_STRICT_DOWN_KEYS = [16384] as const
+export const LADDER_STRICT_DOWN_MASK = 16384

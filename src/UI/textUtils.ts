@@ -120,20 +120,34 @@ const NAME_TAGS = {
 }
 
 const CONTROL_INPUTS = {
-  '{x052b}': 'STAT',
+  '{x052b}': CONTROLS_MAP.start,
   '{x052c}': 'UP',
   '{x052d}': 'RIGHT',
   '{x052e}': 'DOWN',
   '{x052f}': 'LEFT',
+  '{x053b}': CONTROLS_MAP.start,
+  '{x053c}': 'UP',
+  '{x053d}': 'RIGHT',
+  '{x053e}': 'DOWN',
+  '{x053f}': 'LEFT',
   '{x0520}': 'L2',
   '{x0521}': 'R2',
-  '{x0522}': 'L1',
-  '{x0523}': 'R1',
+  '{x0522}': CONTROLS_MAP.l1,
+  '{x0523}': CONTROLS_MAP.r1,
   '{x0524}': CONTROLS_MAP.cancel,
   '{x0525}': CONTROLS_MAP.menu,
   '{x0526}': CONTROLS_MAP.confirm,
   '{x0527}': CONTROLS_MAP.card,
-  '{x0528}': 'SELECT',
+  '{x0528}': CONTROLS_MAP.select,
+  '{x0530}': 'L2',
+  '{x0531}': 'R2',
+  '{x0532}': CONTROLS_MAP.l1,
+  '{x0533}': CONTROLS_MAP.r1,
+  '{x0534}': CONTROLS_MAP.cancel,
+  '{x0535}': CONTROLS_MAP.menu,
+  '{x0536}': CONTROLS_MAP.confirm,
+  '{x0537}': CONTROLS_MAP.card,
+  '{x0538}': CONTROLS_MAP.select,
 }
 
 const findAndReplaceVarPatterns = (inputString: string, replacementFn: (string: string) => string) => {

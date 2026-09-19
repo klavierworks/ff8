@@ -21,6 +21,14 @@ import Ui from './UI/UI'
 import useIsTabActive from './useIsTabActive'
 import useUrlSync from './useUrlSync'
 
+const party = new URLSearchParams(window.location.search).get('party')
+if (party) {
+  const partyMembers = party.split(',').map((s) => parseInt(s))
+  useGlobalStore.setState({
+    party: partyMembers,
+  })
+}
+
 const requestedProgress = new URLSearchParams(window.location.search).get('progress')
 if (requestedProgress) {
   MEMORY[256] = parseInt(requestedProgress)
@@ -42,6 +50,7 @@ if (module === 'menu' || module === 'worldmap') {
     pendingFieldId: undefined,
   })
 }
+
 if (module === 'worldmap') {
   applyWorldmapUrlParams(new URLSearchParams(window.location.search), MEMORY)
 }

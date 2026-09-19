@@ -1,18 +1,18 @@
 import { Vector3 } from 'three'
 
 import {
-  LADDER_DOWN_KEYS,
+  LADDER_DOWN_MASK,
   LADDER_MOUNT_TRIM_FRAMES,
   LADDER_SETTLE_FRAMES,
-  LADDER_STRICT_DOWN_KEYS,
-  LADDER_STRICT_UP_KEYS,
-  LADDER_UP_KEYS,
+  LADDER_STRICT_DOWN_MASK,
+  LADDER_STRICT_UP_MASK,
+  LADDER_UP_MASK,
 } from '../../../../../constants/ladders'
 import useGlobalStore from '../../../../../store'
 import { floatingPointToNumber } from '../../../../../utils'
 import { nextScriptFrame } from '../../../scriptClock'
 import { createAnimationController } from '../AnimationController/AnimationController'
-import { isKeyDown, KEY_FLAGS } from '../common'
+import { isKeyDown } from '../common'
 import createMovementController from './MovementController'
 
 type AnimationController = ReturnType<typeof createAnimationController>
@@ -33,22 +33,18 @@ type LadderMove = {
 
 type MovementController = ReturnType<typeof createMovementController>
 
-type PadKey = keyof typeof KEY_FLAGS
-
 export const getIsLadderPlayerDriven = (partyMemberId: number | undefined) => {
   const { isUserControllable, party } = useGlobalStore.getState()
   return isUserControllable && partyMemberId !== undefined && party[0] === partyMemberId
 }
 
-const isAnyKeyDown = (keys: readonly PadKey[]) => keys.some((key) => isKeyDown(key))
-
 // Backing off the ladder wins over climbing when both are held, as in the
 // original's nested pad test.
-const getPadDirection = (advanceKeys: readonly PadKey[], retreatKeys: readonly PadKey[]) => {
-  if (isAnyKeyDown(retreatKeys)) {
+const getPadDirection = (advanceMask: number, retreatMask: number) => {
+  if (isKeyDown(retreatMask)) {
     return -1
   }
-  return isAnyKeyDown(advanceKeys) ? 1 : 0
+  return isKeyDown(advanceMask) ? 1 : 0
 }
 
 const getClimbFrameCount = (from: Vector3, to: Vector3) => {
@@ -123,8 +119,8 @@ const runLadderPhases = async (
   const mountAnimationId = isUp ? ladderBottomId : ladderTopId
   const dismountAnimationId = isUp ? ladderTopId : ladderBottomId
   const ladderDirection = isUp ? 1 : -1
-  const advanceKeys = isUp ? LADDER_UP_KEYS : LADDER_DOWN_KEYS
-  const retreatKeys = isUp ? LADDER_DOWN_KEYS : LADDER_UP_KEYS
+  const advanceMask = isUp ? LADDER_UP_MASK : LADDER_DOWN_MASK
+  const retreatMask = isUp ? LADDER_DOWN_MASK : LADDER_UP_MASK
   const standingPosition = movementController.getState().position.current.clone()
 
   animationController.playLadderAnimation(mountAnimationId, ladderDirection, false)
@@ -144,7 +140,7 @@ const runLadderPhases = async (
     approach,
     exit,
     ladderClimbId,
-    isPlayerDriven ? () => getPadDirection(advanceKeys, retreatKeys) : undefined,
+    isPlayerDriven ? () => getPadDirection(advanceMask, retreatMask) : undefined,
     fieldId,
   )
   if (!getIsStillOnField(fieldId)) {
@@ -214,8 +210,8 @@ export const handleDirectLadder = async (
 
   const fieldId = useGlobalStore.getState().fieldId
   const start = movementController.getState().position.current.clone()
-  const advanceKeys = isUp ? LADDER_STRICT_UP_KEYS : LADDER_STRICT_DOWN_KEYS
-  const retreatKeys = isUp ? LADDER_DOWN_KEYS : LADDER_UP_KEYS
+  const advanceMask = isUp ? LADDER_STRICT_UP_MASK : LADDER_STRICT_DOWN_MASK
+  const retreatMask = isUp ? LADDER_DOWN_MASK : LADDER_UP_MASK
 
   try {
     await climbBetweenAnchors(
@@ -224,7 +220,7 @@ export const handleDirectLadder = async (
       start,
       target,
       animationId,
-      isPlayerDriven ? () => getPadDirection(advanceKeys, retreatKeys) : undefined,
+      isPlayerDriven ? () => getPadDirection(advanceMask, retreatMask) : undefined,
       fieldId,
     )
   } finally {

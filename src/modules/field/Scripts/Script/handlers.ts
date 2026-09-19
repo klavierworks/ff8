@@ -36,7 +36,6 @@ import {
   getScrollTransition,
   isKeyDown,
   isTouching,
-  KEY_FLAGS,
   setCameraAndLayerFocus,
   setCameraScroll,
   setLayerScroll,
@@ -1194,17 +1193,16 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     useGlobalStore.setState({ isPlayerInputBlocked: isBlocked })
   },
   KEYON: ({ STACK, TEMP_STACK }) => {
-    const isDown = isKeyDown(STACK.pop() as keyof typeof KEY_FLAGS)
+    const isDown = isKeyDown(STACK.pop() as number)
     TEMP_STACK[0] = isDown ? 1 : 0
   },
   KEYON2: unusedCommand,
   KEYSCAN: ({ STACK, TEMP_STACK }) => {
-    const key = STACK.pop() as keyof typeof KEY_FLAGS
-    const isDown = wasKeyPressed(key)
-    TEMP_STACK[0] = isDown ? 1 : 0
+    const wasPressed = wasKeyPressed(STACK.pop() as number)
+    TEMP_STACK[0] = wasPressed ? 1 : 0
   },
   KEYSCAN2: ({ STACK, TEMP_STACK }) => {
-    const isDown = isKeyDown(STACK.pop() as keyof typeof KEY_FLAGS)
+    const isDown = isKeyDown(STACK.pop() as number)
     TEMP_STACK[0] = isDown ? 1 : 0
   },
   // This changes the key of background music. It lives on in the test menu, never ingame.
