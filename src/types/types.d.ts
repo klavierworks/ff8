@@ -70,6 +70,7 @@ declare global {
   type FormattedGateway = {
     destination: Vector3
     destinationTriangle: number | undefined
+    direction: number
     sourceLine: Vector3[]
     target: string
   }

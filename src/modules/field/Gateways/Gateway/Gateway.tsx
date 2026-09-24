@@ -21,6 +21,7 @@ const Gateway = ({
     return {
       destination: position,
       destinationTriangle: triangle,
+      direction: gateway.direction,
       sourceLine: gateway.sourceLine.map(vectorToFloatingPoint),
       target: gateway.target,
     }

@@ -21,6 +21,8 @@ const TRIGGER_STRIDE_FULL: usize = 16;
 const GATEWAY_OFFSET_FULL: usize = 100;
 const TRIGGER_OFFSET_FULL: usize = 484;
 
+const GATEWAY_DIRECTION_OFFSET: usize = 28;
+
 // Compact 24-byte gateways used by the 576/504 layouts.
 const GATEWAY_STRIDE_COMPACT: usize = 24;
 
@@ -37,6 +39,8 @@ pub struct Vertex {
 #[serde(rename_all = "camelCase")]
 pub struct Gateway {
     pub destination_point: Vertex,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub direction: Option<u8>,
     pub source_line: [Vertex; 2],
     pub target: String,
 }
@@ -171,6 +175,13 @@ fn resolve_target(field_id: u16) -> String {
         .unwrap_or_default()
 }
 
+fn read_gateway_direction(reader: &Reader, layout: &Layout, base: usize) -> Result<Option<u8>> {
+    if layout.gateway_stride < GATEWAY_STRIDE_FULL {
+        return Ok(None);
+    }
+    reader.u8_at(base + GATEWAY_DIRECTION_OFFSET).map(Some)
+}
+
 fn read_gateways(reader: &Reader, layout: &Layout) -> Result<Vec<Gateway>> {
     let mut gateways = Vec::new();
     for index in 0..GATEWAY_COUNT {
@@ -184,8 +195,10 @@ fn read_gateways(reader: &Reader, layout: &Layout) -> Result<Vec<Gateway>> {
             reader.vertex_at(base + VERTEX_SIZE)?,
         ];
         let destination_point = reader.vertex_at(base + 2 * VERTEX_SIZE)?;
+        let direction = read_gateway_direction(reader, layout, base)?;
         gateways.push(Gateway {
             destination_point,
+            direction,
             source_line,
             target: resolve_target(field_id),
         });

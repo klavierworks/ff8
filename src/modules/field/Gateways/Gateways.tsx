@@ -19,6 +19,7 @@ const Gateways = ({ gateways }: GatewaysProps) => {
       }
 
       useGlobalStore.setState({
+        initialAngle: gateway.direction,
         pendingCharacterPosition: gateway.destination,
         pendingCharacterTriangle: gateway.destinationTriangle,
         pendingFieldId: gateway.target as (typeof MAP_NAMES)[number],

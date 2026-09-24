@@ -44,6 +44,11 @@ const components = Object.fromEntries(
 
 const POLY_COLOR_NEUTRAL = 128
 
+const getSpawnAngle = () => {
+  const { fieldDirection, initialAngle } = useGlobalStore.getState()
+  return initialAngle ?? fieldDirection
+}
+
 const Model = ({
   animationController,
   footstepController,
@@ -132,26 +137,8 @@ const Model = ({
     if (!isLeadCharacter) {
       return
     }
-    const { fieldDirection, initialAngle } = useGlobalStore.getState()
-    rotationController.turnToFaceAngle(initialAngle ?? fieldDirection, 0)
+    rotationController.turnToFaceAngle(getSpawnAngle(), 0)
   }, [isLeadCharacter, rotationController])
-
-  const [currentAngle, setCurrentAngle] = useState<number>(0)
-  useEffect(() => {
-    if (!isLeadCharacter) {
-      return
-    }
-    useGlobalStore.setState({
-      initialAngle: currentAngle,
-    })
-  }, [isLeadCharacter, currentAngle])
-
-  useFrame(() => {
-    const angle = rotationController.getState().angle.get()
-    if (angle !== currentAngle) {
-      setCurrentAngle(angle)
-    }
-  })
 
   useFootsteps({ animationController, footstepController, movementController, sfxController })
 

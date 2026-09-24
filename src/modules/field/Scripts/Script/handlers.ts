@@ -17,7 +17,13 @@ import useGlobalStore from '../../../../store'
 import { framesToMs } from '../../../../timing'
 import { cardGameController } from '../../../../UI/CardGame/CardGameController'
 import { addCardToCollection, getOwnedCardCount, removeCardFromCollection } from '../../../../UI/CardGame/collection'
-import { floatingPointToNumber, numberToFloatingPoint, signExtend16, vectorToFloatingPoint } from '../../../../utils'
+import {
+  floatingPointToNumber,
+  getGatewayDestination,
+  numberToFloatingPoint,
+  signExtend16,
+  vectorToFloatingPoint,
+} from '../../../../utils'
 import { startVibration } from '../../../../vibration'
 import useWorldmapStore from '../../../worldmap/worldmapStore'
 import { createBackgroundDraw, startBackgroundAnimation } from '../../backgroundAnimation'
@@ -1411,25 +1417,27 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   MAPFADEON: () => {
     useGlobalStore.setState({ isMapFadeEnabled: true })
   },
-  MAPJUMP: ({ STACK }) => {
-    const mapJumpDetailsInMemory = STACK.splice(-4)
+  MAPJUMP: ({ currentOpcode, STACK }) => {
+    const [fieldId, x, y, direction] = STACK.splice(-4)
+    const destination = getGatewayDestination({ x, y, z: currentOpcode.param })
 
     useGlobalStore.setState({
-      pendingCharacterPosition: vectorToFloatingPoint(
-        mapJumpDetailsInMemory.slice(1, 4) as unknown as [number, number, number],
-      ),
-      pendingFieldId: MAP_NAMES[mapJumpDetailsInMemory[0]],
+      initialAngle: direction,
+      pendingCharacterPosition: destination.position,
+      pendingCharacterTriangle: destination.triangle,
+      pendingFieldId: MAP_NAMES[fieldId],
     })
   },
-  MAPJUMP3: ({ STACK }) => {
-    const mapJumpDetailsInMemory = STACK.splice(-5)
+  MAPJUMP3: ({ currentOpcode, STACK }) => {
+    // The fourth pushed value is never used. Maybe PSX specific or deprecated.
+    const [fieldId, x, y, , direction] = STACK.splice(-5)
+    const destination = getGatewayDestination({ x, y, z: currentOpcode.param })
 
     useGlobalStore.setState({
-      initialAngle: mapJumpDetailsInMemory[4],
-      pendingCharacterPosition: vectorToFloatingPoint(
-        mapJumpDetailsInMemory.slice(1, 4) as unknown as [number, number, number],
-      ),
-      pendingFieldId: MAP_NAMES[mapJumpDetailsInMemory[0]],
+      initialAngle: direction,
+      pendingCharacterPosition: destination.position,
+      pendingCharacterTriangle: destination.triangle,
+      pendingFieldId: MAP_NAMES[fieldId],
     })
   },
   MAPJUMPO: ({ STACK }) => {
@@ -1439,6 +1447,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const NO_POSITION_VALUE = 0x7fff
 
     useGlobalStore.setState({
+      initialAngle: 0,
       pendingCharacterPosition: undefined,
       pendingCharacterTriangle: walkmeshTriangleId === NO_POSITION_VALUE ? 0 : walkmeshTriangleId,
       pendingFieldId: MAP_NAMES[fieldId],
