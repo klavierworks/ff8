@@ -459,7 +459,8 @@ export const createAnimationController = (id: number | string) => {
     }
 
     const isMoving = movementController.isMoving()
-    const isAnimatedMove = isMoving && movementController.getState().position.isAnimationEnabled
+    const { isAnimationEnabled, userControlledSpeed } = movementController.getState().position
+    const isAnimatedMove = isMoving && (isAnimationEnabled || userControlledSpeed !== undefined)
 
     if (isAnimatedMove && currentRunState?.isComplete && getState().activeAnimation?.shouldHoldLastFrame) {
       clearAnimation()
