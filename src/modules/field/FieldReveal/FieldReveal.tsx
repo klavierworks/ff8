@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber'
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 
 import { FIELD_REVEAL_STAGE_FRAMES, FIELD_REVEAL_TOGGLE_KEY } from '../../../constants/fieldReveal'
 import { advanceProgress } from '../../../timing'
@@ -8,12 +8,6 @@ import { getNextStage, getToggledStage } from '../fieldRevealUtils'
 import useToggleKey from './useToggleKey'
 
 const FieldReveal = () => {
-  useEffect(() => {
-    if (!useFieldRevealStore.getState().isAutoReveal) {
-      enterFieldRevealStage('hidden')
-    }
-  }, [])
-
   const handleToggle = useCallback(() => {
     setIsAutoReveal(false)
     enterFieldRevealStage(getToggledStage(useFieldRevealStore.getState().stage))

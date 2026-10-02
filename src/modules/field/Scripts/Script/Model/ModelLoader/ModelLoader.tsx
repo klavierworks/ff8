@@ -10,7 +10,8 @@ import {
 } from '../../../../../../constants/modelLoader'
 import { advanceProgress } from '../../../../../../timing'
 import { createProgressUniform } from '../../../../fieldRevealUtils'
-import LoadSignal from './LoadSignal/LoadSignal'
+import LoadSignal from '../../../../LoadSignal/LoadSignal'
+import useFieldLoadTracking from '../../../../useFieldLoadTracking'
 import {
   BoundsFit,
   buildMorphGeometries,
@@ -55,7 +56,11 @@ const ModelLoader = ({ bounds, children, isRevealed, speed }: ModelLoaderProps) 
   const initialBoxSize = useMemo(() => getBoxSize(bounds), [bounds])
   const initialBoxCenter = useMemo(() => getBoxCenter(bounds), [bounds])
 
-  const handleLoad = useCallback(() => setLoadCount((count) => count + 1), [])
+  const handleTrackedLoad = useFieldLoadTracking()
+  const handleLoad = useCallback(() => {
+    handleTrackedLoad()
+    setLoadCount((count) => count + 1)
+  }, [handleTrackedLoad])
 
   useEffect(() => {
     if (loadCount === 0 || !loaderRef.current || !modelRef.current) {

@@ -13,6 +13,8 @@ import Entrypoint from './Entrypoint'
 import { initialiseFromUrl, MapName } from './initialiseFromUrl'
 import Loading from './Loading/Loading'
 import Memory from './Memory/Memory'
+import useFieldLoadStore from './modules/field/fieldLoadStore'
+import { holdFieldIntro, startFieldIntro } from './modules/field/fieldRevealStore'
 import Queues from './Queues/Queues'
 import useGlobalStore from './store'
 import Ui from './UI/UI'
@@ -20,29 +22,44 @@ import useIsTabActive from './useIsTabActive'
 import useUrlSync from './useUrlSync'
 
 export type AppProps = {
+  hasIntroTransition?: boolean
+  isActive?: boolean
   onReady?: () => void
-  shouldEnter?: boolean
   shouldSyncUrl?: boolean
   startField?: MapName
 }
 
-const App = ({ onReady, shouldEnter = true, shouldSyncUrl = false, startField }: AppProps) => {
+const initialiseApp = (search: string, startField: MapName | undefined, hasIntroTransition: boolean) => {
+  if (hasIntroTransition) {
+    holdFieldIntro()
+  }
+  return initialiseFromUrl(search, startField)
+}
+
+const App = ({ hasIntroTransition = false, isActive = true, onReady, shouldSyncUrl = false, startField }: AppProps) => {
   // Runs during the first render rather than in an effect so children see the seeded store immediately.
-  const [namedField] = useState(() => initialiseFromUrl(shouldSyncUrl ? window.location.search : '', startField))
+  const [namedField] = useState(() =>
+    initialiseApp(shouldSyncUrl ? window.location.search : '', startField, hasIntroTransition),
+  )
 
   useEffect(() => {
-    useGlobalStore.setState({ isEntranceHeld: !shouldEnter })
-  }, [shouldEnter])
+    useGlobalStore.setState({ isEntranceHeld: !isActive })
+    if (isActive) {
+      startFieldIntro()
+    }
+  }, [isActive])
 
   const isFieldReady = useGlobalStore((state) => state.isFieldReady)
+  const hasPendingLoads = useFieldLoadStore((state) => state.pendingLoadCount > 0)
+  const isReady = isFieldReady && !hasPendingLoads
   const hasReportedReadyRef = useRef(false)
   useEffect(() => {
-    if (!isFieldReady || hasReportedReadyRef.current) {
+    if (!isReady || hasReportedReadyRef.current) {
       return
     }
     hasReportedReadyRef.current = true
     onReady?.()
-  }, [isFieldReady, onReady])
+  }, [isReady, onReady])
 
   const isTabActive = useIsTabActive()
 
@@ -66,7 +83,7 @@ const App = ({ onReady, shouldEnter = true, shouldSyncUrl = false, startField }:
 
   return (
     <>
-      <div className={shouldEnter ? 'container' : 'container isHeld'}>
+      <div className={isActive ? 'container' : 'container isHeld'}>
         <Canvas
           camera={undefined}
           className="canvas"

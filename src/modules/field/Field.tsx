@@ -16,6 +16,7 @@ import FieldReveal from './FieldReveal/FieldReveal'
 import { getFieldData, getRequestedSpawn } from './fieldUtils'
 import Gateways from './Gateways/Gateways'
 import LoadingController from './LoadingController'
+import LoadSignal from './LoadSignal/LoadSignal'
 import Movie from './Movie/Movie'
 import Particles from './Particles/Particles'
 import { ParticleData } from './Particles/particleSimulation'
@@ -25,6 +26,7 @@ import { useFragmentedGLTFLoader } from './Scripts/Script/Model/useFragmentedGlt
 import { preloadMapSoundBank } from './Scripts/Script/SFXController/webAudio'
 import Scripts from './Scripts/Scripts'
 import { Script } from './Scripts/types'
+import useFieldLoadTracking from './useFieldLoadTracking'
 import WalkMesh from './WalkMesh/WalkMesh'
 
 const { areaNames } = getGameData()
@@ -67,6 +69,7 @@ const Field = ({ data }: FieldProps) => {
   }, [currentLocationPlaceName, data.id])
 
   const walkmeshController = useGlobalStore((state) => state.walkmeshController)
+  const handleBackgroundLoad = useFieldLoadTracking()
   const backgroundRef = useRef<Group>(null)
   const entitiesRef = useRef<Group>(null)
   const particlesRef = useRef<Group>(null)
@@ -85,6 +88,7 @@ const Field = ({ data }: FieldProps) => {
             <group ref={backgroundRef}>
               <Suspense fallback={null}>
                 <Background data={data} />
+                <LoadSignal onLoad={handleBackgroundLoad} />
               </Suspense>
             </group>
             <group ref={particlesRef}>{data.particles && <Particles data={data.particles} fieldId={data.id} />}</group>
