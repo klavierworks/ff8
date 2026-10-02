@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useState } from 'react'
 import { CanvasTexture, ClampToEdgeWrapping } from 'three'
 
-import fontWhiteUrl from '../../assets/HDFont/merged_white.png'
+import fontWhiteUrl from '../../assets/HDFont/merged_white.png?url'
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../constants/constants'
 import { offlineController } from '../../OfflineController'
 import { fontLayout } from '../MessageBox/fontLayout'
