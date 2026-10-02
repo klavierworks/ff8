@@ -7,11 +7,16 @@
   height: auto;
   aspect-ratio: 320 / 224;
   background-color: black;
+  transition: opacity 1s ease-in;
 
   @media(min-aspect-ratio: 320/224) {
     height: 100vh;
     width: auto;
   }
+}
+
+.container.isHeld {
+  opacity: 0;
 }
 
 .canvas {

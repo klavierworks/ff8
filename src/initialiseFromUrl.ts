@@ -3,7 +3,7 @@ import { MEMORY } from './modules/field/Scripts/Script/handlers'
 import { applyWorldmapUrlParams } from './modules/worldmap/worldmapUrl'
 import useGlobalStore from './store'
 
-type MapName = (typeof MAP_NAMES)[number]
+export type MapName = (typeof MAP_NAMES)[number]
 
 const applyParty = (params: URLSearchParams) => {
   const party = params.get('party')
@@ -40,9 +40,9 @@ const applyModule = (params: URLSearchParams) => {
   }
 }
 
-export const initialiseFromUrl = (search: string) => {
+export const initialiseFromUrl = (search: string, startField?: MapName) => {
   const params = new URLSearchParams(search)
-  const field = params.get('field')
+  const field = params.get('field') ?? startField ?? null
   applyParty(params)
   applyProgress(params)
   applyField(field)

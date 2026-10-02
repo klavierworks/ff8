@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import useGlobalStore from '../../../store'
 import { FieldData } from '../Field'
@@ -38,6 +38,16 @@ const Scripts = ({ doors, models, scripts, sounds }: ScriptsProps) => {
     setScriptsMounted((prev) => prev + 1)
   }, [])
 
+  const isEntranceHeld = useGlobalStore((state) => state.isEntranceHeld)
+  const hasSetUpOtherScripts = scriptsMounted === otherScripts.length
+
+  useEffect(() => {
+    if (!hasSetUpOtherScripts) {
+      return
+    }
+    useGlobalStore.setState({ isFieldReady: true })
+  }, [hasSetUpOtherScripts])
+
   const [runningScripts, setRunningScripts] = useState<number>(0)
   const onStarted = useCallback(() => {
     setRunningScripts((prev) => prev + 1)
@@ -61,7 +71,7 @@ const Scripts = ({ doors, models, scripts, sounds }: ScriptsProps) => {
       {otherScripts.map((script) => (
         <Script
           doors={formattedDoors}
-          isActive={scriptsMounted === otherScripts.length}
+          isActive={hasSetUpOtherScripts && !isEntranceHeld}
           key={`${fieldId}--${script.exec}`}
           models={models}
           onSetupCompleted={handleScriptSetupCompleted}

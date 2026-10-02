@@ -2,7 +2,7 @@ import './index.css'
 import { PerspectiveCamera } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { EffectComposer } from '@react-three/postprocessing'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Scene } from 'three'
 
 import BattleTransition from './BattleTransition/BattleTransition'
@@ -10,7 +10,7 @@ import ColorOverlay from './ColorOverlay/ColorOverlay'
 import { ASPECT_RATIO } from './constants/constants'
 import Controller from './Controller/Controller'
 import Entrypoint from './Entrypoint'
-import { initialiseFromUrl } from './initialiseFromUrl'
+import { initialiseFromUrl, MapName } from './initialiseFromUrl'
 import Loading from './Loading/Loading'
 import Memory from './Memory/Memory'
 import Queues from './Queues/Queues'
@@ -19,13 +19,30 @@ import Ui from './UI/UI'
 import useIsTabActive from './useIsTabActive'
 import useUrlSync from './useUrlSync'
 
-type AppProps = {
-  shouldSyncUrl: boolean
+export type AppProps = {
+  onReady?: () => void
+  shouldEnter?: boolean
+  shouldSyncUrl?: boolean
+  startField?: MapName
 }
 
-const App = ({ shouldSyncUrl }: AppProps) => {
+const App = ({ onReady, shouldEnter = true, shouldSyncUrl = false, startField }: AppProps) => {
   // Runs during the first render rather than in an effect so children see the seeded store immediately.
-  const [namedField] = useState(() => initialiseFromUrl(shouldSyncUrl ? window.location.search : ''))
+  const [namedField] = useState(() => initialiseFromUrl(shouldSyncUrl ? window.location.search : '', startField))
+
+  useEffect(() => {
+    useGlobalStore.setState({ isEntranceHeld: !shouldEnter })
+  }, [shouldEnter])
+
+  const isFieldReady = useGlobalStore((state) => state.isFieldReady)
+  const hasReportedReadyRef = useRef(false)
+  useEffect(() => {
+    if (!isFieldReady || hasReportedReadyRef.current) {
+      return
+    }
+    hasReportedReadyRef.current = true
+    onReady?.()
+  }, [isFieldReady, onReady])
 
   const isTabActive = useIsTabActive()
 
@@ -49,7 +66,7 @@ const App = ({ shouldSyncUrl }: AppProps) => {
 
   return (
     <>
-      <div className="container">
+      <div className={shouldEnter ? 'container' : 'container isHeld'}>
         <Canvas
           camera={undefined}
           className="canvas"

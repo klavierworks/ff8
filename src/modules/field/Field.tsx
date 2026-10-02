@@ -187,6 +187,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
         hasMoved: false,
         isCongaTrailStretched: false,
         isFieldDrawSuppressed: false,
+        isFieldReady: false,
         isLoadingSavedGame: false,
 
         isMapFadeEnabled: true,

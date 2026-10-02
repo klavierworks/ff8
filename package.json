@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "exports": {
+    ".": "./src/library.ts"
+  },
   "scripts": {
     "dev": "vite",
     "extract": "cargo run --release --manifest-path extractor/Cargo.toml --",
