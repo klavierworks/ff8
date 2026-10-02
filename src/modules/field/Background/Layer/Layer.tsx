@@ -1,15 +1,18 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { RefObject, useRef } from 'react'
+import { RefObject, useLayoutEffect, useRef } from 'react'
 import { DoubleSide, Mesh, MeshBasicMaterial, NoBlending, PerspectiveCamera, Texture, Vector3 } from 'three'
 
 import useGlobalStore from '../../../../store'
 import { getBackgroundAnimationState } from '../../backgroundAnimation'
+import { ProgressUniform } from '../../fieldRevealStore'
 import { writeLayerPositions } from '../buildTileGroups'
+import { patchTileReveal } from '../tileReveal'
 import { LayerScrolls } from '../tileUtils'
 
 type LayerProps = {
   layer: Layer
   layerScrolls: RefObject<LayerScrolls>
+  revealProgress: ProgressUniform
   texture: Texture
 }
 
@@ -18,9 +21,16 @@ const SCROLL_RATIO_FULL = 256
 const _cameraPosition = new Vector3()
 const NO_SCROLL = { x: 0, y: 0 }
 
-const Layer = ({ layer, layerScrolls, texture }: LayerProps) => {
+const Layer = ({ layer, layerScrolls, revealProgress, texture }: LayerProps) => {
   const meshRef = useRef<Mesh>(null)
+  const materialRef = useRef<MeshBasicMaterial>(null)
   const lastWrite = useRef({ centerX: NaN, centerY: NaN, fovHalfTan: 0, length: 0, offsetX: NaN, offsetY: NaN })
+
+  useLayoutEffect(() => {
+    if (materialRef.current) {
+      patchTileReveal(materialRef.current, revealProgress)
+    }
+  }, [revealProgress])
 
   const { parameter, renderID, renderOrder, state } = layer
 
@@ -123,6 +133,7 @@ const Layer = ({ layer, layerScrolls, texture }: LayerProps) => {
         blending={layer.blendType}
         depthWrite={layer.blendType === NoBlending}
         map={texture}
+        ref={materialRef}
         side={DoubleSide}
         transparent={true}
       />

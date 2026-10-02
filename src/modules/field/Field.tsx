@@ -12,6 +12,7 @@ import useGlobalStore, { createEmptyParticleEmitters } from '../../store'
 import { resolveNameDictionaryTokens } from '../../UI/textUtils'
 import Background from './Background/Background'
 import Camera from './Camera/Camera'
+import FieldReveal from './FieldReveal/FieldReveal'
 import { getFieldData, getRequestedSpawn } from './fieldUtils'
 import Gateways from './Gateways/Gateways'
 import LoadingController from './LoadingController'
@@ -73,6 +74,7 @@ const Field = ({ data }: FieldProps) => {
   return (
     <Suspense fallback={<LoadingController />}>
       <group>
+        <FieldReveal />
         <WalkMesh walkmesh={data.walkmesh} />
         {walkmeshController && (
           <>
@@ -81,7 +83,9 @@ const Field = ({ data }: FieldProps) => {
               <Scripts doors={data.doors} models={data.models} scripts={data.scripts} sounds={data.sounds} />
             </group>
             <group ref={backgroundRef}>
-              <Background data={data} />
+              <Suspense fallback={null}>
+                <Background data={data} />
+              </Suspense>
             </group>
             <group ref={particlesRef}>{data.particles && <Particles data={data.particles} fieldId={data.id} />}</group>
             <Gateways gateways={data.gateways} />
