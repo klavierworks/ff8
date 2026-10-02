@@ -1,5 +1,3 @@
-import drawPoints from '@data/exe/draw-points.json'
-import magic from '@data/kernel/magic.json'
 import { MathUtils, Scene, Vector3 } from 'three'
 
 import { musicController } from '../../../../audio/activeMusicController'
@@ -12,6 +10,7 @@ import {
   SEED_RANK_POINTS_MIN,
 } from '../../../../constants/party'
 import { WORLDMAP_ENTRY_FROM_FIELD } from '../../../../constants/worldmapTransitions'
+import { getGameData } from '../../../../gameData'
 import LerpValue from '../../../../LerpValue'
 import useGlobalStore from '../../../../store'
 import { framesToMs } from '../../../../timing'
@@ -779,6 +778,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
       return
     }
 
+    const { drawPoints, magic } = getGameData()
     const magicName = magic[drawPoints[drawPointId].magicId]?.name ?? ''
     await sfxController.play(66, 0, 127, 128)
     preloadSound(67)

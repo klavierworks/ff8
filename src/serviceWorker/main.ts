@@ -1,10 +1,16 @@
-import { BATCH_SIZE, CACHE_NAME } from './CONSTANTS'
+import { ASSET_MANIFEST_FILENAME, SITE_ASSET_BASE_URL } from '../constants/assets'
+import { BATCH_SIZE, CACHE_NAME, OFFLINE_EXCLUDED_DATA_PREFIXES, OFFLINE_EXCLUDED_DATA_SEGMENT } from './CONSTANTS'
 import { fetchFile } from './fetch'
 import { getState, updateState } from './state'
 
 const CUSTOM_MANIFEST_URL = '/custom-manifest.json'
+const ASSET_MANIFEST_URL = `/${SITE_ASSET_BASE_URL}${ASSET_MANIFEST_FILENAME}`
 
-const loadManifest = async (): Promise<string[]> => {
+type AssetManifest = {
+  files: Record<string, string>
+}
+
+const loadBuildFiles = async (): Promise<string[]> => {
   const response = await fetch(CUSTOM_MANIFEST_URL, { cache: 'no-cache' })
   if (!response.ok) {
     console.warn(`Custom manifest unavailable (${response.status}); skipping precache`)
@@ -18,7 +24,31 @@ const loadManifest = async (): Promise<string[]> => {
     return []
   }
 
-  console.log(`Loaded ${manifest.length} files from custom manifest`)
+  return manifest
+}
+
+const isOfflineDataPath = (path: string) =>
+  !OFFLINE_EXCLUDED_DATA_PREFIXES.some((prefix) => path.startsWith(prefix)) &&
+  !path.includes(OFFLINE_EXCLUDED_DATA_SEGMENT)
+
+// Cached under the same versioned urls the game requests, so a changed file is fetched afresh.
+const loadDataFiles = async (): Promise<string[]> => {
+  const response = await fetch(ASSET_MANIFEST_URL, { cache: 'no-cache' })
+  if (!response.ok) {
+    console.warn(`Asset manifest unavailable (${response.status}); skipping extracted files`)
+    return []
+  }
+
+  const { files } = (await response.json()) as AssetManifest
+  return Object.entries(files)
+    .filter(([path]) => isOfflineDataPath(path))
+    .map(([path, hash]) => `${SITE_ASSET_BASE_URL}${path}?v=${hash}`)
+}
+
+const loadManifest = async () => {
+  const [buildFiles, dataFiles] = await Promise.all([loadBuildFiles(), loadDataFiles()])
+  const manifest = [...buildFiles, ...dataFiles]
+  console.log(`Loaded ${manifest.length} files for offline caching`)
   return manifest
 }
 

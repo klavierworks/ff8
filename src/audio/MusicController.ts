@@ -1,10 +1,11 @@
 import { Howl } from 'howler'
 
+import { getAssetUrl, hasAsset } from '../assetManifest'
 import { FULL_MUSIC_VOLUME, MUSIC_BASE_VOLUME, MUSIC_IDS, PSX_VOLUME_MASK } from '../constants/audio'
 import { framesToMs } from '../timing'
 import { getConcertSegmentUrls } from './concert'
 
-const MUSIC_URLS: Record<number, string | undefined> = MUSIC_IDS
+const MUSIC_PATHS: Record<number, string | undefined> = MUSIC_IDS
 
 type PreloadMusic = (musicId: number, options?: PreloadMusicOptions) => void
 
@@ -32,11 +33,12 @@ const MusicController = () => {
   let battleMusicId = 0
 
   const preloadMusic: PreloadMusic = (musicId) => {
-    const url = MUSIC_URLS[musicId]
-    if (!url) {
+    const path = MUSIC_PATHS[musicId]
+    if (!path || !hasAsset(path)) {
       console.warn('No recording for music id', musicId)
       return
     }
+    const url = getAssetUrl(path)
 
     preloadedAudio = new Howl({
       autoplay: false,
@@ -189,11 +191,12 @@ const MusicController = () => {
   const getBattleMusicId = () => battleMusicId
 
   const playOverlayMusic = (musicId: number) => {
-    const url = MUSIC_URLS[musicId]
-    if (!url) {
+    const path = MUSIC_PATHS[musicId]
+    if (!path || !hasAsset(path)) {
       console.warn('No recording for music id', musicId)
       return
     }
+    const url = getAssetUrl(path)
 
     channel0?.pause()
     overlayAudio?.stop()

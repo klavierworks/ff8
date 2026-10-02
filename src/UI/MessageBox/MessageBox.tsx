@@ -3,6 +3,16 @@ import { invalidate, useFrame } from '@react-three/fiber'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CanvasTexture, ClampToEdgeWrapping, RepeatWrapping, Scene, Texture } from 'three'
 
+import cursorUrl from '../../assets/cursor.png'
+import fontBlueUrl from '../../assets/HDFont/merged_blue.png'
+import fontGrayUrl from '../../assets/HDFont/merged_gray.png'
+import fontGreenUrl from '../../assets/HDFont/merged_green.png'
+import fontMagentaUrl from '../../assets/HDFont/merged_magenta.png'
+import fontRedUrl from '../../assets/HDFont/merged_red.png'
+import fontShadowUrl from '../../assets/HDFont/merged_shadow.png'
+import fontWhiteUrl from '../../assets/HDFont/merged_white.png'
+import fontYellowUrl from '../../assets/HDFont/merged_yellow.png'
+import messageBackgroundUrl from '../../assets/message_background.png'
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../constants/constants'
 import { CONTROLS_MAP } from '../../constants/controls.ts'
 import { saveGame } from '../../modules/field/fieldUtils.ts'
@@ -52,21 +62,21 @@ const MessageBox = ({ isCloseableFocus, isSavePoint, message, worldScene }: Mess
 
   const textCanvas = useMemo(() => document.createElement('canvas'), [])
 
-  const background = useTexture('message_background.png')
+  const background = useTexture(messageBackgroundUrl)
   background.wrapS = RepeatWrapping
   background.wrapT = RepeatWrapping
   background.repeat.set(0.7, 40)
   background.needsUpdate = true
 
-  const white = useTexture('HDFont/merged_output/merged_white.png')
-  const red = useTexture('HDFont/merged_output/merged_red.png')
-  const blue = useTexture('HDFont/merged_output/merged_blue.png')
-  const green = useTexture('HDFont/merged_output/merged_green.png')
-  const yellow = useTexture('HDFont/merged_output/merged_yellow.png')
-  const magenta = useTexture('HDFont/merged_output/merged_magenta.png')
-  const gray = useTexture('HDFont/merged_output/merged_gray.png')
-  const shadow = useTexture('HDFont/merged_output/merged_shadow.png')
-  const cursor = useTexture('cursor.png')
+  const white = useTexture(fontWhiteUrl)
+  const red = useTexture(fontRedUrl)
+  const blue = useTexture(fontBlueUrl)
+  const green = useTexture(fontGreenUrl)
+  const yellow = useTexture(fontYellowUrl)
+  const magenta = useTexture(fontMagentaUrl)
+  const gray = useTexture(fontGrayUrl)
+  const shadow = useTexture(fontShadowUrl)
+  const cursor = useTexture(cursorUrl)
 
   const fontTextures: Record<FontColor, Texture> = useMemo(
     () => ({

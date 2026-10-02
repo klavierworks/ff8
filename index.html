@@ -23,9 +23,46 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/meta/favicon-32x32.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/meta/favicon-180x180.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/meta/favicon-192x192.png">
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      :root {
+        font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+        line-height: 1.5;
+        font-weight: 400;
+
+        color-scheme: light dark;
+        color: rgba(255, 255, 255, 0.87);
+        background-color: #242424;
+
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        -webkit-text-size-adjust: 100%;
+      }
+      html,
+      body,
+      #root {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+      }
+
+      #root {
+        display: flex;
+        place-content: center;
+        place-items: center;
+        background-color: black;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

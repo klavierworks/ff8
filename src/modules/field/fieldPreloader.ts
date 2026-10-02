@@ -1,19 +1,26 @@
-type FieldAssets = Record<string, string[]>
+import { getAssetUrl, hasAsset, listAssets } from '../../assetManifest'
+import { getGameData } from '../../gameData'
 
-const FIELD_ASSETS_URL = '/field-assets.json'
+type FieldModels = Record<string, Record<string, { base: string }>>
 
 const preloadedFieldIds = new Set<string>()
 
-let fieldAssets: Promise<FieldAssets> | undefined
+const isPreloadedMapFile = (path: string) => path.endsWith('/data.json') || path.endsWith('.png')
 
-// Only the production build emits the lookup, so a miss means preloading is unavailable, not broken.
-const getFieldAssets = () => {
-  if (!fieldAssets) {
-    fieldAssets = fetch(FIELD_ASSETS_URL)
-      .then((response) => (response.ok ? (response.json() as Promise<FieldAssets>) : {}))
-      .catch(() => ({}))
+const getMapFilePaths = (fieldId: string) => listAssets(`field/mapdata/${fieldId}/`).filter(isPreloadedMapFile)
+
+// Animation GLBs reach 8.5MB and are shared between fields, so only the per-field base meshes are listed.
+const getBaseModelPaths = (fieldId: string) =>
+  Object.entries((getGameData().fieldModels as FieldModels)[fieldId] ?? {})
+    .map(([model, { base }]) => `field/models/base/${model}/${base}.glb`)
+    .filter(hasAsset)
+
+const getFieldAssetPaths = (fieldId: string) => {
+  const mapFilePaths = getMapFilePaths(fieldId)
+  if (mapFilePaths.length === 0) {
+    return []
   }
-  return fieldAssets
+  return [...mapFilePaths, ...getBaseModelPaths(fieldId)]
 }
 
 const warmCache = async (url: string) => {
@@ -39,10 +46,5 @@ export const preloadField = async (fieldId: string | undefined) => {
 
   preloadedFieldIds.add(fieldId)
 
-  const urls = (await getFieldAssets())[fieldId]
-  if (!urls) {
-    return
-  }
-
-  await Promise.all(urls.map((url) => warmCache(`/${url}`)))
+  await Promise.all(getFieldAssetPaths(fieldId).map((path) => warmCache(getAssetUrl(path))))
 }

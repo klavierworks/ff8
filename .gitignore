@@ -44,3 +44,6 @@ extractor/data/SOURCE/*
 !extractor/data/PSX/
 extractor/data/PSX/*
 !extractor/data/PSX/README.md
+
+# Site build plus extractor output, assembled for netlify deploy
+deploy

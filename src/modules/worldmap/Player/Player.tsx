@@ -9,6 +9,7 @@ import useWorldmapStore from '../worldmapStore'
 import ChocoboRider from './ChocoboRider/ChocoboRider'
 import { ON_FOOT_CHARAONE_SECTION } from './constants'
 import FlyingRagnarok from './FlyingRagnarok/FlyingRagnarok'
+import { RAGNAROK_CHARAONE_SECTION } from './FlyingRagnarok/Ship/shipUtils'
 import GroundVehicle from './GroundVehicle/GroundVehicle'
 import { getGroundVehicle } from './GroundVehicle/groundVehicleUtils'
 import { setWorldmapEntryTick } from './movementState'
@@ -26,6 +27,7 @@ const Player = () => {
   useEffect(() => {
     setWorldmapEntryTick(getScriptFrame())
     preloadCharaone(ON_FOOT_CHARAONE_SECTION)
+    preloadCharaone(RAGNAROK_CHARAONE_SECTION)
   }, [])
 
   return (

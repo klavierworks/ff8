@@ -1,11 +1,32 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
-/audio/*
-  Cache-Control: public, max-age=31536000
+/data/audio/*
+  Cache-Control: public, max-age=31536000, immutable
 
-/HDFont/*
-  Cache-Control: public, max-age=31536000
+/data/exe/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/data/field/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/data/kernel/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/data/menu/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/data/movies/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/data/worldmap/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/data/asset-manifest.json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/ff8.js
+  Cache-Control: public, max-age=0, must-revalidate
 
 /_sw.js
   Cache-Control: public, max-age=0, must-revalidate

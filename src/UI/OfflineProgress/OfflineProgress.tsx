@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useState } from 'react'
 import { CanvasTexture, ClampToEdgeWrapping } from 'three'
 
+import fontWhiteUrl from '../../assets/HDFont/merged_white.png'
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../constants/constants'
 import { offlineController } from '../../OfflineController'
 import { fontLayout } from '../MessageBox/fontLayout'
@@ -71,7 +72,7 @@ const OfflineProgress = () => {
     return placements
   }, [line])
 
-  const whiteFont = useTexture('HDFont/merged_output/merged_white.png')
+  const whiteFont = useTexture(fontWhiteUrl)
   useFrame(() => {
     const ctx = textCanvas.getContext('2d')
     if (!ctx) {

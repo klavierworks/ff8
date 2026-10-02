@@ -1,6 +1,5 @@
 import type { FieldData as RawFieldData } from '@data/types/field/FieldData'
 
-import areaNames from '@data/menu/area-names.json'
 import { useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { Group } from 'three'
@@ -8,6 +7,7 @@ import { Group } from 'three'
 import { CAMERA_SHAKE_OFF } from '../../constants/camera'
 import { LADDER_CLIMB_SPEED } from '../../constants/ladders'
 import MAP_NAMES from '../../constants/maps'
+import { getGameData } from '../../gameData'
 import useGlobalStore, { createEmptyParticleEmitters } from '../../store'
 import { resolveNameDictionaryTokens } from '../../UI/textUtils'
 import Background from './Background/Background'
@@ -25,6 +25,8 @@ import { preloadMapSoundBank } from './Scripts/Script/SFXController/webAudio'
 import Scripts from './Scripts/Scripts'
 import { Script } from './Scripts/types'
 import WalkMesh from './WalkMesh/WalkMesh'
+
+const { areaNames } = getGameData()
 
 export type FieldData = Omit<RawFieldData, 'scripts' | 'tiles'> & {
   particles: ParticleData | undefined

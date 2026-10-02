@@ -2,34 +2,14 @@ import { useLoader } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import { NearestFilter, NoColorSpace, Texture, TextureLoader } from 'three'
 
-const WORLD_TEXTURE_URLS = import.meta.glob<string>(
-  [
-    '@data/worldmap/textures/world/world_11.png',
-    '@data/worldmap/textures/world/world_11_1.png',
-    '@data/worldmap/textures/world/world_24.png',
-    '@data/worldmap/textures/world/world_25.png',
-  ],
-  {
-    eager: true,
-    import: 'default',
-    query: '?url',
-  },
-)
+import { getAssetUrl } from '../../../../assetManifest'
+import cursorUrl from '../../../../assets/cursor.png'
 
-const getWorldTextureUrl = (name: string) => {
-  const entry = Object.entries(WORLD_TEXTURE_URLS).find(([path]) => path.endsWith(`/${name}.png`))
-  if (!entry) {
-    throw new Error(`Missing worldmap texture ${name}`)
-  }
-  return entry[1]
-}
+const WORLD_TEXTURE_NAMES = ['world_11', 'world_11_1', 'world_25', 'world_24']
 
 const TEXTURE_URLS = [
-  getWorldTextureUrl('world_11'),
-  getWorldTextureUrl('world_11_1'),
-  getWorldTextureUrl('world_25'),
-  getWorldTextureUrl('world_24'),
-  'cursor.png',
+  ...WORLD_TEXTURE_NAMES.map((name) => getAssetUrl(`worldmap/textures/world/${name}.png`)),
+  cursorUrl,
 ]
 
 const createRawTexture = (source: Texture) => {

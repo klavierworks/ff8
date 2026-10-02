@@ -193,7 +193,7 @@ export const INSTRUMENT_ENTRY_SIZE = 16
 
 // An instrument operand indexes the runtime table every loaded bank shares. These two stay
 // resident for the whole game at bases 0x00 and 0x20; the track's own bank joins them at 0x40.
-export const RESIDENT_BANK_URLS = ['/audio/music/bank_00.akao', '/audio/music/bank_20.akao']
+export const RESIDENT_BANK_PATHS = ['audio/music/bank_00.akao', 'audio/music/bank_20.akao']
 export const SAMPLE_RATE = 44100
 export const UNITY_PITCH = 0x1000
 export const MAX_PITCH = 0x3fff
@@ -301,5 +301,5 @@ export const NOISE_BUFFER_SECONDS = 1
 const AKAO_SONG_ID_OFFSET = 1
 export const AKAO_MUSIC_ID_COUNT = 98
 
-export const getAkaoTrackUrl = (musicId: number) =>
-  `/audio/music/song_${String(musicId + AKAO_SONG_ID_OFFSET).padStart(3, '0')}.akao`
+export const getAkaoTrackPath = (musicId: number) =>
+  `audio/music/song_${String(musicId + AKAO_SONG_ID_OFFSET).padStart(3, '0')}.akao`

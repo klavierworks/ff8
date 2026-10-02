@@ -3,9 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import { Suspense, useCallback, useRef } from 'react'
 import { Group } from 'three'
 
-import { loadAssetUrl } from '../../../../loadAssetUrl'
 import useGlobalStore from '../../../../store'
-import { buildCharaoneKey, CHARAONE_LOADERS } from '../../charaoneAssets'
+import { getCharaoneUrl } from '../../charaoneAssets'
 import { CHARAONE_MODEL_PITCH_X, CHARAONE_MODEL_SCALE } from '../../constants'
 import CharaModel from '../../Entities/Entity/CharaModel/CharaModel'
 import { ON_FOOT_CHARAONE_SECTION, ON_FOOT_TAG } from '../constants'
@@ -13,8 +12,6 @@ import { psxToRadians } from '../playerAngles'
 import { isOnCanopyGround } from '../playerUtils'
 import useCharacterAnimation from '../useCharacterAnimation'
 import useMovement from '../useMovement'
-
-const ON_FOOT_CHARAONE_KEY = buildCharaoneKey(ON_FOOT_CHARAONE_SECTION)
 
 const ignoreRaycast = () => undefined
 
@@ -31,7 +28,7 @@ const OnFootPlayer = () => {
 
   useMovement()
 
-  const { animations } = useGLTF(loadAssetUrl(CHARAONE_LOADERS, ON_FOOT_CHARAONE_KEY))
+  const { animations } = useGLTF(getCharaoneUrl(ON_FOOT_CHARAONE_SECTION))
   useCharacterAnimation(animations, meshGroupRef, ON_FOOT_TAG, isOnCanopyGround)
 
   const setGroupRef = useCallback((group: Group | null) => {

@@ -3,9 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import { Group } from 'three'
 
-import { loadAssetUrl } from '../../../../loadAssetUrl'
 import useGlobalStore from '../../../../store'
-import { buildCharaoneKey, CHARAONE_LOADERS } from '../../charaoneAssets'
+import { getCharaoneUrl } from '../../charaoneAssets'
 import { CHARAONE_MODEL_PITCH_X, CHARAONE_MODEL_SCALE } from '../../constants'
 import { calculateCurvedEntityY } from '../../curvature'
 import { calculateClipFrameCounts, showClipFrame } from '../../Player/clipPlaybackUtils'
@@ -25,7 +24,7 @@ const INITIAL_ANIMATION: CompanionAnimation = { clip: 0, frame: 0, roll: INITIAL
 const readPlayerHeading = () => convertFieldDirectionToHeading(useGlobalStore.getState().fieldDirection)
 
 const CompanionEntity = ({ typeCode }: CompanionEntityProps) => {
-  const { animations, scene } = useGLTF(loadAssetUrl(CHARAONE_LOADERS, buildCharaoneKey(typeCode)))
+  const { animations, scene } = useGLTF(getCharaoneUrl(typeCode))
   const model = useMemo(() => cloneDoubleSidedScene(scene), [scene])
   const groupRef = useRef<Group>(null)
   const meshGroupRef = useRef<Group>(null)

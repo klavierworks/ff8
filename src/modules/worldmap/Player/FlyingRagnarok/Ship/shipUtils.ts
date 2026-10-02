@@ -3,16 +3,14 @@ import { clone as cloneSkinnedScene } from 'three/examples/jsm/utils/SkeletonUti
 
 import { VEHICLE_IDS } from '../../../../../constants/vehicles'
 import { TARGET_FPS } from '../../../../../timing'
-import { buildCharaoneKey } from '../../../charaoneAssets'
 import useWorldmapStore, { WORLD_MAP_STATE_FREE_ROAM } from '../../../worldmapStore'
 import { getClipFrameCount } from '../../characterAnimationUtils'
 import { ANIMATION_SUBFRAMES_PER_KEYFRAME } from '../../constants'
 import { getRagnarokOutputs } from '../ragnarokState'
 
-const RAGNAROK_CHARAONE_SECTION = 1
+export const RAGNAROK_CHARAONE_SECTION = 1
 const RAGNAROK_ROOT_PREFIX = 'world_001'
 
-export const RAGNAROK_GLB_KEY = buildCharaoneKey(RAGNAROK_CHARAONE_SECTION)
 export const RAGNAROK_DEPLOY_CLIP = 'world_001_action_000'
 
 const ignoreRaycast = () => undefined

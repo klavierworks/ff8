@@ -1,5 +1,6 @@
 import type { DecodedWave } from '../../../../../audio/wave/decodeWaveFile'
 
+import { getAssetUrl } from '../../../../../assetManifest'
 import { decodeWaveFile } from '../../../../../audio/wave/decodeWaveFile'
 import {
   FOOTSTEP_SOUNDS_FEMALE,
@@ -9,7 +10,7 @@ import {
 } from '../../../../../constants/audio'
 import { getSoundFromId } from './utils'
 
-const SOUND_BASE_URL = '/audio/effects'
+const SOUND_BASE_PATH = 'audio/effects'
 const PRELOADED_SOUND_COUNT = 10
 
 // Preloaded on every map so a footfall never has to wait on a fetch.
@@ -68,7 +69,7 @@ export const setupUserActivation = (): void => {
 
 const fetchSound = async (index: number): Promise<DecodedWave> => {
   const context = await initializeAudioContext()
-  const response = await fetch(`${SOUND_BASE_URL}/${index}.wav`)
+  const response = await fetch(getAssetUrl(`${SOUND_BASE_PATH}/${index}.wav`))
   if (!response.ok) {
     throw new Error(`Failed to fetch sound ${index}: ${response.status} ${response.statusText}`)
   }

@@ -1,7 +1,6 @@
-import manifest from '@data/movies/manifest.json'
-
 import type { FieldData } from './Field'
 
+import { getAssetUrl } from '../../assetManifest'
 import {
   FIRST_PUBLISH_DISC,
   MOVIE_CAMERA_AXIS_OFFSETS,
@@ -16,6 +15,9 @@ import {
   MOVIE_FLAGS_HIDING_MODELS,
   MOVIES_PATH,
 } from '../../constants/movies'
+import { getGameData } from '../../gameData'
+
+const manifest = getGameData().movies
 
 export type MovieCameraBlock = {
   frames: MovieCameraFrame[]
@@ -34,9 +36,10 @@ const getMovieSource = (disc: number) => (disc >= FIRST_PUBLISH_DISC ? 'publish'
 export const findMovieRecord = (disc: number, movieId: number) =>
   manifest.find((record) => record.source === getMovieSource(disc) && record.index === movieId)
 
-export const getMovieUrl = (record: MovieRecord) => `${MOVIES_PATH}/${record.name}.${MOVIE_EXTENSION}`
+export const getMovieUrl = (record: MovieRecord) => getAssetUrl(`${MOVIES_PATH}/${record.name}.${MOVIE_EXTENSION}`)
 
-export const getMovieCameraUrl = (record: MovieRecord) => `${MOVIES_PATH}/${record.name}.${MOVIE_CAMERA_EXTENSION}`
+export const getMovieCameraUrl = (record: MovieRecord) =>
+  getAssetUrl(`${MOVIES_PATH}/${record.name}.${MOVIE_CAMERA_EXTENSION}`)
 
 const readCameraAxis = (view: DataView, offset: number) => ({
   x: view.getInt16(offset, true),

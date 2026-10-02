@@ -1,8 +1,6 @@
 import type { WorldmapRails } from '@data/types/worldmap/WorldmapRails'
 import type { WorldmapSections } from '@data/types/worldmap/WorldmapSections'
 
-import railsData from '@data/worldmap/rails.json'
-
 import { VEHICLE_IDS } from '../../../constants/vehicles'
 import {
   BOAT_RIDE_CAR_COUNT,
@@ -24,6 +22,7 @@ import {
   TRAIN_UNSET_BYTE,
 } from '../../../constants/worldmapTrains'
 import { WORLDMAP_ENTRY_FROM_FIELD } from '../../../constants/worldmapTransitions'
+import { getGameData } from '../../../gameData'
 import { MEMORY } from '../../field/Scripts/Script/handlers'
 import { isBoatClass, isCarClass, isTrainClass } from '../vehicleClasses'
 import { getCarEntityType } from '../vehicleEntities'
@@ -39,6 +38,8 @@ import { getRailCarTypeCode, TrainDirection } from './trainCars'
 import { TrainSession } from './trainSession'
 import { createTrain, Train } from './trainSimulation'
 import { isCameraHeldAtStation } from './trainStops'
+
+const railsData = getGameData().rails
 
 export type RideCameraGroups = WorldmapSections['section_17_ride_camera_tracks']['groups']
 

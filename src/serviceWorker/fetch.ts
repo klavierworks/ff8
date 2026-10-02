@@ -1,7 +1,8 @@
+import { ASSET_MANIFEST_FILENAME, SITE_ASSET_BASE_URL } from '../constants/assets'
 import { CACHE_NAME } from './CONSTANTS'
 
 const CUSTOM_MANIFEST_PATH = '/custom-manifest.json'
-const FIELD_ASSETS_PATH = '/field-assets.json'
+const ASSET_MANIFEST_PATH = `/${SITE_ASSET_BASE_URL}${ASSET_MANIFEST_FILENAME}`
 const MAX_FETCH_ATTEMPTS = 3
 
 const sleep = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds))
@@ -61,7 +62,7 @@ export const handleFetch = async (request: Request) => {
     return fetch(request)
   }
 
-  if (request.mode === 'navigate' || [CUSTOM_MANIFEST_PATH, FIELD_ASSETS_PATH].includes(url.pathname)) {
+  if (request.mode === 'navigate' || [ASSET_MANIFEST_PATH, CUSTOM_MANIFEST_PATH].includes(url.pathname)) {
     return networkFirst(request)
   }
 

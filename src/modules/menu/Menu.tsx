@@ -85,14 +85,17 @@ const optionsSelect = async () => {
     offlineOptionMessage = `{Red}Disable offline{White}`
   }
 
+  const isOfflineAvailable = offlineController.getIsAvailable()
+  const optionLines = isOfflineAvailable ? ['Controls', offlineOptionMessage, 'Back'] : ['Controls', 'Back']
+
   const optionsOption = await openMessage(
     'options',
-    [`Controls\n${offlineOptionMessage}\nBack`],
+    [optionLines.join('\n')],
     { channel: 1, height: undefined, width: undefined, x: 100, y: 80 },
     true,
     {
       blocked: undefined,
-      cancel: 2,
+      cancel: optionLines.length - 1,
       default: 0,
       first: 0,
       last: undefined,
@@ -120,7 +123,7 @@ const optionsSelect = async () => {
     optionsSelect()
   }
 
-  if (optionsOption === 1) {
+  if (optionsOption === 1 && isOfflineAvailable) {
     if (isOfflineEnabled || isEnablingOffline) {
       await offlineController.disableOfflineMode()
     } else {

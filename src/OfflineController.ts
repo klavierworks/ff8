@@ -14,6 +14,8 @@ const requestPersistentStorage = async () => {
 }
 
 const OfflineController = () => {
+  let isAvailable = false
+
   const { getState, setState, subscribe } = createStore(() => structuredClone(SERVICE_WORKER_STATE))
 
   const recoverState = () => {
@@ -64,7 +66,7 @@ const OfflineController = () => {
 
   const initialize = async () => {
     try {
-      const registration = await navigator.serviceWorker.register('/_sw.js')
+      const registration = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}_sw.js`)
       console.log('Service worker registered:', registration.scope)
 
       navigator.serviceWorker.addEventListener('message', (event: MessageEvent<typeof SERVICE_WORKER_STATE>) => {
@@ -81,14 +83,22 @@ const OfflineController = () => {
     }
   }
 
-  if ('serviceWorker' in navigator) {
+  const registerServiceWorker = () => {
+    if (!('serviceWorker' in navigator)) {
+      return
+    }
+    isAvailable = true
     initialize()
   }
+
+  const getIsAvailable = () => isAvailable
 
   return {
     disableOfflineMode,
     enableOfflineMode,
+    getIsAvailable,
     getState,
+    registerServiceWorker,
     subscribe,
   }
 }

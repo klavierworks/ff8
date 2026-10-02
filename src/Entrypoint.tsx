@@ -4,7 +4,6 @@ import { Scene } from 'three'
 
 import { musicController } from './audio/activeMusicController'
 import { registerMusicConsole } from './audio/musicConsole'
-import MAP_NAMES from './constants/maps'
 import FieldLoader from './modules/field/Field'
 import { movieController } from './modules/field/movieController'
 import ScriptClock from './modules/field/ScriptClock/ScriptClock'
@@ -12,15 +11,6 @@ import { attachKeyDownListeners } from './modules/field/Scripts/Script/common'
 import Menu from './modules/menu/Menu'
 import Worldmap from './modules/worldmap/Worldmap'
 import useGlobalStore from './store'
-import { getInitialField } from './utils'
-
-useGlobalStore.setState({
-  pendingFieldId: (getInitialField() ?? 'menu') as (typeof MAP_NAMES)[number],
-})
-
-if (import.meta.env.DEV) {
-  registerMusicConsole()
-}
 
 type EntrypointProps = {
   setWorldScene: (scene: Scene) => void
@@ -29,6 +19,9 @@ const Entrypoint = ({ setWorldScene }: EntrypointProps) => {
   const module = useGlobalStore((state) => state.module)
   useEffect(() => {
     attachKeyDownListeners()
+    if (import.meta.env.DEV) {
+      registerMusicConsole()
+    }
   }, [])
 
   const fadeSpring = useGlobalStore((state) => state.fadeSpring)

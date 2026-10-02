@@ -1,4 +1,6 @@
-import cards from '@data/exe/cards.json'
+import { getGameData } from '../gameData'
+
+const { cards } = getGameData()
 
 export type CardDefinition = {
   aiValue: number

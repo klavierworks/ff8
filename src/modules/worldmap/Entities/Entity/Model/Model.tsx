@@ -3,7 +3,7 @@ import { useEffect, useMemo } from 'react'
 import { TextureLoader } from 'three'
 import { OBJLoader } from 'three/examples/jsm/Addons.js'
 
-import { loadAssetUrl } from '../../../../../loadAssetUrl'
+import { getAssetUrl } from '../../../../../assetManifest'
 import useWorldmapStore from '../../../worldmapStore'
 import { applyModelTint, cloneWithModelMaterial, prepareAtlasTexture } from './modelMaterialUtils'
 
@@ -11,20 +11,12 @@ type ModelProps = {
   index: number
 }
 
-const MODELS_DIR = '/extractor/data/converted/worldmap/models'
-const ATLAS_KEY = `${MODELS_DIR}/atlas.png`
-const OBJ_LOADERS = import.meta.glob<string>('@data/worldmap/models/*.obj', {
-  import: 'default',
-  query: '?url',
-})
-const ATLAS_LOADERS = import.meta.glob<string>('@data/worldmap/models/atlas.png', {
-  import: 'default',
-  query: '?url',
-})
+const MODELS_DIR = 'worldmap/models'
+const ATLAS_PATH = `${MODELS_DIR}/atlas.png`
 
 const Model = ({ index }: ModelProps) => {
-  const loadedObject = useLoader(OBJLoader, loadAssetUrl(OBJ_LOADERS, `${MODELS_DIR}/model_${index}.obj`))
-  const texture = useLoader(TextureLoader, loadAssetUrl(ATLAS_LOADERS, ATLAS_KEY))
+  const loadedObject = useLoader(OBJLoader, getAssetUrl(`${MODELS_DIR}/model_${index}.obj`))
+  const texture = useLoader(TextureLoader, getAssetUrl(ATLAS_PATH))
   const tint = useWorldmapStore((state) => state.skyLightColor2)
   const { clone, material } = useMemo(() => {
     prepareAtlasTexture(texture)

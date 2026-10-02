@@ -1,4 +1,5 @@
-import { AKAO_MUSIC_ID_COUNT, getAkaoTrackUrl, RESIDENT_BANK_URLS } from './constants'
+import { getAssetUrl } from '../../assetManifest'
+import { AKAO_MUSIC_ID_COUNT, getAkaoTrackPath, RESIDENT_BANK_PATHS } from './constants'
 import { type AkaoInstrumentSound, decodeInstruments } from './decodeInstruments'
 import { type AkaoBank, type AkaoSequence, parseAkaoBank, parseAkaoFile } from './parseAkaoFile'
 
@@ -9,8 +10,8 @@ export type AkaoTrackData = {
 
 const trackCache = new Map<number, Promise<AkaoTrackData>>()
 
-const fetchBuffer = async (url: string, description: string) => {
-  const response = await fetch(url)
+const fetchBuffer = async (path: string, description: string) => {
+  const response = await fetch(getAssetUrl(path))
   if (!response.ok) {
     throw new Error(`Unable to load ${description}: ${response.status}`)
   }
@@ -36,7 +37,7 @@ const loadResidentBanks = (audioContext: BaseAudioContext) => {
   }
 
   const loading = Promise.all(
-    RESIDENT_BANK_URLS.map(async (url) => parseAkaoBank(await fetchBuffer(url, `AKAO resident bank ${url}`))),
+    RESIDENT_BANK_PATHS.map(async (path) => parseAkaoBank(await fetchBuffer(path, `AKAO resident bank ${path}`))),
   ).then((banks) =>
     banks.reduce<(AkaoInstrumentSound | undefined)[]>((table, bank) => placeBank(table, audioContext, bank), []),
   )
@@ -48,7 +49,7 @@ const loadResidentBanks = (audioContext: BaseAudioContext) => {
 
 const fetchTrackData = async (audioContext: BaseAudioContext, musicId: number): Promise<AkaoTrackData> => {
   const [buffer, residentInstruments] = await Promise.all([
-    fetchBuffer(getAkaoTrackUrl(musicId), `AKAO music ${musicId}`),
+    fetchBuffer(getAkaoTrackPath(musicId), `AKAO music ${musicId}`),
     loadResidentBanks(audioContext),
   ])
 

@@ -8,54 +8,25 @@ import { Scene } from 'three'
 import BattleTransition from './BattleTransition/BattleTransition'
 import ColorOverlay from './ColorOverlay/ColorOverlay'
 import { ASPECT_RATIO } from './constants/constants'
-import MAP_NAMES from './constants/maps'
 import Controller from './Controller/Controller'
 import Entrypoint from './Entrypoint'
+import { initialiseFromUrl } from './initialiseFromUrl'
 import Loading from './Loading/Loading'
 import Memory from './Memory/Memory'
-import { MEMORY } from './modules/field/Scripts/Script/handlers'
-import { applyWorldmapUrlParams } from './modules/worldmap/worldmapUrl'
 import Queues from './Queues/Queues'
 import useGlobalStore from './store'
 import Ui from './UI/UI'
 import useIsTabActive from './useIsTabActive'
 import useUrlSync from './useUrlSync'
 
-const party = new URLSearchParams(window.location.search).get('party')
-if (party) {
-  const partyMembers = party.split(',').map((s) => parseInt(s))
-  useGlobalStore.setState({
-    party: partyMembers,
-  })
+type AppProps = {
+  shouldSyncUrl: boolean
 }
 
-const requestedProgress = new URLSearchParams(window.location.search).get('progress')
-if (requestedProgress) {
-  MEMORY[256] = parseInt(requestedProgress)
-}
+const App = ({ shouldSyncUrl }: AppProps) => {
+  // Runs during the first render rather than in an effect so children see the seeded store immediately.
+  const [namedField] = useState(() => initialiseFromUrl(shouldSyncUrl ? window.location.search : ''))
 
-const namedField = new URLSearchParams(window.location.search).get('field')
-if (namedField) {
-  useGlobalStore.setState({
-    module: 'field',
-    pendingFieldId: namedField as (typeof MAP_NAMES)[number],
-  })
-}
-
-const module = new URLSearchParams(window.location.search).get('module')
-if (module === 'menu' || module === 'worldmap') {
-  useGlobalStore.setState({
-    fieldId: undefined,
-    module,
-    pendingFieldId: undefined,
-  })
-}
-
-if (module === 'worldmap') {
-  applyWorldmapUrlParams(new URLSearchParams(window.location.search), MEMORY)
-}
-
-const App = () => {
   const isTabActive = useIsTabActive()
 
   const fieldId = useGlobalStore((state) => state.fieldId)
@@ -65,7 +36,7 @@ const App = () => {
 
   const module = useGlobalStore((state) => state.module)
 
-  useUrlSync()
+  useUrlSync(shouldSyncUrl)
 
   useEffect(() => {
     if (!fieldId || module === 'menu') {
