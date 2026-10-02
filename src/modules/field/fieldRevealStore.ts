@@ -53,6 +53,13 @@ export const beginFieldIntro = () => {
 
 export const beginFieldExit = () => useFieldRevealStore.setState({ direction: 'reverse', hasExited: false })
 
+export const cancelFieldExit = () => {
+  if (useFieldRevealStore.getState().direction !== 'reverse') {
+    return
+  }
+  useFieldRevealStore.setState({ direction: 'forward' })
+}
+
 export const completeFieldExit = () => {
   holdFieldIntro()
   useFieldRevealStore.setState({ hasExited: true })

@@ -1,24 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { musicController } from './audio/activeMusicController'
 import useFieldLoadStore from './modules/field/fieldLoadStore'
-import useFieldRevealStore, { acknowledgeFieldExit, requestFieldIntro } from './modules/field/fieldRevealStore'
+import useFieldRevealStore, {
+  acknowledgeFieldExit,
+  beginFieldExit,
+  cancelFieldExit,
+  requestFieldIntro,
+} from './modules/field/fieldRevealStore'
 import { setIsSfxSuspended } from './modules/field/Scripts/Script/SFXController/webAudio'
 import useGlobalStore from './store'
 
 type HostBridgeOptions = {
+  hasIntroTransition: boolean
   isActive: boolean
-  onExit?: () => void
+  onExited?: () => void
   onReady?: () => void
-}
-
-const useEntranceHold = (isActive: boolean) => {
-  useEffect(() => {
-    useGlobalStore.setState({ isEntranceHeld: !isActive })
-    if (isActive) {
-      requestFieldIntro()
-    }
-  }, [isActive])
 }
 
 const useReadyReport = (onReady: (() => void) | undefined) => {
@@ -36,43 +33,60 @@ const useReadyReport = (onReady: (() => void) | undefined) => {
   }, [isReady, onReady])
 }
 
-const useExitReport = (onExit: (() => void) | undefined) => {
+const useAudioSuspension = (isPaused: boolean) => {
+  useEffect(() => {
+    musicController.setIsSuspended(isPaused)
+    setIsSfxSuspended(isPaused)
+  }, [isPaused])
+}
+
+// Entering plays the intro. Leaving after an entry plays it in reverse, then freezes the game and
+// reports back; before the first entry the game keeps running so the start field loads behind the host.
+const useHostBridge = ({ hasIntroTransition, isActive, onExited, onReady }: HostBridgeOptions) => {
+  const [hasEntered, setHasEntered] = useState(isActive)
+  const [isExiting, setIsExiting] = useState(false)
+  const wasActiveRef = useRef(isActive)
   const hasExited = useFieldRevealStore((state) => state.hasExited)
+
+  const startExit = useCallback(() => {
+    if (!hasIntroTransition) {
+      onExited?.()
+      return
+    }
+    setIsExiting(true)
+    beginFieldExit()
+  }, [hasIntroTransition, onExited])
+
+  useEffect(() => {
+    const wasActive = wasActiveRef.current
+    wasActiveRef.current = isActive
+    useGlobalStore.setState({ isEntranceHeld: !isActive })
+    if (isActive) {
+      setHasEntered(true)
+      setIsExiting(false)
+      cancelFieldExit()
+      requestFieldIntro()
+      return
+    }
+    if (wasActive) {
+      startExit()
+    }
+  }, [isActive, startExit])
 
   useEffect(() => {
     if (!hasExited) {
       return
     }
     acknowledgeFieldExit()
-    onExit?.()
-  }, [hasExited, onExit])
-}
+    setIsExiting(false)
+    onExited?.()
+  }, [hasExited, onExited])
 
-// Before the first activation the game must keep running so the start field loads behind the host.
-// Once it has been entered, going inactive again freezes it.
-const usePause = (isActive: boolean) => {
-  const [hasEntered, setHasEntered] = useState(isActive)
-  const isPaused = hasEntered && !isActive
-
-  useEffect(() => {
-    if (isActive) {
-      setHasEntered(true)
-    }
-  }, [isActive])
-
-  useEffect(() => {
-    musicController.setIsSuspended(isPaused)
-    setIsSfxSuspended(isPaused)
-  }, [isPaused])
-
-  return isPaused
-}
-
-const useHostBridge = ({ isActive, onExit, onReady }: HostBridgeOptions) => {
-  useEntranceHold(isActive)
   useReadyReport(onReady)
-  useExitReport(onExit)
-  return usePause(isActive)
+
+  const isPaused = hasEntered && !isActive && !isExiting
+  useAudioSuspension(isPaused)
+  return isPaused
 }
 
 export default useHostBridge

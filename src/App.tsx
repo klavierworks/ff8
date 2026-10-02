@@ -10,7 +10,6 @@ import ColorOverlay from './ColorOverlay/ColorOverlay'
 import { ASPECT_RATIO } from './constants/constants'
 import Controller from './Controller/Controller'
 import Entrypoint from './Entrypoint'
-import ExitButton from './ExitButton/ExitButton'
 import { initialiseFromUrl, MapName } from './initialiseFromUrl'
 import Loading from './Loading/Loading'
 import Memory from './Memory/Memory'
@@ -25,7 +24,7 @@ import useUrlSync from './useUrlSync'
 export type AppProps = {
   hasIntroTransition?: boolean
   isActive?: boolean
-  onExit?: () => void
+  onExited?: () => void
   onReady?: () => void
   shouldSyncUrl?: boolean
   startField?: MapName
@@ -41,7 +40,7 @@ const initialiseApp = (search: string, startField: MapName | undefined, hasIntro
 const App = ({
   hasIntroTransition = false,
   isActive = true,
-  onExit,
+  onExited,
   onReady,
   shouldSyncUrl = false,
   startField,
@@ -51,7 +50,7 @@ const App = ({
     initialiseApp(shouldSyncUrl ? window.location.search : '', startField, hasIntroTransition),
   )
 
-  const isPaused = useHostBridge({ isActive, onExit, onReady })
+  const isPaused = useHostBridge({ hasIntroTransition, isActive, onExited, onReady })
   const isHeldOut = !isActive && !hasIntroTransition
 
   const isTabActive = useIsTabActive()
@@ -77,7 +76,6 @@ const App = ({
   return (
     <>
       <div className={isHeldOut ? 'container isHeld' : 'container'}>
-        {onExit && isActive && <ExitButton />}
         <Canvas
           camera={undefined}
           className="canvas"
