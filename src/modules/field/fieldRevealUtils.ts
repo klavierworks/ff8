@@ -1,6 +1,6 @@
 import { FieldRevealDirection, FieldRevealStage, ProgressUniform } from './fieldRevealStore'
 
-const STAGE_ORDER: FieldRevealStage[] = ['hidden', 'walkmesh', 'background', 'models', 'revealed']
+const STAGE_ORDER: FieldRevealStage[] = ['hidden', 'blocks', 'walkmesh', 'background', 'models', 'revealed']
 
 const getStageIndex = (stage: FieldRevealStage) => STAGE_ORDER.indexOf(stage)
 
@@ -30,5 +30,4 @@ export const getPreviousStage = (stage: FieldRevealStage) => STAGE_ORDER[Math.ma
 export const isModelRevealed = (stage: FieldRevealStage, direction: FieldRevealDirection) =>
   isStageReached(stage, direction === 'reverse' ? 'revealed' : 'models')
 
-export const getToggledStage = (stage: FieldRevealStage): FieldRevealStage =>
-  stage === 'hidden' ? 'walkmesh' : 'hidden'
+export const getToggledStage = (stage: FieldRevealStage): FieldRevealStage => (stage === 'hidden' ? 'blocks' : 'hidden')

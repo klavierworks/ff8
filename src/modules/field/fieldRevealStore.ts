@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export type FieldRevealDirection = 'forward' | 'reverse'
 
-export type FieldRevealStage = 'background' | 'hidden' | 'models' | 'revealed' | 'walkmesh'
+export type FieldRevealStage = 'background' | 'blocks' | 'hidden' | 'models' | 'revealed' | 'walkmesh'
 
 export type ProgressUniform = { value: number }
 
@@ -48,7 +48,7 @@ export const requestFieldIntro = () => {
 
 export const beginFieldIntro = () => {
   useFieldRevealStore.setState({ isIntroPending: false, isIntroRequested: false })
-  enterFieldRevealStage('walkmesh')
+  enterFieldRevealStage('blocks')
 }
 
 export const beginFieldExit = () => {

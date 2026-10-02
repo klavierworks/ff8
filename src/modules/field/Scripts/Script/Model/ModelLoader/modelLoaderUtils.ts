@@ -113,7 +113,8 @@ export const buildMorphGeometries = (loader: Object3D, model: Object3D, bounds: 
 export const measureModelBounds = (loader: Object3D, model: Object3D) =>
   new Box3().setFromPoints(readPosedMeshes(loader, model).flatMap(({ vertices }) => vertices))
 
-export const createFlatMaterial = (color: Color) => new MeshBasicMaterial({ color, side: DoubleSide })
+export const createFlatMaterial = (color: Color) =>
+  new MeshBasicMaterial({ color, side: DoubleSide, transparent: true })
 
 export const createWireframeMaterial = (color: Color) =>
   new MeshBasicMaterial({ color, side: DoubleSide, transparent: true, wireframe: true })

@@ -12,6 +12,7 @@ import { advanceProgress, rewindProgress } from '../../../../../../timing'
 import { createProgressUniform } from '../../../../fieldRevealUtils'
 import LoadSignal from '../../../../LoadSignal/LoadSignal'
 import useFieldLoadTracking from '../../../../useFieldLoadTracking'
+import useRevealAmount from '../../../../useRevealAmount'
 import {
   BoundsFit,
   buildMorphGeometries,
@@ -52,6 +53,8 @@ const ModelLoader = ({ bounds, children, isRevealed }: ModelLoaderProps) => {
   const [textureFade] = useState(createProgressUniform)
   const [boxMaterial] = useState(() => createFlatMaterial(loaderColor))
   const [morphMaterial] = useState(() => createMorphMaterial(loaderColor, morphProgress))
+
+  const blocksFade = useRevealAmount('blocks')
 
   const initialBoxSize = useMemo(() => getBoxSize(bounds), [bounds])
   const initialBoxCenter = useMemo(() => getBoxCenter(bounds), [bounds])
@@ -158,6 +161,11 @@ const ModelLoader = ({ bounds, children, isRevealed }: ModelLoaderProps) => {
       return
     }
     displayedBounds.getSize(boxRef.current.scale).multiplyScalar(1 - morphProgress.value)
+  })
+
+  // The placeholder blocks are the first thing the intro fades in, ahead of the walkmesh.
+  useFrame(() => {
+    boxMaterial.opacity = blocksFade.value
   })
 
   useFrame(() => {

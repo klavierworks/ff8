@@ -43,7 +43,7 @@ export const rewindFieldReveal = (delta: number) => {
   if (stageProgress.value > 0) {
     return
   }
-  if (stage === 'walkmesh') {
+  if (stage === 'blocks') {
     completeFieldExit()
     return
   }
