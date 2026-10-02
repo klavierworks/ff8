@@ -192,6 +192,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
 
         globalMeshTint: [128, 128, 128],
         hasActiveTalkMethod: false,
+        hasMainScriptStarted: false,
         hasMoved: false,
         isCongaTrailStretched: false,
         isFieldDrawSuppressed: false,

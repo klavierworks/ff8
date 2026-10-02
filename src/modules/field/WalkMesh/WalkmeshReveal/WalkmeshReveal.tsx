@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Color } from 'three'
 
 import { WALKMESH_REVEAL_RENDER_ORDER } from '../../../../constants/depth'
-import { FIELD_REVEAL_COLOR, FIELD_REVEAL_STAGE_FRAMES } from '../../../../constants/fieldReveal'
+import { FIELD_REVEAL_COLOR } from '../../../../constants/fieldReveal'
 import { FieldData } from '../../Field'
 import useRevealAmount from '../../useRevealAmount'
 import { buildWalkmeshRevealGeometry, createWalkmeshRevealMaterial } from './walkmeshRevealUtils'
@@ -14,11 +14,8 @@ type WalkmeshRevealProps = {
 
 const WalkmeshReveal = ({ walkmesh }: WalkmeshRevealProps) => {
   const geometry = useMemo(() => buildWalkmeshRevealGeometry(walkmesh), [walkmesh])
-  const triangleReveal = useRevealAmount('walkmesh', { durationFrames: FIELD_REVEAL_STAGE_FRAMES.walkmesh })
-  const wireframeFade = useRevealAmount('revealed', {
-    delayFrames: FIELD_REVEAL_STAGE_FRAMES.walkmesh,
-    durationFrames: FIELD_REVEAL_STAGE_FRAMES.revealed,
-  })
+  const triangleReveal = useRevealAmount('walkmesh')
+  const wireframeFade = useRevealAmount('revealed')
   const [material] = useState(() => createWalkmeshRevealMaterial(new Color(FIELD_REVEAL_COLOR), triangleReveal))
 
   useEffect(() => () => geometry.dispose(), [geometry])

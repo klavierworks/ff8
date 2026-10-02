@@ -66,6 +66,7 @@ type GlobalState = {
 
   hasActivePushMethod: boolean
   hasActiveTalkMethod: boolean
+  hasMainScriptStarted: boolean
   hasMoved: boolean
   initialAngle: number | undefined
 
@@ -209,6 +210,7 @@ const INITIAL_STATE: GlobalState = {
   globalMeshTint: [128, 128, 128],
   hasActivePushMethod: false,
   hasActiveTalkMethod: false,
+  hasMainScriptStarted: false,
   hasMoved: false,
   initialAngle: undefined,
 

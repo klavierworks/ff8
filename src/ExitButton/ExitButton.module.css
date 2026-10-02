@@ -1,0 +1,41 @@
+.exit {
+  position: absolute;
+  top: 4%;
+  right: 3%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.35em 0.9em 0.35em 0.5em;
+  font: 600 clamp(11px, 1.5vw, 18px) / 1 Helvetica, Arial, sans-serif;
+  letter-spacing: 0.02em;
+  color: #e6e6e6;
+  text-shadow: 0.08em 0.08em 0 #202020;
+  background: linear-gradient(to right, rgb(66 66 58), rgb(99 99 99));
+  border: 1px solid;
+  border-color: #848484 #3a3a3a #3a3a3a #848484;
+  cursor: pointer;
+  animation: appear 0.4s ease-out both;
+}
+
+.cursor {
+  height: 1em;
+  image-rendering: pixelated;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.exit:hover .cursor,
+.exit:focus-visible .cursor {
+  opacity: 1;
+}
+
+.exit:focus-visible {
+  outline: none;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+}

@@ -9,5 +9,5 @@ export const framesToSeconds = (frames: number): number => frames / TARGET_FPS
 export const advanceProgress = (current: number, delta: number, durationFrames: number) =>
   Math.min(1, current + delta / framesToSeconds(durationFrames))
 
-export const getDelayedProgress = (seconds: number, delayFrames: number, durationFrames: number) =>
-  Math.min(1, Math.max(0, (seconds - framesToSeconds(delayFrames)) / framesToSeconds(durationFrames)))
+export const rewindProgress = (current: number, delta: number, durationFrames: number) =>
+  Math.max(0, current - delta / framesToSeconds(durationFrames))

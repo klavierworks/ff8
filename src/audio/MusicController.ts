@@ -1,4 +1,4 @@
-import { Howl } from 'howler'
+import { Howl, Howler } from 'howler'
 
 import { getAssetUrl, hasAsset } from '../assetManifest'
 import { FULL_MUSIC_VOLUME, MUSIC_BASE_VOLUME, MUSIC_IDS, PSX_VOLUME_MASK } from '../constants/audio'
@@ -225,6 +225,11 @@ const MusicController = () => {
     preloadedSrc = undefined
   }
 
+  const setIsSuspended = (shouldSuspend: boolean) => {
+    const change = shouldSuspend ? Howler.ctx?.suspend() : Howler.ctx?.resume()
+    change?.catch(() => undefined)
+  }
+
   return {
     crossMusic,
     dualMusic,
@@ -239,6 +244,7 @@ const MusicController = () => {
     reset,
     restoreChannelVolumes,
     setBattleMusic,
+    setIsSuspended,
     setVolume,
     stopOverlayMusic,
     transitionVolume,

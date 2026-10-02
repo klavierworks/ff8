@@ -2,7 +2,7 @@ import './index.css'
 import { PerspectiveCamera } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { EffectComposer } from '@react-three/postprocessing'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Scene } from 'three'
 
 import BattleTransition from './BattleTransition/BattleTransition'
@@ -10,20 +10,22 @@ import ColorOverlay from './ColorOverlay/ColorOverlay'
 import { ASPECT_RATIO } from './constants/constants'
 import Controller from './Controller/Controller'
 import Entrypoint from './Entrypoint'
+import ExitButton from './ExitButton/ExitButton'
 import { initialiseFromUrl, MapName } from './initialiseFromUrl'
 import Loading from './Loading/Loading'
 import Memory from './Memory/Memory'
-import useFieldLoadStore from './modules/field/fieldLoadStore'
-import { holdFieldIntro, startFieldIntro } from './modules/field/fieldRevealStore'
+import { holdFieldIntro } from './modules/field/fieldRevealStore'
 import Queues from './Queues/Queues'
 import useGlobalStore from './store'
 import Ui from './UI/UI'
+import useHostBridge from './useHostBridge'
 import useIsTabActive from './useIsTabActive'
 import useUrlSync from './useUrlSync'
 
 export type AppProps = {
   hasIntroTransition?: boolean
   isActive?: boolean
+  onExit?: () => void
   onReady?: () => void
   shouldSyncUrl?: boolean
   startField?: MapName
@@ -36,30 +38,21 @@ const initialiseApp = (search: string, startField: MapName | undefined, hasIntro
   return initialiseFromUrl(search, startField)
 }
 
-const App = ({ hasIntroTransition = false, isActive = true, onReady, shouldSyncUrl = false, startField }: AppProps) => {
+const App = ({
+  hasIntroTransition = false,
+  isActive = true,
+  onExit,
+  onReady,
+  shouldSyncUrl = false,
+  startField,
+}: AppProps) => {
   // Runs during the first render rather than in an effect so children see the seeded store immediately.
   const [namedField] = useState(() =>
     initialiseApp(shouldSyncUrl ? window.location.search : '', startField, hasIntroTransition),
   )
 
-  useEffect(() => {
-    useGlobalStore.setState({ isEntranceHeld: !isActive })
-    if (isActive) {
-      startFieldIntro()
-    }
-  }, [isActive])
-
-  const isFieldReady = useGlobalStore((state) => state.isFieldReady)
-  const hasPendingLoads = useFieldLoadStore((state) => state.pendingLoadCount > 0)
-  const isReady = isFieldReady && !hasPendingLoads
-  const hasReportedReadyRef = useRef(false)
-  useEffect(() => {
-    if (!isReady || hasReportedReadyRef.current) {
-      return
-    }
-    hasReportedReadyRef.current = true
-    onReady?.()
-  }, [isReady, onReady])
+  const isPaused = useHostBridge({ isActive, onExit, onReady })
+  const isHeldOut = !isActive && !hasIntroTransition
 
   const isTabActive = useIsTabActive()
 
@@ -83,11 +76,12 @@ const App = ({ hasIntroTransition = false, isActive = true, onReady, shouldSyncU
 
   return (
     <>
-      <div className={isActive ? 'container' : 'container isHeld'}>
+      <div className={isHeldOut ? 'container isHeld' : 'container'}>
+        {onExit && isActive && <ExitButton />}
         <Canvas
           camera={undefined}
           className="canvas"
-          frameloop="always"
+          frameloop={isPaused ? 'never' : 'always'}
           gl={{
             alpha: false,
             antialias: false,

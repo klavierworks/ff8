@@ -1,6 +1,5 @@
 import { useMemo, useRef } from 'react'
 
-import { FIELD_REVEAL_STAGE_FRAMES } from '../../../constants/fieldReveal'
 import { FieldData } from '../Field'
 import useRevealAmount from '../useRevealAmount'
 import Layer from './Layer/Layer'
@@ -18,7 +17,7 @@ const Background = ({ data }: BackgroundProps) => {
   const { layers, texture } = useLayeredTiles(tiles, backgroundDetails.sprite, layerWrap)
   const layerScrolls = useRef<LayerScrolls>({})
   const slots = useMemo(() => [...new Set(layers.map((layer) => layer.renderID))], [layers])
-  const revealProgress = useRevealAmount('background', { durationFrames: FIELD_REVEAL_STAGE_FRAMES.background })
+  const revealProgress = useRevealAmount('background')
 
   return (
     <>

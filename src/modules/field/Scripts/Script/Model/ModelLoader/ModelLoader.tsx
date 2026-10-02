@@ -8,7 +8,7 @@ import {
   MODEL_LOADER_FIT_FRAMES,
   MODEL_LOADER_MORPH_FRAMES,
 } from '../../../../../../constants/modelLoader'
-import { advanceProgress } from '../../../../../../timing'
+import { advanceProgress, rewindProgress } from '../../../../../../timing'
 import { createProgressUniform } from '../../../../fieldRevealUtils'
 import LoadSignal from '../../../../LoadSignal/LoadSignal'
 import useFieldLoadTracking from '../../../../useFieldLoadTracking'
@@ -21,6 +21,7 @@ import {
   getBoxCenter,
   getBoxSize,
   getNextPhase,
+  getPreviousPhase,
   measureModelBounds,
   patchModelTextureFade,
   RevealPhase,
@@ -30,10 +31,9 @@ type ModelLoaderProps = {
   bounds: Box3
   children: ReactNode
   isRevealed: boolean
-  speed: number
 }
 
-const ModelLoader = ({ bounds, children, isRevealed, speed }: ModelLoaderProps) => {
+const ModelLoader = ({ bounds, children, isRevealed }: ModelLoaderProps) => {
   const loaderRef = useRef<Group>(null)
   const modelRef = useRef<Group>(null)
   const boxRef = useRef<Mesh>(null)
@@ -72,28 +72,41 @@ const ModelLoader = ({ bounds, children, isRevealed, speed }: ModelLoaderProps) 
     setFit({ from: displayedBounds.clone(), to: measureModelBounds(loaderRef.current, modelRef.current) })
   }, [displayedBounds, loadCount, textureFade])
 
+  const changePhase = useCallback((nextPhase: RevealPhase, elapsed: number) => {
+    phaseElapsed.current = elapsed
+    setPhase(nextPhase)
+  }, [])
+
   useEffect(() => {
-    if (!isRevealed) {
-      morphProgress.value = 0
-      textureFade.value = 0
-      morphMaterial.opacity = 1
-      if (boxRef.current) {
-        displayedBounds.getSize(boxRef.current.scale)
-      }
-      setMorphGeometries([])
-      setPhase('placeholder')
+    if (!isRevealed || phase !== 'placeholder') {
       return
     }
     if (!fit || !isFitted || !loaderRef.current || !modelRef.current) {
       return
     }
     setMorphGeometries(buildMorphGeometries(loaderRef.current, modelRef.current, fit.to))
-    setPhase('morphing')
-  }, [displayedBounds, fit, isFitted, isRevealed, morphMaterial, morphProgress, textureFade])
+    changePhase('morphing', 0)
+  }, [changePhase, fit, isFitted, isRevealed, phase])
 
   useEffect(() => {
-    phaseElapsed.current = 0
-  }, [phase])
+    if (isRevealed || phase !== 'revealed') {
+      return
+    }
+    changePhase('fading', 1)
+  }, [changePhase, isRevealed, phase])
+
+  useEffect(() => {
+    if (isRevealed || phase !== 'placeholder') {
+      return
+    }
+    morphProgress.value = 0
+    textureFade.value = 0
+    morphMaterial.opacity = 1
+    if (boxRef.current) {
+      displayedBounds.getSize(boxRef.current.scale)
+    }
+    setMorphGeometries([])
+  }, [displayedBounds, isRevealed, morphMaterial, morphProgress, phase, textureFade])
 
   useEffect(() => () => morphGeometries.forEach((geometry) => geometry.dispose()), [morphGeometries])
 
@@ -109,7 +122,7 @@ const ModelLoader = ({ bounds, children, isRevealed, speed }: ModelLoaderProps) 
     if (!fit || !boxRef.current || fitElapsed.current >= 1) {
       return
     }
-    fitElapsed.current = advanceProgress(fitElapsed.current, delta * speed, MODEL_LOADER_FIT_FRAMES)
+    fitElapsed.current = advanceProgress(fitElapsed.current, delta, MODEL_LOADER_FIT_FRAMES)
     const t = easeProgress(fitElapsed.current)
     displayedBounds.min.lerpVectors(fit.from.min, fit.to.min, t)
     displayedBounds.max.lerpVectors(fit.from.max, fit.to.max, t)
@@ -125,15 +138,18 @@ const ModelLoader = ({ bounds, children, isRevealed, speed }: ModelLoaderProps) 
       return
     }
     const isMorphing = phase === 'morphing'
-    phaseElapsed.current = advanceProgress(
-      phaseElapsed.current,
-      delta * speed,
-      isMorphing ? MODEL_LOADER_MORPH_FRAMES : MODEL_LOADER_FADE_FRAMES,
-    )
+    const durationFrames = isMorphing ? MODEL_LOADER_MORPH_FRAMES : MODEL_LOADER_FADE_FRAMES
+    phaseElapsed.current = isRevealed
+      ? advanceProgress(phaseElapsed.current, delta, durationFrames)
+      : rewindProgress(phaseElapsed.current, delta, durationFrames)
     const uniform = isMorphing ? morphProgress : textureFade
     uniform.value = easeProgress(phaseElapsed.current)
-    if (phaseElapsed.current >= 1) {
-      setPhase(getNextPhase(phase))
+    if (isRevealed && phaseElapsed.current >= 1) {
+      changePhase(getNextPhase(phase), 0)
+      return
+    }
+    if (!isRevealed && phaseElapsed.current <= 0) {
+      changePhase(getPreviousPhase(phase), 1)
     }
   })
 

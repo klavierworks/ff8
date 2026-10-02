@@ -3,12 +3,11 @@ import { useFrame } from '@react-three/fiber'
 import { ComponentType, type JSX, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { Bone, Box3, Color, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, Vector3 } from 'three'
 
-import { FIELD_AUTO_REVEAL_SPEED } from '../../../../../constants/fieldReveal'
 import { FIELD_MODEL_PLACEHOLDER_BOUNDS } from '../../../../../constants/modelLoader'
 import useGlobalStore from '../../../../../store'
 import { numberToFloatingPoint } from '../../../../../utils'
 import useFieldRevealStore from '../../../fieldRevealStore'
-import { isStageReached } from '../../../fieldRevealUtils'
+import { isModelRevealed } from '../../../fieldRevealUtils'
 import { createAnimationController } from '../AnimationController/AnimationController'
 import createFootstepController from '../FootstepController/FootstepController'
 import createHeadRotationController from '../HeadRotationController/HeadRotationController'
@@ -222,8 +221,7 @@ const Model = ({
   const pushRadius = useScriptStateStore((state) => state.pushRadius)
   const isPlayerControlled = isLeadCharacter || isFollower
 
-  const isRevealed = useFieldRevealStore((state) => state.isAutoReveal || isStageReached(state.stage, 'models'))
-  const isAutoReveal = useFieldRevealStore((state) => state.isAutoReveal)
+  const isRevealed = useFieldRevealStore((state) => isModelRevealed(state.stage, state.direction))
 
   return (
     <group>
@@ -257,11 +255,7 @@ const Model = ({
           boundingbox,
         }}
       >
-        <ModelLoader
-          bounds={FIELD_MODEL_PLACEHOLDER_BOUNDS}
-          isRevealed={isRevealed}
-          speed={isAutoReveal ? FIELD_AUTO_REVEAL_SPEED : 1}
-        >
+        <ModelLoader bounds={FIELD_MODEL_PLACEHOLDER_BOUNDS} isRevealed={isRevealed}>
           <ModelComponent mapName={fieldId} ref={setModelRef} scale={0.06} />
         </ModelLoader>
       </group>

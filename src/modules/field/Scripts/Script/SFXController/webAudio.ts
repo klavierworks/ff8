@@ -28,6 +28,7 @@ export type AudioSourceNode = {
 let audioContext: AudioContext | null = null
 let soundBank = new Map<number, Promise<DecodedWave>>()
 let isUserActivationSetup = false
+let isSfxSuspended = false
 
 const getAudioContext = (): AudioContext => {
   if (!audioContext) {
@@ -42,9 +43,19 @@ const getAudioContext = (): AudioContext => {
 // only needs to decode or schedule sound may wait on it.
 const resumeAudioContext = async (): Promise<void> => {
   const context = getAudioContext()
-  if (context.state === 'suspended') {
-    await context.resume()
+  if (isSfxSuspended || context.state !== 'suspended') {
+    return
   }
+  await context.resume()
+}
+
+export const setIsSfxSuspended = (shouldSuspend: boolean) => {
+  isSfxSuspended = shouldSuspend
+  if (!audioContext) {
+    return
+  }
+  const change = shouldSuspend ? audioContext.suspend() : audioContext.resume()
+  change.catch(() => undefined)
 }
 
 export const setupUserActivation = (): void => {

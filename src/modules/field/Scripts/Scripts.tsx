@@ -59,7 +59,16 @@ const Scripts = ({ doors, models, scripts, sounds }: ScriptsProps) => {
     setHasMountedMainScripts(true)
   }, [])
 
+  const hasStartedOtherScripts = runningScripts === otherScripts.length
+  useEffect(() => {
+    if (!hasStartedOtherScripts || mainScripts.length > 0) {
+      return
+    }
+    useGlobalStore.setState({ hasMainScriptStarted: true })
+  }, [hasStartedOtherScripts, mainScripts.length])
+
   const handleStartedMain = useCallback(() => {
+    useGlobalStore.setState({ hasMainScriptStarted: true })
     const { fadeSpring, fieldId } = useGlobalStore.getState()
     if (fieldId === 'bghoke_2') {
       fadeSpring.start(1, 10)

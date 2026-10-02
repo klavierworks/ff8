@@ -1,42 +1,63 @@
 import { create } from 'zustand'
 
+export type FieldRevealDirection = 'forward' | 'reverse'
+
 export type FieldRevealStage = 'background' | 'hidden' | 'models' | 'revealed' | 'walkmesh'
 
 export type ProgressUniform = { value: number }
 
 type FieldRevealState = {
-  isAutoReveal: boolean
+  direction: FieldRevealDirection
+  hasExited: boolean
   isIntroPending: boolean
+  isIntroRequested: boolean
   stage: FieldRevealStage
   stageProgress: ProgressUniform
 }
 
 const useFieldRevealStore = create<FieldRevealState>()(() => ({
-  isAutoReveal: false,
+  direction: 'forward',
+  hasExited: false,
   isIntroPending: false,
+  isIntroRequested: false,
   stage: 'revealed',
   stageProgress: { value: 1 },
 }))
 
 export const enterFieldRevealStage = (stage: FieldRevealStage) =>
-  useFieldRevealStore.setState({ stage, stageProgress: { value: 0 } })
+  useFieldRevealStore.setState({ direction: 'forward', stage, stageProgress: { value: 0 } })
 
-export const setIsAutoReveal = (isAutoReveal: boolean) => useFieldRevealStore.setState({ isAutoReveal })
+export const rewindToFieldRevealStage = (stage: FieldRevealStage) =>
+  useFieldRevealStore.setState({ stage, stageProgress: { value: 1 } })
 
 export const holdFieldIntro = () =>
   useFieldRevealStore.setState({
-    isAutoReveal: false,
+    direction: 'forward',
     isIntroPending: true,
+    isIntroRequested: false,
     stage: 'hidden',
     stageProgress: { value: 0 },
   })
 
-export const startFieldIntro = () => {
+export const requestFieldIntro = () => {
   if (!useFieldRevealStore.getState().isIntroPending) {
     return
   }
-  useFieldRevealStore.setState({ isIntroPending: false })
+  useFieldRevealStore.setState({ isIntroRequested: true })
+}
+
+export const beginFieldIntro = () => {
+  useFieldRevealStore.setState({ isIntroPending: false, isIntroRequested: false })
   enterFieldRevealStage('walkmesh')
 }
+
+export const beginFieldExit = () => useFieldRevealStore.setState({ direction: 'reverse', hasExited: false })
+
+export const completeFieldExit = () => {
+  holdFieldIntro()
+  useFieldRevealStore.setState({ hasExited: true })
+}
+
+export const acknowledgeFieldExit = () => useFieldRevealStore.setState({ hasExited: false })
 
 export default useFieldRevealStore

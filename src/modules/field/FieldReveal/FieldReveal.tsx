@@ -1,33 +1,40 @@
 import { useFrame } from '@react-three/fiber'
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 
-import { FIELD_REVEAL_STAGE_FRAMES, FIELD_REVEAL_TOGGLE_KEY } from '../../../constants/fieldReveal'
-import { advanceProgress } from '../../../timing'
-import useFieldRevealStore, { enterFieldRevealStage, setIsAutoReveal } from '../fieldRevealStore'
-import { getNextStage, getToggledStage } from '../fieldRevealUtils'
+import { FIELD_REVEAL_TOGGLE_KEY } from '../../../constants/fieldReveal'
+import useFieldRevealStore, { beginFieldIntro, enterFieldRevealStage } from '../fieldRevealStore'
+import { getToggledStage } from '../fieldRevealUtils'
+import {
+  accumulateFadeSettledSeconds,
+  advanceFieldReveal,
+  getIsIntroFadeSettled,
+  rewindFieldReveal,
+} from './fieldRevealSteps'
 import useToggleKey from './useToggleKey'
 
 const FieldReveal = () => {
   const handleToggle = useCallback(() => {
-    setIsAutoReveal(false)
     enterFieldRevealStage(getToggledStage(useFieldRevealStore.getState().stage))
   }, [])
   useToggleKey(FIELD_REVEAL_TOGGLE_KEY, handleToggle)
 
+  const fadeSettledSecondsRef = useRef(0)
+
   useFrame((_, delta) => {
-    const { isAutoReveal, stage, stageProgress } = useFieldRevealStore.getState()
-    if (isAutoReveal || stage === 'hidden' || stageProgress.value >= 1) {
+    const { direction, isIntroRequested } = useFieldRevealStore.getState()
+    if (isIntroRequested) {
+      fadeSettledSecondsRef.current = accumulateFadeSettledSeconds(fadeSettledSecondsRef.current, delta)
+      if (getIsIntroFadeSettled(fadeSettledSecondsRef.current)) {
+        fadeSettledSecondsRef.current = 0
+        beginFieldIntro()
+      }
       return
     }
-    stageProgress.value = advanceProgress(stageProgress.value, delta, FIELD_REVEAL_STAGE_FRAMES[stage])
-    if (stageProgress.value < 1) {
+    if (direction === 'reverse') {
+      rewindFieldReveal(delta)
       return
     }
-    if (stage === 'revealed') {
-      setIsAutoReveal(true)
-      return
-    }
-    enterFieldRevealStage(getNextStage(stage))
+    advanceFieldReveal(delta)
   })
 
   return null

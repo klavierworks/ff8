@@ -34,6 +34,16 @@ export const getNextPhase = (phase: RevealPhase): RevealPhase => {
   return phase
 }
 
+export const getPreviousPhase = (phase: RevealPhase): RevealPhase => {
+  if (phase === 'fading') {
+    return 'morphing'
+  }
+  if (phase === 'morphing') {
+    return 'placeholder'
+  }
+  return phase
+}
+
 export const getBoxSize = (bounds: Box3) => bounds.getSize(new Vector3()).toArray()
 
 export const getBoxCenter = (bounds: Box3) => bounds.getCenter(new Vector3()).toArray()
