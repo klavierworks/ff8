@@ -29,18 +29,22 @@ let audioContext: AudioContext | null = null
 let soundBank = new Map<number, Promise<DecodedWave>>()
 let isUserActivationSetup = false
 
-const initializeAudioContext = async (): Promise<AudioContext> => {
+const getAudioContext = (): AudioContext => {
   if (!audioContext) {
     audioContext = new (
       window.AudioContext || (window as unknown as { webkitAudioContext: AudioContext }).webkitAudioContext
     )()
   }
-
-  if (audioContext.state === 'suspended') {
-    await audioContext.resume()
-  }
-
   return audioContext
+}
+
+// Before the page's first click or keypress the browser leaves resume() pending, so nothing that
+// only needs to decode or schedule sound may wait on it.
+const resumeAudioContext = async (): Promise<void> => {
+  const context = getAudioContext()
+  if (context.state === 'suspended') {
+    await context.resume()
+  }
 }
 
 export const setupUserActivation = (): void => {
@@ -52,7 +56,7 @@ export const setupUserActivation = (): void => {
 
   const activateAudio = async () => {
     try {
-      await initializeAudioContext()
+      await resumeAudioContext()
     } catch (error) {
       console.warn('Failed to initialize audio context:', error)
     } finally {
@@ -68,7 +72,7 @@ export const setupUserActivation = (): void => {
 }
 
 const fetchSound = async (index: number): Promise<DecodedWave> => {
-  const context = await initializeAudioContext()
+  const context = getAudioContext()
   const response = await fetch(getAssetUrl(`${SOUND_BASE_PATH}/${index}.wav`))
   if (!response.ok) {
     throw new Error(`Failed to fetch sound ${index}: ${response.status} ${response.statusText}`)
@@ -117,7 +121,8 @@ export const preloadMapSoundBank = async (sounds: number[]): Promise<void> => {
 }
 
 export const createAudioSource = async (id: number, volume: number, pan: number): Promise<AudioSourceNode> => {
-  const context = await initializeAudioContext()
+  const context = getAudioContext()
+  resumeAudioContext().catch(() => undefined)
   const { buffer, sampleLoop } = await loadSound(id)
 
   const source = context.createBufferSource()
