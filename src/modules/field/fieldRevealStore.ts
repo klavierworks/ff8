@@ -51,7 +51,13 @@ export const beginFieldIntro = () => {
   enterFieldRevealStage('walkmesh')
 }
 
-export const beginFieldExit = () => useFieldRevealStore.setState({ direction: 'reverse', hasExited: false })
+export const beginFieldExit = () => {
+  if (useFieldRevealStore.getState().stage === 'hidden') {
+    completeFieldExit()
+    return
+  }
+  useFieldRevealStore.setState({ direction: 'reverse', hasExited: false })
+}
 
 export const cancelFieldExit = () => {
   if (useFieldRevealStore.getState().direction !== 'reverse') {
