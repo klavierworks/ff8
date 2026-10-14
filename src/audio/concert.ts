@@ -1,3 +1,4 @@
+import { getAssetUrl, hasAsset } from '../assetManifest'
 import { MUSIC_IDS } from '../constants/audio'
 
 // The Fisherman's Horizon concert.
@@ -45,5 +46,8 @@ export const getConcertSegmentUrls = (rawMask: number, fieldId: string | undefin
     return []
   }
 
-  return getSelectedSegments(mask).map((segment) => MUSIC_IDS[segment.musicId])
+  return getSelectedSegments(mask)
+    .map((segment) => MUSIC_IDS[segment.musicId])
+    .filter(hasAsset)
+    .map(getAssetUrl)
 }

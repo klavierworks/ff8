@@ -1,8 +1,9 @@
-import namedic from '@data/menu/namedic.json'
-
 import { CONTROLS_MAP } from '../constants/controls'
+import { getGameData } from '../gameData'
 import { MESSAGE_VARS } from '../modules/field/Scripts/Script/handlers'
 import { Modifier } from './textTypes'
+
+const namedic = getGameData().nameDictionary
 
 export const createModifier = (tag: string) => {
   let result: Modifier = {

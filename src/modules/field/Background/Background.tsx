@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react'
 
 import { FieldData } from '../Field'
+import useRevealAmount from '../useRevealAmount'
 import Layer from './Layer/Layer'
 import LayerScroll from './LayerScroll/LayerScroll'
 import { LayerScrolls } from './tileUtils'
@@ -16,6 +17,7 @@ const Background = ({ data }: BackgroundProps) => {
   const { layers, texture } = useLayeredTiles(tiles, backgroundDetails.sprite, layerWrap)
   const layerScrolls = useRef<LayerScrolls>({})
   const slots = useMemo(() => [...new Set(layers.map((layer) => layer.renderID))], [layers])
+  const revealProgress = useRevealAmount('background')
 
   return (
     <>
@@ -23,7 +25,13 @@ const Background = ({ data }: BackgroundProps) => {
         <LayerScroll key={slot} layerScrolls={layerScrolls} slot={slot} />
       ))}
       {layers.map((layer) => (
-        <Layer key={layer.id} layer={layer} layerScrolls={layerScrolls} texture={texture} />
+        <Layer
+          key={layer.id}
+          layer={layer}
+          layerScrolls={layerScrolls}
+          revealProgress={revealProgress}
+          texture={texture}
+        />
       ))}
     </>
   )

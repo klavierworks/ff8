@@ -1,11 +1,12 @@
-import drawPoints from '@data/exe/draw-points.json'
-
 import {
   DRAW_POINT_STATE_DRY,
   DRAW_POINT_STATE_PARTIAL,
   DRAW_POINT_STATE_SPENT,
 } from '../../../../../constants/drawPoints'
+import { getGameData } from '../../../../../gameData'
 import useGlobalStore from '../../../../../store'
+
+const { drawPoints } = getGameData()
 
 const DRAW_POINT_KINDS = [
   { fullYield: 10, isRefilling: false },

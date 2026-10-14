@@ -1,6 +1,5 @@
 import type { FieldData as RawFieldData } from '@data/types/field/FieldData'
 
-import areaNames from '@data/menu/area-names.json'
 import { useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { Group } from 'three'
@@ -8,23 +7,29 @@ import { Group } from 'three'
 import { CAMERA_SHAKE_OFF } from '../../constants/camera'
 import { LADDER_CLIMB_SPEED } from '../../constants/ladders'
 import MAP_NAMES from '../../constants/maps'
+import { getGameData } from '../../gameData'
 import useGlobalStore, { createEmptyParticleEmitters } from '../../store'
 import { resolveNameDictionaryTokens } from '../../UI/textUtils'
 import Background from './Background/Background'
 import Camera from './Camera/Camera'
+import FieldReveal from './FieldReveal/FieldReveal'
 import { getFieldData, getRequestedSpawn } from './fieldUtils'
 import Gateways from './Gateways/Gateways'
 import LoadingController from './LoadingController'
+import LoadSignal from './LoadSignal/LoadSignal'
 import Movie from './Movie/Movie'
 import Particles from './Particles/Particles'
 import { ParticleData } from './Particles/particleSimulation'
 import { awaitFadesync, triggerFadeout } from './Scripts/Script/common'
 import { MEMORY } from './Scripts/Script/handlers'
-import { useFragmentedGLTFLoader } from './Scripts/Script/Model/useFragmentedGltfLoader'
+import { useFragmentedGLTFLoader } from './Scripts/Script/Model/useFragmentedGLTFLoader'
 import { preloadMapSoundBank } from './Scripts/Script/SFXController/webAudio'
 import Scripts from './Scripts/Scripts'
 import { Script } from './Scripts/types'
+import useFieldLoadTracking from './useFieldLoadTracking'
 import WalkMesh from './WalkMesh/WalkMesh'
+
+const { areaNames } = getGameData()
 
 export type FieldData = Omit<RawFieldData, 'scripts' | 'tiles'> & {
   particles: ParticleData | undefined
@@ -53,7 +58,11 @@ type FieldProps = {
 
 const Field = ({ data }: FieldProps) => {
   const currentLocationPlaceName = useGlobalStore((state) => state.currentLocationPlaceName as number)
+  const isLoadedAsLibrary = useGlobalStore((state) => state.isLoadedAsLibrary)
   useEffect(() => {
+    if (isLoadedAsLibrary) {
+      return
+    }
     const name = resolveNameDictionaryTokens(areaNames[currentLocationPlaceName])
 
     if (name) {
@@ -61,9 +70,10 @@ const Field = ({ data }: FieldProps) => {
     } else {
       document.title = `${data.id} - Final Fantasy VIII GL`
     }
-  }, [currentLocationPlaceName, data.id])
+  }, [currentLocationPlaceName, data.id, isLoadedAsLibrary])
 
   const walkmeshController = useGlobalStore((state) => state.walkmeshController)
+  const handleBackgroundLoad = useFieldLoadTracking()
   const backgroundRef = useRef<Group>(null)
   const entitiesRef = useRef<Group>(null)
   const particlesRef = useRef<Group>(null)
@@ -71,6 +81,7 @@ const Field = ({ data }: FieldProps) => {
   return (
     <Suspense fallback={<LoadingController />}>
       <group>
+        <FieldReveal />
         <WalkMesh walkmesh={data.walkmesh} />
         {walkmeshController && (
           <>
@@ -79,7 +90,10 @@ const Field = ({ data }: FieldProps) => {
               <Scripts doors={data.doors} models={data.models} scripts={data.scripts} sounds={data.sounds} />
             </group>
             <group ref={backgroundRef}>
-              <Background data={data} />
+              <Suspense fallback={null}>
+                <Background data={data} />
+                <LoadSignal onLoad={handleBackgroundLoad} />
+              </Suspense>
             </group>
             <group ref={particlesRef}>{data.particles && <Particles data={data.particles} fieldId={data.id} />}</group>
             <Gateways gateways={data.gateways} />
@@ -182,9 +196,11 @@ const FieldLoader = (props: FieldLoaderProps) => {
 
         globalMeshTint: [128, 128, 128],
         hasActiveTalkMethod: false,
+        hasMainScriptStarted: false,
         hasMoved: false,
         isCongaTrailStretched: false,
         isFieldDrawSuppressed: false,
+        isFieldReady: false,
         isLoadingSavedGame: false,
 
         isMapFadeEnabled: true,

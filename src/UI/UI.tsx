@@ -1,5 +1,5 @@
 import { OrthographicCamera } from '@react-three/drei'
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { Scene } from 'three'
 
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../constants/constants'
@@ -58,18 +58,27 @@ const Ui = ({ worldScene }: UiProps) => {
         right={SCREEN_WIDTH / 2}
         top={SCREEN_HEIGHT / 2}
       />
-      {isCardGameActive && <CardGame />}
+      {isCardGameActive && (
+        <Suspense fallback={null}>
+          <CardGame />
+        </Suspense>
+      )}
       {worldScene &&
         messagesArray.map((messages) => (
-          <MessageBox
-            isCloseableFocus={messages[0].id === closeableMessages.at(-1)?.[0].id}
-            isSavePoint={isSavePointMessage(messages[0])}
-            key={`message--${messages[0].id}`}
-            message={messages[0]}
-            worldScene={worldScene}
-          />
+          <Suspense fallback={null} key={`message--${messages[0].id}`}>
+            <MessageBox
+              isCloseableFocus={messages[0].id === closeableMessages.at(-1)?.[0].id}
+              isSavePoint={isSavePointMessage(messages[0])}
+              message={messages[0]}
+              worldScene={worldScene}
+            />
+          </Suspense>
         ))}
-      {isCachingOffline && <OfflineProgress />}
+      {isCachingOffline && (
+        <Suspense fallback={null}>
+          <OfflineProgress />
+        </Suspense>
+      )}
     </>
   )
 }

@@ -1,5 +1,6 @@
 import { Scene, Vector3 } from 'three'
 
+import { fetchAssetJson, hasAsset } from '../../assetManifest'
 import MAP_NAMES from '../../constants/maps'
 import useGlobalStore from '../../store'
 import { getInitialEntrance } from '../../utils'
@@ -42,25 +43,21 @@ const getFormattedTiles = (tiles: RawFieldData['tiles']) => {
   })
 }
 
-const FIELD_DATA = import.meta.glob<{ default: RawFieldData }>('@data/field/mapdata/*/data.json')
-
 // Only the fields that ship a .pmd have a particles.json, so the lookup is allowed to miss.
-const FIELD_PARTICLES = import.meta.glob<{ default: ParticleData }>('@data/field/mapdata/*/particles.json')
-
 const getFieldParticles = async (fieldId: string) => {
-  const loadParticles = FIELD_PARTICLES[`/extractor/data/converted/field/mapdata/${fieldId}/particles.json`]
-  if (!loadParticles) {
+  const path = `field/mapdata/${fieldId}/particles.json`
+  if (!hasAsset(path)) {
     return undefined
   }
-  return (await loadParticles()).default
+  return fetchAssetJson<ParticleData>(path)
 }
 
 export const getFieldData = async (fieldId: string) => {
-  const loadFieldData = FIELD_DATA[`/extractor/data/converted/field/mapdata/${fieldId}/data.json`]
-  if (!loadFieldData) {
+  const path = `field/mapdata/${fieldId}/data.json`
+  if (!hasAsset(path)) {
     throw new Error(`No field data for ${fieldId}`)
   }
-  const data = (await loadFieldData()).default
+  const data = await fetchAssetJson<RawFieldData>(path)
 
   const withMappedOpcodes = {
     ...data,

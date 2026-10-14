@@ -1,11 +1,14 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
 
-import App from './App.tsx'
-import './index.css'
+import { offlineController } from './OfflineController'
+import Playground from './Playground/Playground'
+import { readMountProps } from './Playground/playgroundUtils'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+offlineController.registerServiceWorker()
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <Playground mountProps={readMountProps(window.location.search)} />
+  </StrictMode>,
 )

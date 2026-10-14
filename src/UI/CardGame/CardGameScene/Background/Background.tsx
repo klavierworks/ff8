@@ -2,16 +2,11 @@ import { useLoader } from '@react-three/fiber'
 import { useMemo } from 'react'
 import { NearestFilter, Texture, TextureLoader } from 'three'
 
+import { getAssetUrl } from '../../../../assetManifest'
 import { BOARD_IMAGE_WIDTH, RENDER_ORDER } from '../../../../constants/cardGameLayout'
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../../constants/constants'
 
-const BOARD_URL = Object.values(
-  import.meta.glob<string>('@data/exe/cardgame_board/*.png', {
-    eager: true,
-    import: 'default',
-    query: '?url',
-  }),
-)[0]
+const BOARD_URL = getAssetUrl('exe/cardgame_board/00.png')
 
 const configureBoard = (texture: Texture) => {
   texture.magFilter = NearestFilter

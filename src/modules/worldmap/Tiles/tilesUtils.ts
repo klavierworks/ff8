@@ -1,6 +1,6 @@
 import { Material, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector3 } from 'three'
 
-import { loadAssetUrl, preloadAssetUrl } from '../../../loadAssetUrl'
+import { getAssetUrl } from '../../../assetManifest'
 import {
   SEGMENT_SIZE_THREE,
   SEGMENT_WORLD_SIZE,
@@ -24,20 +24,14 @@ type VisibleTile = {
   offset: TileOffset
 }
 
-const TILE_DIRECTORY = '/extractor/data/converted/worldmap/tiles'
-
-const TILE_LOADERS = import.meta.glob<string>('/extractor/data/converted/worldmap/tiles/*.glb', {
-  import: 'default',
-  query: '?url',
-})
+const TILE_DIRECTORY = 'worldmap/tiles'
 
 const SAVEMAP_PRISON_FLAG_BYTE = 264
 const SAVEMAP_PRISON_ABOVE_GROUND_MASK = 0x08
 
-export const getTileUrl = (assetPath: string) => loadAssetUrl(TILE_LOADERS, assetPath)
+export const getTileUrl = (assetPath: string) => getAssetUrl(assetPath)
 
-export const preloadTileUrl = (assetPath: string, onReady: (url: string) => void) =>
-  preloadAssetUrl(TILE_LOADERS, assetPath, onReady)
+export const preloadTileUrl = (assetPath: string, onReady: (url: string) => void) => onReady(getAssetUrl(assetPath))
 
 export const isDDistrictPrisonAboveGround = (memory: Record<number, number>) =>
   ((memory[SAVEMAP_PRISON_FLAG_BYTE] ?? 0) & SAVEMAP_PRISON_ABOVE_GROUND_MASK) !== 0

@@ -1,7 +1,6 @@
-import wm2fieldData from '@data/worldmap/wm2field.json'
-
 import MAP_NAMES from '../../constants/maps'
 import { CURRENT_CAR_RENT_ADDRESS } from '../../constants/worldmapTransitions'
+import { getGameData } from '../../gameData'
 import useGlobalStore from '../../store'
 import { getGatewayDestination } from '../../utils'
 import { awaitFadesync, triggerFadeout } from '../field/Scripts/Script/common'
@@ -10,6 +9,8 @@ import { isLocationTriggerSet } from './Scripts/state'
 import { saveWorldmapExitState } from './worldmapPersistence'
 import { writeSavedLocationTriggerBit } from './worldmapSaveData'
 import useWorldmapStore from './worldmapStore'
+
+const wm2fieldData = getGameData().worldmapToField
 
 type FieldEntrance = (typeof wm2fieldData)[number]
 

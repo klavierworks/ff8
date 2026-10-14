@@ -4,6 +4,7 @@ import { PSX_BLEND_MODES } from '../../../constants/blending'
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../constants/constants'
 import { BACKGROUND_RENDER_ORDER, DEPTH_SLOT_COUNT, VIEW_UNITS_PER_DEPTH_SLOT } from '../../../constants/depth'
 import { numberToFloatingPoint } from '../../../utils'
+import { getTileRevealOrders } from './tileReveal'
 import { getLayerIdFromTile, TILE_PADDING, TILE_SIZE, TILES_PER_COLUMN } from './tileUtils'
 
 const UV_INSET = 0.5
@@ -23,7 +24,12 @@ const getTileSourceUV = (index: number, atlasWidth: number, atlasHeight: number)
   }
 }
 
-const buildGroupGeometry = (groupTiles: Tile[], atlasWidth: number, atlasHeight: number) => {
+const buildGroupGeometry = (
+  groupTiles: Tile[],
+  atlasWidth: number,
+  atlasHeight: number,
+  revealOrders: Map<Tile, number>,
+) => {
   const count = groupTiles.length
 
   const positions = new Float32Array(count * 12)
@@ -31,6 +37,7 @@ const buildGroupGeometry = (groupTiles: Tile[], atlasWidth: number, atlasHeight:
   const indices = new Uint32Array(count * 6)
   const tilePositions = new Float32Array(count * 2)
   const tileDepths = new Float32Array(count)
+  const tileRevealOrders = new Float32Array(count * 4)
 
   groupTiles.forEach((tile, i) => {
     const { u0, u1, v0, v1 } = getTileSourceUV(tile.index, atlasWidth, atlasHeight)
@@ -57,11 +64,13 @@ const buildGroupGeometry = (groupTiles: Tile[], atlasWidth: number, atlasHeight:
     tilePositions[i * 2] = tile.X
     tilePositions[i * 2 + 1] = tile.Y
     tileDepths[i] = tile.Z
+    tileRevealOrders.fill(revealOrders.get(tile) ?? 0, i * 4, i * 4 + 4)
   })
 
   const geometry = new BufferGeometry()
   geometry.setAttribute('position', new BufferAttribute(positions, 3))
   geometry.setAttribute('uv', new BufferAttribute(uvs, 2))
+  geometry.setAttribute('revealOrder', new BufferAttribute(tileRevealOrders, 1))
   geometry.setIndex(new BufferAttribute(indices, 1))
 
   return { geometry, tileDepths, tilePositions }
@@ -86,6 +95,7 @@ export const buildTileGroups = (
   atlasHeight: number,
   layerWrap: LayerWrap[],
 ): Layer[] => {
+  const revealOrders = getTileRevealOrders(tiles)
   const grouped: Record<string, Tile[]> = {}
   tiles.forEach((tile) => {
     const id = getLayerIdFromTile(tile)
@@ -99,7 +109,12 @@ export const buildTileGroups = (
     const sample = groupTiles[0]
     const slot = getSlotFromLayerID(sample.layerID)
     const wrap = layerWrap[slot]
-    const { geometry, tileDepths, tilePositions } = buildGroupGeometry(groupTiles, atlasWidth, atlasHeight)
+    const { geometry, tileDepths, tilePositions } = buildGroupGeometry(
+      groupTiles,
+      atlasWidth,
+      atlasHeight,
+      revealOrders,
+    )
     const blendType = PSX_BLEND_MODES[sample.blendType as keyof typeof PSX_BLEND_MODES]
 
     return {

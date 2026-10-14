@@ -1,7 +1,9 @@
-import gateways from '@data/field/gateways_index.json'
 import { Camera, Object3D, Raycaster, Vector3 } from 'three'
 
+import { getGameData } from './gameData'
 import { FieldData } from './modules/field/Field.tsx'
+
+const { gateways } = getGameData()
 
 export const numberToFloatingPoint = (value: number) => value / 4096
 
@@ -25,12 +27,6 @@ export const vectorToFloatingPoint = (value: number[] | Vector3 | { x: number; y
   vector.z = numberToFloatingPoint(value.z)
 
   return vector
-}
-
-export const getInitialField = () => {
-  const initialField = new URLSearchParams(window.location.search).get('field')
-
-  return initialField
 }
 
 export const getGatewayDestination = (destinationPoint: VectorLike) => ({

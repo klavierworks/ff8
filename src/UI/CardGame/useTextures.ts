@@ -2,32 +2,24 @@ import { useLoader } from '@react-three/fiber'
 import { useMemo } from 'react'
 import { NearestFilter, Texture, TextureLoader } from 'three'
 
-const MC_SHEET_URLS = import.meta.glob<string>('/extractor/data/converted/menu/cards/*.png', {
-  eager: true,
-  import: 'default',
-  query: '?url',
-})
-
-const ICON_SHEET_URLS = import.meta.glob<string>('/extractor/data/converted/exe/cardgame_icons/*.png', {
-  eager: true,
-  import: 'default',
-  query: '?url',
-})
+import { getAssetUrl, listAssets } from '../../assetManifest'
 
 const ICONS_PALETTE = '09'
 
-const orderedMcUrls = (() => {
+const orderedMcPaths = (() => {
   const byIndex: string[] = []
-  for (const [path, url] of Object.entries(MC_SHEET_URLS)) {
+  for (const path of listAssets('menu/cards/')) {
     const match = path.match(/mc(\d{2})/)
     if (match) {
-      byIndex[Number(match[1])] = url
+      byIndex[Number(match[1])] = path
     }
   }
   return byIndex
 })()
 
-const iconsUrl = Object.entries(ICON_SHEET_URLS).find(([path]) => path.endsWith(`${ICONS_PALETTE}.png`))?.[1]
+const SHEET_URLS = [...orderedMcPaths, `exe/cardgame_icons/${ICONS_PALETTE}.png`]
+  .filter((path): path is string => Boolean(path))
+  .map(getAssetUrl)
 
 const configurePixelArt = (texture: Texture) => {
   texture.magFilter = NearestFilter
@@ -44,12 +36,11 @@ export type CardGameTextures = {
 }
 
 const useTextures = (): CardGameTextures => {
-  const urls = useMemo(() => [...orderedMcUrls, iconsUrl].filter((url): url is string => Boolean(url)), [])
-  const textures = useLoader(TextureLoader, urls)
+  const textures = useLoader(TextureLoader, SHEET_URLS)
 
   return useMemo(() => {
-    const mcSheets = textures.slice(0, orderedMcUrls.length).map(configurePixelArt)
-    const iconsSheet = configurePixelArt(textures[orderedMcUrls.length])
+    const mcSheets = textures.slice(0, orderedMcPaths.length).map(configurePixelArt)
+    const iconsSheet = configurePixelArt(textures[orderedMcPaths.length])
     return { iconsSheet, mcSheets }
   }, [textures])
 }

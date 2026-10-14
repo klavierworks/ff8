@@ -66,6 +66,7 @@ type GlobalState = {
 
   hasActivePushMethod: boolean
   hasActiveTalkMethod: boolean
+  hasMainScriptStarted: boolean
   hasMoved: boolean
   initialAngle: number | undefined
 
@@ -74,8 +75,11 @@ type GlobalState = {
   isCardGameActive: boolean
   isCongaTrailStretched: boolean
   isDebugMode: boolean
+  isEntranceHeld: boolean
   isFieldDrawSuppressed: boolean
+  isFieldReady: boolean
   isLagunaDream: boolean
+  isLoadedAsLibrary: boolean
   isLoading: boolean
   isLoadingSavedGame: boolean
   isMapFadeEnabled: boolean
@@ -207,6 +211,7 @@ const INITIAL_STATE: GlobalState = {
   globalMeshTint: [128, 128, 128],
   hasActivePushMethod: false,
   hasActiveTalkMethod: false,
+  hasMainScriptStarted: false,
   hasMoved: false,
   initialAngle: undefined,
 
@@ -215,8 +220,13 @@ const INITIAL_STATE: GlobalState = {
   isCardGameActive: false,
   isCongaTrailStretched: false,
   isDebugMode: false,
+  isEntranceHeld: false,
   isFieldDrawSuppressed: false,
+  isFieldReady: false,
   isLagunaDream: false,
+
+  isLoadedAsLibrary: false,
+
   isLoading: false,
   isLoadingSavedGame: false,
 

@@ -1,5 +1,5 @@
 // ─── Movies: files ───
-export const MOVIES_PATH = '/movies'
+export const MOVIES_PATH = 'movies'
 export const MOVIE_EXTENSION = 'mp4'
 export const MOVIE_CAMERA_EXTENSION = 'cam'
 export const FIRST_PUBLISH_DISC = 5

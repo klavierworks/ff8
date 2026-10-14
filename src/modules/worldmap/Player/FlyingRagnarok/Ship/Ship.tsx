@@ -3,13 +3,12 @@ import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import { Group } from 'three'
 
-import { loadAssetUrl, preloadAssetUrl } from '../../../../../loadAssetUrl'
-import { CHARAONE_LOADERS } from '../../../charaoneAssets'
+import { getCharaoneUrl } from '../../../charaoneAssets'
 import { CHARAONE_MODEL_SCALE } from '../../../constants'
-import { buildRagnarokRoot, calculateShipClipTime, RAGNAROK_DEPLOY_CLIP, RAGNAROK_GLB_KEY } from './shipUtils'
+import { buildRagnarokRoot, calculateShipClipTime, RAGNAROK_CHARAONE_SECTION, RAGNAROK_DEPLOY_CLIP } from './shipUtils'
 
 const Ship = () => {
-  const { animations, scene } = useGLTF(loadAssetUrl(CHARAONE_LOADERS, RAGNAROK_GLB_KEY))
+  const { animations, scene } = useGLTF(getCharaoneUrl(RAGNAROK_CHARAONE_SECTION))
   const root = useMemo(() => buildRagnarokRoot(scene), [scene])
   const groupRef = useRef<Group>(null)
   const { actions } = useAnimations(animations, groupRef)
@@ -37,7 +36,5 @@ const Ship = () => {
     </group>
   )
 }
-
-preloadAssetUrl(CHARAONE_LOADERS, RAGNAROK_GLB_KEY, useGLTF.preload)
 
 export default Ship

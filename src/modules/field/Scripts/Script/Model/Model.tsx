@@ -3,8 +3,11 @@ import { useFrame } from '@react-three/fiber'
 import { ComponentType, type JSX, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { Bone, Box3, Color, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, Vector3 } from 'three'
 
+import { FIELD_MODEL_PLACEHOLDER_BOUNDS } from '../../../../../constants/modelLoader'
 import useGlobalStore from '../../../../../store'
 import { numberToFloatingPoint } from '../../../../../utils'
+import useFieldRevealStore from '../../../fieldRevealStore'
+import { isModelRevealed } from '../../../fieldRevealUtils'
 import { createAnimationController } from '../AnimationController/AnimationController'
 import createFootstepController from '../FootstepController/FootstepController'
 import createHeadRotationController from '../HeadRotationController/HeadRotationController'
@@ -12,6 +15,7 @@ import createMovementController from '../MovementController/MovementController'
 import createRotationController from '../RotationController/RotationController'
 import createSFXController from '../SFXController/SFXController'
 import { ScriptStateStore } from '../state'
+import ModelLoader from './ModelLoader/ModelLoader'
 import { applyModelMaterial } from './modelMaterial'
 import { createPaletteOffsetUniform, getPaletteOffset } from './modelPalette'
 import useControls from './useControls'
@@ -217,6 +221,8 @@ const Model = ({
   const pushRadius = useScriptStateStore((state) => state.pushRadius)
   const isPlayerControlled = isLeadCharacter || isFollower
 
+  const isRevealed = useFieldRevealStore((state) => isModelRevealed(state.stage, state.direction))
+
   return (
     <group>
       {isDebugMode && !isPlayerControlled && (
@@ -249,7 +255,9 @@ const Model = ({
           boundingbox,
         }}
       >
-        <ModelComponent mapName={fieldId} ref={setModelRef} scale={0.06} />
+        <ModelLoader bounds={FIELD_MODEL_PLACEHOLDER_BOUNDS} isRevealed={isRevealed}>
+          <ModelComponent mapName={fieldId} ref={setModelRef} scale={0.06} />
+        </ModelLoader>
       </group>
     </group>
   )

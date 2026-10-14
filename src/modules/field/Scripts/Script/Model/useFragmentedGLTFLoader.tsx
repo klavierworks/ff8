@@ -1,21 +1,13 @@
-import manifest from '@data/field/models/manifest.json'
 import { useGLTF } from '@react-three/drei'
 import { useMemo } from 'react'
 
-import { loadAssetUrl, preloadAssetUrl } from '../../../../../loadAssetUrl'
+import { getAssetUrl } from '../../../../../assetManifest'
+import { getGameData } from '../../../../../gameData'
 
-// Lazy globs: one thunk per model glb, resolved on demand so a field only pulls in its models.
-const BASE_LOADERS = import.meta.glob<string>('@data/field/models/base/**/*.glb', {
-  import: 'default',
-  query: '?url',
-})
-const ANIMATION_LOADERS = import.meta.glob<string>('@data/field/models/animations/*.glb', {
-  import: 'default',
-  query: '?url',
-})
+const manifest = getGameData().fieldModels
 
-const baseKey = (model: string, base: string) => `/extractor/data/converted/field/models/base/${model}/${base}.glb`
-const animationKey = (model: string) => `/extractor/data/converted/field/models/animations/${model}.glb`
+const getBaseUrl = (model: string, base: string) => getAssetUrl(`field/models/base/${model}/${base}.glb`)
+const getAnimationUrl = (model: string) => getAssetUrl(`field/models/animations/${model}.glb`)
 
 type CopyEntry = {
   base: string
@@ -55,8 +47,8 @@ const resolveCopy = (model: string, fieldName: string) => {
 
 export const useFragmentedGLTFLoader = (baseGltf: string, fieldName: string) => {
   const { entry, model } = resolveCopy(baseGltf, fieldName)
-  const base = useGLTF(loadAssetUrl(BASE_LOADERS, baseKey(model, entry.base)))
-  const library = useGLTF(loadAssetUrl(ANIMATION_LOADERS, animationKey(model)))
+  const base = useGLTF(getBaseUrl(model, entry.base))
+  const library = useGLTF(getAnimationUrl(model))
 
   const animations = useMemo(
     () => entry.clips.map((clipIndex) => library.animations[clipIndex]).filter(Boolean),
@@ -71,6 +63,6 @@ useFragmentedGLTFLoader.preload = (baseGltf?: string, fieldName?: string) => {
     return
   }
   const { entry, model } = resolveCopy(baseGltf, fieldName ?? '')
-  preloadAssetUrl(BASE_LOADERS, baseKey(model, entry.base), useGLTF.preload)
-  preloadAssetUrl(ANIMATION_LOADERS, animationKey(model), useGLTF.preload)
+  useGLTF.preload(getBaseUrl(model, entry.base))
+  useGLTF.preload(getAnimationUrl(model))
 }

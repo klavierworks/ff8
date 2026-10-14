@@ -33,9 +33,9 @@ type StartOptions = {
   volume: number
 }
 
-const keepContextRunning = (audioContext: AudioContext) => {
+const keepContextRunning = (audioContext: AudioContext, getIsSuspended: () => boolean) => {
   const resume = () => {
-    if (audioContext.state === 'running') {
+    if (getIsSuspended() || audioContext.state === 'running') {
       return
     }
     audioContext.resume().catch(() => undefined)
@@ -53,6 +53,7 @@ const AkaoController = () => {
   let audio: undefined | { context: AudioContext; masterGain: GainNode }
   let pendingTrack: PendingTrack | undefined
   let battleMusicId = 0
+  let isSuspended = false
 
   const getAudio = () => {
     if (!audio) {
@@ -60,7 +61,7 @@ const AkaoController = () => {
       const masterGain = context.createGain()
       masterGain.gain.value = AKAO_MUSIC_BASE_VOLUME
       masterGain.connect(context.destination)
-      keepContextRunning(context)
+      keepContextRunning(context, () => isSuspended)
       audio = { context, masterGain }
     }
     return audio
@@ -263,6 +264,15 @@ const AkaoController = () => {
     pendingTrack = undefined
   }
 
+  const setIsSuspended = (shouldSuspend: boolean) => {
+    isSuspended = shouldSuspend
+    if (!audio) {
+      return
+    }
+    const change = shouldSuspend ? audio.context.suspend() : audio.context.resume()
+    change.catch(() => undefined)
+  }
+
   return {
     crossMusic,
     dualMusic,
@@ -277,6 +287,7 @@ const AkaoController = () => {
     reset,
     restoreChannelVolumes,
     setBattleMusic,
+    setIsSuspended,
     setVolume,
     stopOverlayMusic,
     transitionVolume,

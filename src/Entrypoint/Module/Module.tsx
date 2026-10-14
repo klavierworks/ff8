@@ -2,33 +2,26 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { Scene } from 'three'
 
-import { musicController } from './audio/activeMusicController'
-import { registerMusicConsole } from './audio/musicConsole'
-import MAP_NAMES from './constants/maps'
-import FieldLoader from './modules/field/Field'
-import { movieController } from './modules/field/movieController'
-import ScriptClock from './modules/field/ScriptClock/ScriptClock'
-import { attachKeyDownListeners } from './modules/field/Scripts/Script/common'
-import Menu from './modules/menu/Menu'
-import Worldmap from './modules/worldmap/Worldmap'
-import useGlobalStore from './store'
-import { getInitialField } from './utils'
+import { musicController } from '../../audio/activeMusicController'
+import { registerMusicConsole } from '../../audio/musicConsole'
+import FieldLoader from '../../modules/field/Field'
+import { movieController } from '../../modules/field/movieController'
+import ScriptClock from '../../modules/field/ScriptClock/ScriptClock'
+import { attachKeyDownListeners } from '../../modules/field/Scripts/Script/common'
+import Menu from '../../modules/menu/Menu'
+import Worldmap from '../../modules/worldmap/Worldmap'
+import useGlobalStore from '../../store'
 
-useGlobalStore.setState({
-  pendingFieldId: (getInitialField() ?? 'menu') as (typeof MAP_NAMES)[number],
-})
-
-if (import.meta.env.DEV) {
-  registerMusicConsole()
-}
-
-type EntrypointProps = {
+type ModuleProps = {
   setWorldScene: (scene: Scene) => void
 }
-const Entrypoint = ({ setWorldScene }: EntrypointProps) => {
+const Module = ({ setWorldScene }: ModuleProps) => {
   const module = useGlobalStore((state) => state.module)
   useEffect(() => {
     attachKeyDownListeners()
+    if (import.meta.env.DEV) {
+      registerMusicConsole()
+    }
   }, [])
 
   const fadeSpring = useGlobalStore((state) => state.fadeSpring)
@@ -67,4 +60,4 @@ const Entrypoint = ({ setWorldScene }: EntrypointProps) => {
   )
 }
 
-export default Entrypoint
+export default Module

@@ -7,6 +7,7 @@ import useGlobalStore from '../../../store'
 import { vectorToFloatingPoint } from '../../../utils'
 import { FieldData } from '../Field'
 import WalkmeshMovementController from './WalkmeshMovement'
+import WalkmeshReveal from './WalkmeshReveal/WalkmeshReveal'
 
 type WalkMeshProps = {
   walkmesh: FieldData['walkmesh']
@@ -73,21 +74,24 @@ const WalkMesh = ({ walkmesh }: WalkMeshProps) => {
     }
   }
   return (
-    <Bvh firstHitOnly>
-      <group name="walkmesh">
-        {walkMeshGeometry.map((geometry, index) => (
-          <mesh geometry={geometry} key={index} name={`${index}`} onClick={handleClick} visible={isDebugMode}>
-            <meshBasicMaterial
-              color={getColor(index)}
-              opacity={1}
-              side={DoubleSide}
-              transparent
-              wireframe={lockedTriangles.includes(index)}
-            />
-          </mesh>
-        ))}
-      </group>
-    </Bvh>
+    <>
+      <WalkmeshReveal walkmesh={walkmesh} />
+      <Bvh firstHitOnly>
+        <group name="walkmesh">
+          {walkMeshGeometry.map((geometry, index) => (
+            <mesh geometry={geometry} key={index} name={`${index}`} onClick={handleClick} visible={isDebugMode}>
+              <meshBasicMaterial
+                color={getColor(index)}
+                opacity={1}
+                side={DoubleSide}
+                transparent
+                wireframe={lockedTriangles.includes(index)}
+              />
+            </mesh>
+          ))}
+        </group>
+      </Bvh>
+    </>
   )
 }
 

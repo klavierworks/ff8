@@ -1,61 +1,66 @@
-import './index.css'
+import '../index.css'
 import { PerspectiveCamera } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { EffectComposer } from '@react-three/postprocessing'
 import { useEffect, useState } from 'react'
 import { Scene } from 'three'
 
-import BattleTransition from './BattleTransition/BattleTransition'
-import ColorOverlay from './ColorOverlay/ColorOverlay'
-import { ASPECT_RATIO } from './constants/constants'
-import MAP_NAMES from './constants/maps'
-import Controller from './Controller/Controller'
-import Entrypoint from './Entrypoint'
-import Loading from './Loading/Loading'
-import Memory from './Memory/Memory'
-import { MEMORY } from './modules/field/Scripts/Script/handlers'
-import { applyWorldmapUrlParams } from './modules/worldmap/worldmapUrl'
-import Queues from './Queues/Queues'
-import useGlobalStore from './store'
-import Ui from './UI/UI'
-import useIsTabActive from './useIsTabActive'
-import useUrlSync from './useUrlSync'
+import BattleTransition from '../BattleTransition/BattleTransition'
+import ColorOverlay from '../ColorOverlay/ColorOverlay'
+import { ASPECT_RATIO } from '../constants/constants'
+import Controller from '../Controller/Controller'
+import { initialiseFromUrl, MapName } from '../initialiseFromUrl'
+import Loading from '../Loading/Loading'
+import Memory from '../Memory/Memory'
+import { holdFieldIntro } from '../modules/field/fieldRevealStore'
+import Queues from '../Queues/Queues'
+import useGlobalStore from '../store'
+import Ui from '../UI/UI'
+import useHostBridge from '../useHostBridge'
+import useIsTabActive from '../useIsTabActive'
+import useUrlSync from '../useUrlSync'
+import Module from './Module/Module'
 
-const party = new URLSearchParams(window.location.search).get('party')
-if (party) {
-  const partyMembers = party.split(',').map((s) => parseInt(s))
-  useGlobalStore.setState({
-    party: partyMembers,
-  })
+export type EntrypointProps = {
+  hasIntroTransition?: boolean
+  isActive?: boolean
+  onExited?: () => void
+  onReady?: () => void
+  shouldSyncTitle?: boolean
+  shouldSyncUrl?: boolean
+  startField?: MapName
 }
 
-const requestedProgress = new URLSearchParams(window.location.search).get('progress')
-if (requestedProgress) {
-  MEMORY[256] = parseInt(requestedProgress)
+const initialiseEntrypoint = (
+  search: string,
+  startField: MapName | undefined,
+  hasIntroTransition: boolean,
+  shouldSyncTitle: boolean,
+) => {
+  if (hasIntroTransition) {
+    holdFieldIntro()
+  }
+  useGlobalStore.setState({ isLoadedAsLibrary: !shouldSyncTitle })
+  return initialiseFromUrl(search, startField)
 }
 
-const namedField = new URLSearchParams(window.location.search).get('field')
-if (namedField) {
-  useGlobalStore.setState({
-    module: 'field',
-    pendingFieldId: namedField as (typeof MAP_NAMES)[number],
-  })
-}
+const Entrypoint = ({
+  hasIntroTransition = false,
+  isActive = true,
+  onExited,
+  onReady,
+  shouldSyncTitle = false,
+  shouldSyncUrl = false,
+  startField,
+}: EntrypointProps) => {
+  // Runs during the first render rather than in an effect so children see the seeded store immediately.
+  const [namedField] = useState(() =>
+    initialiseEntrypoint(shouldSyncUrl ? window.location.search : '', startField, hasIntroTransition, shouldSyncTitle),
+  )
 
-const module = new URLSearchParams(window.location.search).get('module')
-if (module === 'menu' || module === 'worldmap') {
-  useGlobalStore.setState({
-    fieldId: undefined,
-    module,
-    pendingFieldId: undefined,
-  })
-}
+  const isPaused = useHostBridge({ hasIntroTransition, isActive, onExited, onReady })
+  const isHeldOut = !isActive && !hasIntroTransition
 
-if (module === 'worldmap') {
-  applyWorldmapUrlParams(new URLSearchParams(window.location.search), MEMORY)
-}
-
-const App = () => {
   const isTabActive = useIsTabActive()
 
   const fieldId = useGlobalStore((state) => state.fieldId)
@@ -65,7 +70,7 @@ const App = () => {
 
   const module = useGlobalStore((state) => state.module)
 
-  useUrlSync()
+  useUrlSync(shouldSyncUrl)
 
   useEffect(() => {
     if (!fieldId || module === 'menu') {
@@ -78,11 +83,11 @@ const App = () => {
 
   return (
     <>
-      <div className="container">
+      <div className={isHeldOut ? 'container isHeld' : 'container'}>
         <Canvas
           camera={undefined}
           className="canvas"
-          frameloop="always"
+          frameloop={isPaused ? 'never' : 'always'}
           gl={{
             alpha: false,
             antialias: false,
@@ -101,7 +106,7 @@ const App = () => {
               position={[0, 0, 0]}
             />
             <PerspectiveCamera aspect={ASPECT_RATIO} far={1000} name="sceneCamera" near={0.001} position={[0, 0, 0]} />
-            <Entrypoint setWorldScene={setWorldScene} />
+            <Module setWorldScene={setWorldScene} />
             <ColorOverlay />
             <BattleTransition />
           </EffectComposer>
@@ -145,4 +150,4 @@ const App = () => {
   )
 }
 
-export default App
+export default Entrypoint

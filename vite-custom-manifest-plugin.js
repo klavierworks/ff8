@@ -1,32 +1,31 @@
-import { readdir, readFile, writeFile } from 'fs/promises';
-import { join, relative, sep } from 'path';
+import { readdir, writeFile } from 'fs/promises';
+import { join, relative, resolve, sep } from 'path';
 
-const EXCLUDED_PATH_PREFIXES = ['audio/effects/'];
 const EXCLUDED_FILENAMES = new Set(['custom-manifest.json', '_sw.js', '_headers', '_redirects']);
 
+// Lists the build's own files for offline caching. Extractor files are not in the build; the
+// service worker adds them from the host's asset manifest.
 export function customManifestPlugin() {
+  let outputDir;
+
   return {
     name: 'custom-manifest',
     apply: 'build',
 
+    configResolved(config) {
+      outputDir = resolve(config.root, config.build.outDir);
+    },
+
     async closeBundle() {
       try {
-        const outputDir = join(process.cwd(), 'dist');
-
         console.log('Generating custom manifest...');
 
-        const excludedAnimations = await collectAnimationOutputs(outputDir);
         const allFiles = await collectFilePaths(outputDir, outputDir);
-        const filePaths = allFiles.filter((path) => !isExcluded(path, excludedAnimations));
+        const filePaths = allFiles.filter((path) => !isExcluded(path));
 
-        const manifestPath = join(outputDir, 'custom-manifest.json');
-        await writeFile(manifestPath, JSON.stringify(filePaths, null, 2));
+        await writeFile(join(outputDir, 'custom-manifest.json'), JSON.stringify(filePaths, null, 2));
 
-        const excludedCount = allFiles.length - filePaths.length;
-        console.log(
-          `Custom manifest created with ${filePaths.length} files ` +
-            `(excluded ${excludedCount}: sound effects + ${excludedAnimations.size} animation GLBs + control files)`,
-        );
+        console.log(`Custom manifest created with ${filePaths.length} files`);
       } catch (error) {
         console.error('Error generating custom manifest:', error);
       }
@@ -34,42 +33,10 @@ export function customManifestPlugin() {
   };
 }
 
-function isExcluded(relativePath, excludedAnimations) {
+function isExcluded(relativePath) {
   const normalized = relativePath.split(sep).join('/');
-
-  if (EXCLUDED_PATH_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
-    return true;
-  }
-
   const filename = normalized.split('/').pop();
-  if (EXCLUDED_FILENAMES.has(filename)) {
-    return true;
-  }
-
-  if (normalized.endsWith('.map')) {
-    return true;
-  }
-
-  return excludedAnimations.has(normalized);
-}
-
-async function collectAnimationOutputs(outputDir) {
-  const excluded = new Set();
-
-  try {
-    const viteManifestPath = join(outputDir, '.vite', 'manifest.json');
-    const viteManifest = JSON.parse(await readFile(viteManifestPath, 'utf8'));
-
-    for (const [source, entry] of Object.entries(viteManifest)) {
-      if (source.includes('/animations/') && entry.file && entry.file.endsWith('.glb')) {
-        excluded.add(entry.file);
-      }
-    }
-  } catch (error) {
-    console.warn('Could not read Vite manifest for animation exclusion:', error.message);
-  }
-
-  return excluded;
+  return EXCLUDED_FILENAMES.has(filename) || normalized.endsWith('.map');
 }
 
 async function collectFilePaths(dir, baseDir) {
