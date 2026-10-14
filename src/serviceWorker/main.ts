@@ -1,11 +1,10 @@
-import { OFFLINE_MANIFEST_FILENAME, SITE_ASSET_BASE_URL } from '../constants/assets'
+import { ASSET_MANIFEST_FILENAME, SITE_ASSET_BASE_URL } from '../constants/assets'
 import { BATCH_SIZE, CACHE_NAME, OFFLINE_EXCLUDED_DATA_PREFIXES, OFFLINE_EXCLUDED_DATA_SEGMENT } from './CONSTANTS'
 import { fetchFile } from './fetch'
 import { getState, updateState } from './state'
 
 const CUSTOM_MANIFEST_URL = '/custom-manifest.json'
-// Lists every extracted file, including those in the per-directory manifests the game reads lazily.
-const OFFLINE_MANIFEST_URL = `/${SITE_ASSET_BASE_URL}${OFFLINE_MANIFEST_FILENAME}`
+const ASSET_MANIFEST_URL = `/${SITE_ASSET_BASE_URL}${ASSET_MANIFEST_FILENAME}`
 
 type AssetManifest = {
   files: Record<string, string>
@@ -34,7 +33,7 @@ const isOfflineDataPath = (path: string) =>
 
 // Cached under the same versioned urls the game requests, so a changed file is fetched afresh.
 const loadDataFiles = async (): Promise<string[]> => {
-  const response = await fetch(OFFLINE_MANIFEST_URL, { cache: 'no-cache' })
+  const response = await fetch(ASSET_MANIFEST_URL, { cache: 'no-cache' })
   if (!response.ok) {
     console.warn(`Asset manifest unavailable (${response.status}); skipping extracted files`)
     return []

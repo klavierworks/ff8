@@ -79,7 +79,6 @@ type GlobalState = {
   isFieldDrawSuppressed: boolean
   isFieldReady: boolean
   isLagunaDream: boolean
-  isLoadedAsLibrary: boolean
   isLoading: boolean
   isLoadingSavedGame: boolean
   isMapFadeEnabled: boolean
@@ -224,9 +223,6 @@ const INITIAL_STATE: GlobalState = {
   isFieldDrawSuppressed: false,
   isFieldReady: false,
   isLagunaDream: false,
-
-  isLoadedAsLibrary: false,
-
   isLoading: false,
   isLoadingSavedGame: false,
 

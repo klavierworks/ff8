@@ -7,16 +7,11 @@
   height: auto;
   aspect-ratio: 320 / 224;
   background-color: black;
-  transition: opacity 1s ease-in;
 
   @media(min-aspect-ratio: 320/224) {
     height: 100vh;
     width: auto;
   }
-}
-
-.container.isHeld {
-  opacity: 0;
 }
 
 .canvas {
@@ -72,61 +67,4 @@
   top: initial;
   bottom: 0;
   color: blue;
-}
-
-@property --text-opacity {
-  syntax: '<number>';
-  inherits: true;
-  initial-value: 0;
-}
-
-.disclaimer {
-  opacity: 1;
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  place-content: center;
-  place-items: center;
-  background-color: rgba(0, 0, 0, 1);
-  color: white;
-  text-align: center;
-  font-size: 0.7rem;
-  padding: 0 15%;
-  animation: showDisclaimer 5s ease-in-out forwards;
-  pointer-events: none;
-  
-  @media (min-width: 600px) {
-    font-size: 1rem;
-    padding: 0 25%;
-  }
-
-  p {
-    opacity: var(--text-opacity, 0);
-  }
-}
-
-.disclaimer.isHidden {
-  display: none;
-}
-
-@keyframes showDisclaimer {
-0% {
-  --text-opacity: 0;
-  opacity: 1;
-}
-10% {
-  --text-opacity: 1;
-}
-90% {
-  --text-opacity: 1;
-}
-99% {
-  --text-opacity: 0;
-  opacity: 1;
-}
-100% {
-  --text-opacity: 0;
-  opacity: 0;
-}
 }

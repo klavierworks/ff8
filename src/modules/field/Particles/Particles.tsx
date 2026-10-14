@@ -45,7 +45,7 @@ const readEntityPosition = (scene: Scene, entityId: number, target: Vector3) => 
 }
 
 const Particles = ({ data, fieldId }: ParticlesProps) => {
-  const texture = useFieldSprite(fieldId, `${fieldId}_particles.png`)
+  const texture = useFieldSprite(`${fieldId}_particles.png`)
   const simulation = useMemo(() => createParticleSimulation(data), [data])
   const groups = useMemo(() => createParticleGroups(data), [data])
   const mountedFrame = useRef(getScriptFrame())

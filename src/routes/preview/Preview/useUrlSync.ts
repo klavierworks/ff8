@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
 
-import { WORLDMAP_URL_UPDATE_INTERVAL_MS } from './constants/worldmapTransitions'
-import { MEMORY } from './modules/field/Scripts/Script/handlers'
-import { buildWorldmapUrlParams, WORLDMAP_URL_PARAMS } from './modules/worldmap/worldmapUrl'
-import useGlobalStore from './store'
+import { WORLDMAP_URL_UPDATE_INTERVAL_MS } from '../../../constants/worldmapTransitions'
+import { MEMORY } from '../../../modules/field/Scripts/Script/handlers'
+import useGlobalStore from '../../../store'
+import { buildWorldmapUrlParams, WORLDMAP_URL_PARAMS } from '../worldmapUrl'
 
 type UrlValues = Record<string, number | string>
 
@@ -32,20 +32,20 @@ const replaceWorldmapUrl = () => {
   }
 }
 
-const useUrlSync = (isEnabled: boolean) => {
+const useUrlSync = () => {
   const fieldId = useGlobalStore((state) => state.fieldId)
   const module = useGlobalStore((state) => state.module)
   const hasPendingField = useGlobalStore((state) => !!state.pendingFieldId)
 
   useEffect(() => {
-    if (!isEnabled || module !== 'field' || !fieldId || hasPendingField) {
+    if (module !== 'field' || !fieldId || hasPendingField) {
       return
     }
     pushFieldUrl(fieldId)
-  }, [fieldId, hasPendingField, isEnabled, module])
+  }, [fieldId, hasPendingField, module])
 
   useEffect(() => {
-    if (!isEnabled || module !== 'worldmap') {
+    if (module !== 'worldmap') {
       return
     }
     window.history.pushState({}, '', buildUrl(['field'], { module: 'worldmap' }))
@@ -53,7 +53,7 @@ const useUrlSync = (isEnabled: boolean) => {
     return () => {
       window.clearInterval(interval)
     }
-  }, [isEnabled, module])
+  }, [module])
 }
 
 export default useUrlSync

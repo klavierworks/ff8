@@ -6,7 +6,7 @@ import { extractorDataPlugin } from './vite-extractor-data-plugin.js'
 import { VitePWA } from 'vite-plugin-pwa'
 
 const MOUNT_ENTRY = 'ff8'
-// Must match SITE_ASSET_BASE_URL in src/constants/assets.ts, which the site passes to mount().
+// Must match SITE_ASSET_BASE_URL in src/constants/assets.ts.
 const SITE_DATA_URL_PREFIX = '/data/'
 const STYLE_ELEMENT_ID = 'ff8-styles'
 
@@ -46,7 +46,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: 'index.html',
-        [MOUNT_ENTRY]: 'src/mount.ts',
+        [MOUNT_ENTRY]: 'src/routes/library/mount.ts',
       },
       output: {
         entryFileNames: (chunk) => (chunk.name === MOUNT_ENTRY ? `${MOUNT_ENTRY}.js` : 'assets/[name]-[hash].js'),

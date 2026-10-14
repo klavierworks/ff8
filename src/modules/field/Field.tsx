@@ -7,9 +7,7 @@ import { Group } from 'three'
 import { CAMERA_SHAKE_OFF } from '../../constants/camera'
 import { LADDER_CLIMB_SPEED } from '../../constants/ladders'
 import MAP_NAMES from '../../constants/maps'
-import { getGameData } from '../../gameData'
 import useGlobalStore, { createEmptyParticleEmitters } from '../../store'
-import { resolveNameDictionaryTokens } from '../../UI/textUtils'
 import Background from './Background/Background'
 import Camera from './Camera/Camera'
 import FieldReveal from './FieldReveal/FieldReveal'
@@ -28,8 +26,6 @@ import Scripts from './Scripts/Scripts'
 import { Script } from './Scripts/types'
 import useFieldLoadTracking from './useFieldLoadTracking'
 import WalkMesh from './WalkMesh/WalkMesh'
-
-const { areaNames } = getGameData()
 
 export type FieldData = Omit<RawFieldData, 'scripts' | 'tiles'> & {
   particles: ParticleData | undefined
@@ -57,21 +53,6 @@ type FieldProps = {
 }
 
 const Field = ({ data }: FieldProps) => {
-  const currentLocationPlaceName = useGlobalStore((state) => state.currentLocationPlaceName as number)
-  const isLoadedAsLibrary = useGlobalStore((state) => state.isLoadedAsLibrary)
-  useEffect(() => {
-    if (isLoadedAsLibrary) {
-      return
-    }
-    const name = resolveNameDictionaryTokens(areaNames[currentLocationPlaceName])
-
-    if (name) {
-      document.title = `${name} - Final Fantasy VIII GL`
-    } else {
-      document.title = `${data.id} - Final Fantasy VIII GL`
-    }
-  }, [currentLocationPlaceName, data.id, isLoadedAsLibrary])
-
   const walkmeshController = useGlobalStore((state) => state.walkmeshController)
   const handleBackgroundLoad = useFieldLoadTracking()
   const backgroundRef = useRef<Group>(null)

@@ -1,9 +1,9 @@
 import { WORLDMAP_ENTRY_FROM_FIELD, WORLDMAP_ENTRY_FROM_SAVE } from '../../constants/worldmapTransitions'
+import { convertRadiansToCameraYaw } from '../../modules/worldmap/Camera/cameraUtils'
+import { buildSavedVehiclePosition } from '../../modules/worldmap/worldmapEntry'
+import { Memory, writeSavedPartyState, writeSavedVehiclePosition } from '../../modules/worldmap/worldmapSaveData'
+import useWorldmapStore from '../../modules/worldmap/worldmapStore'
 import useGlobalStore from '../../store'
-import { convertRadiansToCameraYaw } from './Camera/cameraUtils'
-import { buildSavedVehiclePosition } from './worldmapEntry'
-import { Memory, writeSavedPartyState, writeSavedVehiclePosition } from './worldmapSaveData'
-import useWorldmapStore from './worldmapStore'
 
 const POSITION_PARAMS = ['x', 'y', 'z', 'yaw'] as const
 const CAMERA_PARAM = 'camera'

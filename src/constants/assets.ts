@@ -1,5 +1,4 @@
 export const ASSET_MANIFEST_FILENAME = 'asset-manifest.json'
-export const OFFLINE_MANIFEST_FILENAME = 'offline-manifest.json'
 export const SITE_ASSET_BASE_URL = 'data/'
 
 export const GAME_DATA_PATHS = {

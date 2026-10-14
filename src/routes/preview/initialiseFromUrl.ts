@@ -1,9 +1,8 @@
-import MAP_NAMES from './constants/maps'
-import { MEMORY } from './modules/field/Scripts/Script/handlers'
-import { applyWorldmapUrlParams } from './modules/worldmap/worldmapUrl'
-import useGlobalStore from './store'
-
-export type MapName = (typeof MAP_NAMES)[number]
+import { MapName } from '../../constants/maps'
+import { MEMORY } from '../../modules/field/Scripts/Script/handlers'
+import { setStartField } from '../../startField'
+import useGlobalStore from '../../store'
+import { applyWorldmapUrlParams } from './worldmapUrl'
 
 const applyParty = (params: URLSearchParams) => {
   const party = params.get('party')
@@ -21,14 +20,6 @@ const applyProgress = (params: URLSearchParams) => {
   MEMORY[256] = parseInt(progress)
 }
 
-const applyField = (field: null | string) => {
-  if (!field) {
-    useGlobalStore.setState({ pendingFieldId: 'menu' as MapName })
-    return
-  }
-  useGlobalStore.setState({ module: 'field', pendingFieldId: field as MapName })
-}
-
 const applyModule = (params: URLSearchParams) => {
   const module = params.get('module')
   if (module !== 'menu' && module !== 'worldmap') {
@@ -40,12 +31,12 @@ const applyModule = (params: URLSearchParams) => {
   }
 }
 
-export const initialiseFromUrl = (search: string, startField?: MapName) => {
+export const initialiseFromUrl = (search: string) => {
   const params = new URLSearchParams(search)
-  const field = params.get('field') ?? startField ?? null
+  const field = params.get('field') as MapName | null
   applyParty(params)
   applyProgress(params)
-  applyField(field)
+  setStartField(field ?? undefined)
   applyModule(params)
   return field
 }
