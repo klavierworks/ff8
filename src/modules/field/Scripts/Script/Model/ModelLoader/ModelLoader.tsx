@@ -9,6 +9,7 @@ import {
   MODEL_LOADER_MORPH_FRAMES,
 } from '../../../../../../constants/modelLoader'
 import { advanceProgress, rewindProgress } from '../../../../../../timing'
+import useFieldRevealStore, { ProgressUniform } from '../../../../fieldRevealStore'
 import { createProgressUniform } from '../../../../fieldRevealUtils'
 import LoadSignal from '../../../../LoadSignal/LoadSignal'
 import useFieldLoadTracking from '../../../../useFieldLoadTracking'
@@ -44,13 +45,14 @@ const ModelLoader = ({ bounds, children, isRevealed }: ModelLoaderProps) => {
   const [loadCount, setLoadCount] = useState(0)
   const [fit, setFit] = useState<BoundsFit | null>(null)
   const [isFitted, setIsFitted] = useState(false)
-  const [phase, setPhase] = useState<RevealPhase>('placeholder')
+  const [isIntroPlaying] = useState(() => useFieldRevealStore.getState().stage !== 'revealed')
+  const [phase, setPhase] = useState<RevealPhase>(isIntroPlaying ? 'placeholder' : 'revealed')
   const [morphGeometries, setMorphGeometries] = useState<BufferGeometry[]>([])
 
   const [displayedBounds] = useState(() => bounds.clone())
   const [loaderColor] = useState(() => new Color(FIELD_REVEAL_COLOR))
   const [morphProgress] = useState(createProgressUniform)
-  const [textureFade] = useState(createProgressUniform)
+  const [textureFade] = useState<ProgressUniform>(() => ({ value: isIntroPlaying ? 0 : 1 }))
   const [boxMaterial] = useState(() => createFlatMaterial(loaderColor))
   const [morphMaterial] = useState(() => createMorphMaterial(loaderColor, morphProgress))
 
