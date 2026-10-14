@@ -30,6 +30,9 @@ type MovieSession = {
 const loadVideo = (url: string) =>
   new Promise<HTMLVideoElement>((resolve, reject) => {
     const video = document.createElement('video')
+    // Movies can be served from another origin (e.g. an asset CDN). Without CORS mode the
+    // video taints WebGL and every VideoTexture upload throws a SecurityError.
+    video.crossOrigin = 'anonymous'
     video.preload = 'auto'
     video.playsInline = true
     video.addEventListener('canplaythrough', () => resolve(video), { once: true })
