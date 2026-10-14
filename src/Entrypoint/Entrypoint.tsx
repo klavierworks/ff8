@@ -1,38 +1,93 @@
 import '../index.css'
 import { PerspectiveCamera } from '@react-three/drei'
-import { Canvas, Frameloop } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber'
 import { EffectComposer } from '@react-three/postprocessing'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Scene } from 'three'
 
 import BattleTransition from '../BattleTransition/BattleTransition'
 import ColorOverlay from '../ColorOverlay/ColorOverlay'
 import { ASPECT_RATIO } from '../constants/constants'
 import Controller from '../Controller/Controller'
+import { initialiseFromUrl, MapName } from '../initialiseFromUrl'
 import Loading from '../Loading/Loading'
 import Memory from '../Memory/Memory'
+import { holdFieldIntro } from '../modules/field/fieldRevealStore'
 import Queues from '../Queues/Queues'
 import useGlobalStore from '../store'
 import Ui from '../UI/UI'
+import useHostBridge from '../useHostBridge'
 import useIsTabActive from '../useIsTabActive'
+import useUrlSync from '../useUrlSync'
 import Module from './Module/Module'
 
-type EntrypointProps = {
-  frameloop: Frameloop
+export type EntrypointProps = {
+  hasIntroTransition?: boolean
+  isActive?: boolean
+  onExited?: () => void
+  onReady?: () => void
+  shouldSyncTitle?: boolean
+  shouldSyncUrl?: boolean
+  startField?: MapName
 }
 
-const Entrypoint = ({ frameloop }: EntrypointProps) => {
+const initialiseEntrypoint = (
+  search: string,
+  startField: MapName | undefined,
+  hasIntroTransition: boolean,
+  shouldSyncTitle: boolean,
+) => {
+  if (hasIntroTransition) {
+    holdFieldIntro()
+  }
+  useGlobalStore.setState({ isLoadedAsLibrary: !shouldSyncTitle })
+  return initialiseFromUrl(search, startField)
+}
+
+const Entrypoint = ({
+  hasIntroTransition = false,
+  isActive = true,
+  onExited,
+  onReady,
+  shouldSyncTitle = false,
+  shouldSyncUrl = false,
+  startField,
+}: EntrypointProps) => {
+  // Runs during the first render rather than in an effect so children see the seeded store immediately.
+  const [namedField] = useState(() =>
+    initialiseEntrypoint(shouldSyncUrl ? window.location.search : '', startField, hasIntroTransition, shouldSyncTitle),
+  )
+
+  const isPaused = useHostBridge({ hasIntroTransition, isActive, onExited, onReady })
+  const isHeldOut = !isActive && !hasIntroTransition
+
   const isTabActive = useIsTabActive()
+
+  const fieldId = useGlobalStore((state) => state.fieldId)
   const isDebugMode = useGlobalStore((state) => state.isDebugMode)
+
+  const [isDisclaimerHidden, setIsDisclaimerHidden] = useState(!!namedField || import.meta.env.DEV)
+
+  const module = useGlobalStore((state) => state.module)
+
+  useUrlSync(shouldSyncUrl)
+
+  useEffect(() => {
+    if (!fieldId || module === 'menu') {
+      return
+    }
+    setIsDisclaimerHidden(true)
+  }, [fieldId, module])
+
   const [worldScene, setWorldScene] = useState<Scene>()
 
   return (
     <>
-      <div className="container">
+      <div className={isHeldOut ? 'container isHeld' : 'container'}>
         <Canvas
           camera={undefined}
           className="canvas"
-          frameloop={frameloop}
+          frameloop={isPaused ? 'never' : 'always'}
           gl={{
             alpha: false,
             antialias: false,
@@ -76,6 +131,18 @@ const Entrypoint = ({ frameloop }: EntrypointProps) => {
         </Canvas>
         {isDebugMode && <Queues />}
         {isDebugMode && <Memory />}
+        {!isDisclaimerHidden && (
+          <div className="disclaimer">
+            <p>
+              Final Fantasy VIII, all characters, stories, locations, graphics and music are © SQUARE ENIX CO., LTD. All
+              Rights Reserved.
+            </p>
+            <p>
+              This is a fan-made project not affiliated with or endorsed by Square Enix. It is an experiment, a toy, and
+              completely uncommercial.
+            </p>
+          </div>
+        )}
       </div>
       <Loading />
       <Controller />

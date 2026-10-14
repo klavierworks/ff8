@@ -1,7 +1,0 @@
-.hostedGame {
-  transition: opacity 1s ease-in;
-}
-
-.isHeld {
-  opacity: 0;
-}

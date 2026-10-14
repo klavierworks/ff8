@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { musicController } from '../../../../audio/activeMusicController'
-import useFieldLoadStore from '../../../../modules/field/fieldLoadStore'
+import { musicController } from './audio/activeMusicController'
+import useFieldLoadStore from './modules/field/fieldLoadStore'
 import useFieldRevealStore, {
   acknowledgeFieldExit,
   beginFieldExit,
   cancelFieldExit,
   requestFieldIntro,
-} from '../../../../modules/field/fieldRevealStore'
-import { setIsSfxSuspended } from '../../../../modules/field/Scripts/Script/SFXController/webAudio'
-import useGlobalStore from '../../../../store'
+} from './modules/field/fieldRevealStore'
+import { setIsSfxSuspended } from './modules/field/Scripts/Script/SFXController/webAudio'
+import useGlobalStore from './store'
 
 type HostBridgeOptions = {
   hasIntroTransition: boolean

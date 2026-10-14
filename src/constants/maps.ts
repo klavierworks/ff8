@@ -983,6 +983,4 @@ const MAP_NAMES = [
   'ehsea1a',
 ] as const
 
-export type MapName = (typeof MAP_NAMES)[number]
-
 export default MAP_NAMES

@@ -25,9 +25,6 @@
 /data/asset-manifest.json
   Cache-Control: public, max-age=0, must-revalidate
 
-/ff8.js
-  Cache-Control: public, max-age=0, must-revalidate
-
 /_sw.js
   Cache-Control: public, max-age=0, must-revalidate
 
