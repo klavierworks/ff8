@@ -1,7 +1,7 @@
 import { useLoader } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import { TextureLoader } from 'three'
-import { OBJLoader } from 'three/examples/jsm/Addons.js'
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
 
 import { getAssetUrl } from '../../../../../assetManifest'
 import useWorldmapStore from '../../../worldmapStore'

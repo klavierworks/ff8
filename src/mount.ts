@@ -7,19 +7,24 @@ import { offlineController } from './OfflineController'
 type MountOptions = {
   assetBaseUrl: string
   shouldRegisterServiceWorker?: boolean
+  shouldSyncTitle?: boolean
   shouldSyncUrl?: boolean
 }
 
 export const mount = (
   element: HTMLElement,
-  { assetBaseUrl, shouldRegisterServiceWorker = false, shouldSyncUrl = false }: MountOptions,
+  { assetBaseUrl, shouldRegisterServiceWorker = false, shouldSyncTitle = false, shouldSyncUrl = false }: MountOptions,
 ) => {
   if (shouldRegisterServiceWorker) {
     offlineController.registerServiceWorker()
   }
   const root = createRoot(element)
   root.render(
-    createElement(StrictMode, null, createElement(Suspense, null, createElement(Ff8, { assetBaseUrl, shouldSyncUrl }))),
+    createElement(
+      StrictMode,
+      null,
+      createElement(Suspense, null, createElement(Ff8, { assetBaseUrl, shouldSyncTitle, shouldSyncUrl })),
+    ),
   )
   return () => root.unmount()
 }

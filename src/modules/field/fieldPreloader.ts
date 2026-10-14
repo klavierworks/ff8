@@ -1,5 +1,6 @@
 import { getAssetUrl, hasAsset, listAssets } from '../../assetManifest'
 import { getGameData } from '../../gameData'
+import { loadFieldAssets } from './fieldAssets'
 
 type FieldModels = Record<string, Record<string, { base: string }>>
 
@@ -45,6 +46,13 @@ export const preloadField = async (fieldId: string | undefined) => {
   console.log(`Preloading field ${fieldId}...`)
 
   preloadedFieldIds.add(fieldId)
+
+  try {
+    await loadFieldAssets(fieldId)
+  } catch (error) {
+    console.warn(`Failed to load the asset manifest for ${fieldId}`, error)
+    return
+  }
 
   await Promise.all(getFieldAssetPaths(fieldId).map((path) => warmCache(getAssetUrl(path))))
 }

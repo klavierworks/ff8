@@ -26,14 +26,21 @@ export type AppProps = {
   isActive?: boolean
   onExited?: () => void
   onReady?: () => void
+  shouldSyncTitle?: boolean
   shouldSyncUrl?: boolean
   startField?: MapName
 }
 
-const initialiseApp = (search: string, startField: MapName | undefined, hasIntroTransition: boolean) => {
+const initialiseApp = (
+  search: string,
+  startField: MapName | undefined,
+  hasIntroTransition: boolean,
+  shouldSyncTitle: boolean,
+) => {
   if (hasIntroTransition) {
     holdFieldIntro()
   }
+  useGlobalStore.setState({ isLoadedAsLibrary: shouldSyncTitle })
   return initialiseFromUrl(search, startField)
 }
 
@@ -42,12 +49,13 @@ const App = ({
   isActive = true,
   onExited,
   onReady,
+  shouldSyncTitle = false,
   shouldSyncUrl = false,
   startField,
 }: AppProps) => {
   // Runs during the first render rather than in an effect so children see the seeded store immediately.
   const [namedField] = useState(() =>
-    initialiseApp(shouldSyncUrl ? window.location.search : '', startField, hasIntroTransition),
+    initialiseApp(shouldSyncUrl ? window.location.search : '', startField, hasIntroTransition, shouldSyncTitle),
   )
 
   const isPaused = useHostBridge({ hasIntroTransition, isActive, onExited, onReady })

@@ -5,6 +5,7 @@ import MAP_NAMES from '../../constants/maps'
 import useGlobalStore from '../../store'
 import { getInitialEntrance } from '../../utils'
 import { FieldData, RawFieldData } from './Field'
+import { loadFieldAssets } from './fieldAssets'
 import { ParticleData } from './Particles/particleSimulation'
 import { OPCODES } from './Scripts/constants'
 import { MEMORY, restoreMemory } from './Scripts/Script/handlers'
@@ -53,6 +54,7 @@ const getFieldParticles = async (fieldId: string) => {
 }
 
 export const getFieldData = async (fieldId: string) => {
+  await loadFieldAssets(fieldId)
   const path = `field/mapdata/${fieldId}/data.json`
   if (!hasAsset(path)) {
     throw new Error(`No field data for ${fieldId}`)

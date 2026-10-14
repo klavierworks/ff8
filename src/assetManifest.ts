@@ -20,6 +20,27 @@ export const loadAssetManifest = async (baseUrl: string) => {
   fileHashes = manifest.files
 }
 
+const directoryLoads = new Map<string, Promise<void>>()
+
+const fetchDirectoryManifest = async (path: string) => {
+  const manifest = await fetchAssetJson<AssetManifest>(path)
+  Object.assign(fileHashes, manifest.files)
+}
+
+// Some directories ship their own manifest, read on first use rather than at startup. A
+// directory without one is left as it is, so lookups in it simply miss.
+export const loadAssetDirectory = (directory: string) => {
+  const path = `${withTrailingSlash(directory)}${ASSET_MANIFEST_FILENAME}`
+  const existingLoad = directoryLoads.get(path)
+  if (existingLoad) {
+    return existingLoad
+  }
+  const load = hasAsset(path) ? fetchDirectoryManifest(path) : Promise.resolve()
+  directoryLoads.set(path, load)
+  load.catch(() => directoryLoads.delete(path))
+  return load
+}
+
 export const hasAsset = (path: string) => path in fileHashes
 
 export const listAssets = (prefix: string) => Object.keys(fileHashes).filter((path) => path.startsWith(prefix))

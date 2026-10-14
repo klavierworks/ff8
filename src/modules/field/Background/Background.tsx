@@ -12,9 +12,9 @@ type BackgroundProps = {
 }
 
 const Background = ({ data }: BackgroundProps) => {
-  const { backgroundDetails, layerWrap, tiles } = data
+  const { backgroundDetails, id, layerWrap, tiles } = data
 
-  const { layers, texture } = useLayeredTiles(tiles, backgroundDetails.sprite, layerWrap)
+  const { layers, texture } = useLayeredTiles(tiles, id, backgroundDetails.sprite, layerWrap)
   const layerScrolls = useRef<LayerScrolls>({})
   const slots = useMemo(() => [...new Set(layers.map((layer) => layer.renderID))], [layers])
   const revealProgress = useRevealAmount('background')
