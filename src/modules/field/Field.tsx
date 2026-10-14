@@ -58,7 +58,11 @@ type FieldProps = {
 
 const Field = ({ data }: FieldProps) => {
   const currentLocationPlaceName = useGlobalStore((state) => state.currentLocationPlaceName as number)
+  const isLoadedAsLibrary = useGlobalStore((state) => state.isLoadedAsLibrary)
   useEffect(() => {
+    if (isLoadedAsLibrary) {
+      return
+    }
     const name = resolveNameDictionaryTokens(areaNames[currentLocationPlaceName])
 
     if (name) {
@@ -66,7 +70,7 @@ const Field = ({ data }: FieldProps) => {
     } else {
       document.title = `${data.id} - Final Fantasy VIII GL`
     }
-  }, [currentLocationPlaceName, data.id])
+  }, [currentLocationPlaceName, data.id, isLoadedAsLibrary])
 
   const walkmeshController = useGlobalStore((state) => state.walkmeshController)
   const handleBackgroundLoad = useFieldLoadTracking()
