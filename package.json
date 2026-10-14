@@ -22,7 +22,6 @@
     "@react-three/fiber": "9.1.2",
     "@react-three/postprocessing": "^3.0.4",
     "howler": "^2.2.4",
-    "joystick-controller": "^1.1.1",
     "postprocessing": "^6.37.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",

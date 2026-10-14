@@ -1,0 +1,67 @@
+.pad {
+  touch-action: none;
+}
+
+.button {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border: 1.5px solid rgb(255 255 255 / 0.18);
+  background-color: rgb(24 24 28 / 0.7);
+  box-shadow:
+    0 3px 6px rgb(0 0 0 / 0.45),
+    inset 0 1px 0 rgb(255 255 255 / 0.1);
+  color: rgb(255 255 255 / 0.75);
+  transition:
+    background-color 0.08s ease-out,
+    scale 0.08s ease-out;
+}
+
+.pressed {
+  background-color: rgb(255 255 255 / 0.25);
+  box-shadow: inset 0 1px 4px rgb(0 0 0 / 0.4);
+  scale: 0.92;
+}
+
+.triangle,
+.circle,
+.cross,
+.square {
+  width: var(--face-size);
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+}
+
+.triangle {
+  grid-area: triangle;
+  color: #4ad8a6;
+}
+
+.circle {
+  grid-area: circle;
+  color: #ff6b7a;
+}
+
+.cross {
+  grid-area: cross;
+  color: #82a9ff;
+}
+
+.square {
+  grid-area: square;
+  color: #f29ad8;
+}
+
+.l1,
+.r1 {
+  width: calc(var(--face-size) * 1.4);
+  height: calc(var(--face-size) * 0.6);
+  border-radius: 12px 12px 6px 6px;
+}
+
+.select,
+.start {
+  width: calc(var(--face-size) * 0.95);
+  height: calc(var(--face-size) * 0.38);
+  border-radius: 999px;
+}

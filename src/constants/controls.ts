@@ -8,6 +8,7 @@ export const CONTROLS_MAP = {
   r1: 'KeyE',
   select: 'KeyB',
   start: 'Enter',
+  walk: 'ShiftLeft',
 }
 
 export const PSX_CONTROLS_MAP = {
@@ -37,7 +38,7 @@ export const WORLDMAP_CONTROLS_MAP = {
   runModifier: 'ShiftRight',
   toggleCameraMode: 'KeyV',
   toggleMinimap: CONTROLS_MAP.select,
-  walkModifier: 'ShiftLeft',
+  walkModifier: CONTROLS_MAP.walk,
 }
 
 export const WORLDMAP_PAD_BITS = {
@@ -55,3 +56,25 @@ export const WORLDMAP_PAD_BITS = {
   toggleCameraMode: 0x2,
   toggleMinimap: 0x100,
 } satisfies Partial<Record<keyof typeof WORLDMAP_CONTROLS_MAP, number>>
+
+export const TOUCH_FACE_BUTTONS = ['triangle', 'circle', 'cross', 'square'] as const
+export const TOUCH_SHOULDER_BUTTONS = ['l1', 'r1'] as const
+export const TOUCH_SYSTEM_BUTTONS = ['select', 'start'] as const
+
+export const TOUCH_STICK_SECTOR_KEYS = [
+  ['ArrowRight'],
+  ['ArrowRight', 'ArrowUp'],
+  ['ArrowUp'],
+  ['ArrowLeft', 'ArrowUp'],
+  ['ArrowLeft'],
+  ['ArrowDown', 'ArrowLeft'],
+  ['ArrowDown'],
+  ['ArrowDown', 'ArrowRight'],
+] as const
+
+export const TOUCH_STICK_RADIUS = 52
+export const TOUCH_STICK_DEADZONE = 0.25
+export const TOUCH_STICK_WALK_THRESHOLD = 0.65
+export const TOUCH_STICK_SECTOR_HYSTERESIS = 0.15
+export const TOUCH_BUTTON_HIT_SLOP = 14
+export const TOUCH_HAPTIC_PULSE = 8

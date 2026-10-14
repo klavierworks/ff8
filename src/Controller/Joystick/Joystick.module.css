@@ -1,0 +1,45 @@
+.zone {
+  position: relative;
+  touch-action: none;
+}
+
+.base {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--stick-radius) * 2);
+  aspect-ratio: 1 / 1;
+  translate: -50% -50%;
+  border: 1.5px solid rgb(255 255 255 / 0.2);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(0 0 0 / 0.15) 40%, rgb(255 255 255 / 0.08));
+  box-shadow: inset 0 2px 10px rgb(0 0 0 / 0.5);
+  opacity: 0.55;
+  transition: opacity 0.15s ease-out;
+  pointer-events: none;
+}
+
+.active {
+  opacity: 1;
+  transition: none;
+}
+
+.knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--stick-radius) * 1.1);
+  aspect-ratio: 1 / 1;
+  translate: none;
+  margin: calc(var(--stick-radius) * -0.55);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #2b2b30 45%, #4a4a52 62%, #26262b 72%);
+  box-shadow:
+    0 3px 8px rgb(0 0 0 / 0.55),
+    inset 0 1px 0 rgb(255 255 255 / 0.15);
+  transition: translate 0.12s ease-out;
+
+  .active & {
+    transition: none;
+  }
+}

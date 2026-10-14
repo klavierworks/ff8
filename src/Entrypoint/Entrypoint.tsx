@@ -145,7 +145,7 @@ const Entrypoint = ({
         )}
       </div>
       <Loading />
-      <Controller />
+      <Controller hasIntroTransition={hasIntroTransition} />
     </>
   )
 }
