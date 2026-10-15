@@ -3,22 +3,42 @@ import { MEMORY } from './modules/field/Scripts/Script/handlers'
 import { applyWorldmapUrlParams } from './modules/worldmap/worldmapUrl'
 import useGlobalStore from './store'
 
+export type InitialState = {
+  initialParty?: number[]
+  initialProgress?: number
+  startField?: MapName
+}
+
 export type MapName = (typeof MAP_NAMES)[number]
 
-const applyParty = (params: URLSearchParams) => {
+const parsePartyParam = (params: URLSearchParams) => {
   const party = params.get('party')
+  if (!party) {
+    return undefined
+  }
+  return party.split(',').map((member) => parseInt(member))
+}
+
+const parseProgressParam = (params: URLSearchParams) => {
+  const progress = params.get('progress')
+  if (!progress) {
+    return undefined
+  }
+  return parseInt(progress)
+}
+
+const applyParty = (party: number[] | undefined) => {
   if (!party) {
     return
   }
-  useGlobalStore.setState({ party: party.split(',').map((member) => parseInt(member)) })
+  useGlobalStore.setState({ party })
 }
 
-const applyProgress = (params: URLSearchParams) => {
-  const progress = params.get('progress')
-  if (!progress) {
+const applyProgress = (progress: number | undefined) => {
+  if (progress === undefined) {
     return
   }
-  MEMORY[256] = parseInt(progress)
+  MEMORY[256] = progress
 }
 
 const applyField = (field: null | string) => {
@@ -40,10 +60,10 @@ const applyModule = (params: URLSearchParams) => {
   }
 }
 
-export const initialiseFromUrl = (search: string, startField?: MapName) => {
+export const initialiseFromUrl = (search: string, { initialParty, initialProgress, startField }: InitialState) => {
   const params = new URLSearchParams(search)
-  applyParty(params)
-  applyProgress(params)
+  applyParty(parsePartyParam(params) ?? initialParty)
+  applyProgress(parseProgressParam(params) ?? initialProgress)
   applyField(startField ?? null)
   applyModule(params)
   return startField

@@ -9,7 +9,7 @@ import BattleTransition from '../BattleTransition/BattleTransition'
 import ColorOverlay from '../ColorOverlay/ColorOverlay'
 import { ASPECT_RATIO } from '../constants/constants'
 import Controller from '../Controller/Controller'
-import { initialiseFromUrl, MapName } from '../initialiseFromUrl'
+import { initialiseFromUrl, InitialState } from '../initialiseFromUrl'
 import Loading from '../Loading/Loading'
 import Memory from '../Memory/Memory'
 import { holdFieldIntro } from '../modules/field/fieldRevealStore'
@@ -21,19 +21,18 @@ import useIsTabActive from '../useIsTabActive'
 import useUrlSync from '../useUrlSync'
 import Module from './Module/Module'
 
-export type EntrypointProps = {
+export type EntrypointProps = InitialState & {
   hasIntroTransition?: boolean
   isActive?: boolean
   onExited?: () => void
   onReady?: () => void
   shouldSyncTitle?: boolean
   shouldSyncUrl?: boolean
-  startField?: MapName
 }
 
 const initialiseEntrypoint = (
   search: string,
-  startField: MapName | undefined,
+  initialState: InitialState,
   hasIntroTransition: boolean,
   shouldSyncTitle: boolean,
 ) => {
@@ -41,11 +40,13 @@ const initialiseEntrypoint = (
     holdFieldIntro()
   }
   useGlobalStore.setState({ isLoadedAsLibrary: !shouldSyncTitle })
-  return initialiseFromUrl(search, startField)
+  return initialiseFromUrl(search, initialState)
 }
 
 const Entrypoint = ({
   hasIntroTransition = false,
+  initialParty,
+  initialProgress,
   isActive = true,
   onExited,
   onReady,
@@ -55,7 +56,12 @@ const Entrypoint = ({
 }: EntrypointProps) => {
   // Runs during the first render rather than in an effect so children see the seeded store immediately.
   const [namedField] = useState(() =>
-    initialiseEntrypoint(shouldSyncUrl ? window.location.search : '', startField, hasIntroTransition, shouldSyncTitle),
+    initialiseEntrypoint(
+      shouldSyncUrl ? window.location.search : '',
+      { initialParty, initialProgress, startField },
+      hasIntroTransition,
+      shouldSyncTitle,
+    ),
   )
 
   const isPaused = useHostBridge({ hasIntroTransition, isActive, onExited, onReady })

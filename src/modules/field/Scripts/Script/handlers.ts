@@ -305,7 +305,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     animationController.setIdleAnimations(standingAnimationId, walkingAnimationId, runningAnimationId)
   },
   BATTLE: async ({ STACK }) => {
-    STACK.pop() as number
+    STACK.pop() as number // const isEscapePermitted = 
     const encounterId = STACK.pop() as number
 
     await battleTransitionController.play(encounterId)
@@ -315,10 +315,11 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     STACK.pop() as number
   },
   BATTLEOFF: dummiedCommand,
-
-  // Do not touch stack, not relevant to field
   BATTLEON: dummiedCommand,
-  BATTLERESULT: dummiedCommand,
+  // There is no battle module, so every battle reports won
+  BATTLERESULT: ({ TEMP_STACK }) => {
+    TEMP_STACK[0] = 4
+  },
   BGANIME: async ({ script, STACK }) => {
     const last = STACK.pop() as number
     const first = STACK.pop() as number
