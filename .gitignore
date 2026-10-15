@@ -9,7 +9,9 @@ lerna-debug.log*
 
 node_modules
 dist
+dist-lib
 dist-ssr
+ff8-*.tgz
 *.local
 
 # Editor directories and files
@@ -44,6 +46,10 @@ extractor/data/SOURCE/*
 !extractor/data/PSX/
 extractor/data/PSX/*
 !extractor/data/PSX/README.md
+!extractor/data/discs
+extractor/data/discs/*
+extractor/data/discs/**
+!extractor/data/discs/README.md
 
 # Site build plus extractor output, assembled for netlify deploy
 deploy
