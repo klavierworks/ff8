@@ -26,7 +26,7 @@ const buildLibraryPackage = (rootPackage: { dependencies: Dependencies; name: st
   exports: {
     '.': {
       types: './library.d.ts',
-      import: './ff8.js',
+      import: './library.js',
     },
   },
   name: rootPackage.name,

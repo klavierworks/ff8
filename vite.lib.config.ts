@@ -20,6 +20,13 @@ export default defineConfig({
     outDir: 'dist-lib',
     rollupOptions: {
       external: isExternal,
+      // One file per source module, so the dynamically imported Entrypoint keeps a real default
+      // export. Merged chunks expose it through a namespace object a host's bundler can tree-shake away.
+      output: {
+        entryFileNames: '[name].js',
+        preserveModules: true,
+        preserveModulesRoot: 'src',
+      },
     },
   },
   plugins: [react(), injectCssPlugin(), dts({ entryRoot: 'src' })],
