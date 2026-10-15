@@ -11,12 +11,19 @@ pub struct CameraAxis {
     pub z: i16,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct ScreenOffset {
+    pub x: i16,
+    pub y: i16,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Camera {
     pub camera_axis: [CameraAxis; 3],
     pub camera_position: [i32; 3],
     pub camera_zoom: i32,
     pub index: usize,
+    pub screen_offset: ScreenOffset,
 }
 
 pub fn parse_camera(ca_bytes: &[u8]) -> Result<Vec<Camera>> {
@@ -57,12 +64,19 @@ fn read_camera(bytes: &[u8], offset: usize, index: usize) -> Camera {
         read_i32(bytes, offset + 24),
         read_i32(bytes, offset + 28),
     ];
+    // Deling calls these four bytes padding; the engine adds them to the drawing offset of
+    // everything except background layer 0, shifting the 3D scene against the painting.
+    let screen_offset = ScreenOffset {
+        x: read_i16(bytes, offset + 32),
+        y: read_i16(bytes, offset + 34),
+    };
     let camera_zoom = i32::from(read_u16(bytes, offset + 36));
     Camera {
         camera_axis,
         camera_position,
         camera_zoom,
         index,
+        screen_offset,
     }
 }
 
@@ -97,14 +111,28 @@ mod tests {
 
     #[test]
     fn real_cameras_match_reference() {
-        for (id, axis0, position, zoom) in [
+        for (id, axis0, position, zoom, screen_offset) in [
             (
                 "bccent_1",
                 [4060_i16, -542, 0],
                 [14_i32, 235, 1645],
                 376_i32,
+                ScreenOffset { x: 0, y: 0 },
             ),
-            ("bccent12", [4077, -375, 96], [183, 0, 6780], 439),
+            (
+                "bccent12",
+                [4077, -375, 96],
+                [183, 0, 6780],
+                439,
+                ScreenOffset { x: 0, y: 0 },
+            ),
+            (
+                "ggsta1",
+                [3853, 1387, -1],
+                [-607, -615, 6690],
+                703,
+                ScreenOffset { x: 0, y: 44 },
+            ),
         ] {
             let bytes = std::fs::read(format!("/tmp/fields/{id}/{id}.ca")).unwrap();
             let cameras = parse_camera(&bytes).unwrap();
@@ -120,6 +148,7 @@ mod tests {
             );
             assert_eq!(first.camera_position, position);
             assert_eq!(first.camera_zoom, zoom);
+            assert_eq!(first.screen_offset, screen_offset);
             assert_eq!(first.index, 0);
             assert_eq!(cameras[1].index, 1);
         }
