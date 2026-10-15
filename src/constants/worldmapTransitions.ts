@@ -4,6 +4,7 @@ export const WORLDMAP_ENTRY_FROM_BATTLE = 2
 export const WORLDMAP_ENTRY_FROM_MENU = 4
 export const WORLDMAP_ENTRY_FROM_SAVE = 6
 export const WORLDMAP_RESTORE_SPAWN_POINT = 62
+export const WORLDMAP_GATEWAY_VEHICLE = 0
 
 // ─── Worldmap entry: timing ───
 export const WORLDMAP_ENTRY_DELAY_FRAMES = 24

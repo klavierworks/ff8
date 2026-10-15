@@ -42,10 +42,9 @@ const applyModule = (params: URLSearchParams) => {
 
 export const initialiseFromUrl = (search: string, startField?: MapName) => {
   const params = new URLSearchParams(search)
-  const field = params.get('field') ?? startField ?? null
   applyParty(params)
   applyProgress(params)
-  applyField(field)
+  applyField(startField ?? null)
   applyModule(params)
-  return field
+  return startField
 }

@@ -14,7 +14,7 @@ export const readMountProps = (search: string): MountProps => {
     hasIntroTransition: params.has('hasIntroTransition'),
     shouldSyncTitle: params.has('shouldSyncTitle'),
     shouldSyncUrl: params.has('shouldSyncUrl'),
-    startField: (params.get('startField') as MapName | null) ?? undefined,
+    startField: (params.get('field') as MapName | null) ?? undefined,
   }
 }
 
@@ -22,7 +22,7 @@ const buildMountSearch = (props: MountProps) => {
   const params = new URLSearchParams()
   MOUNT_FLAGS.filter((flag) => props[flag]).forEach((flag) => params.set(flag, ''))
   if (props.startField) {
-    params.set('startField', props.startField)
+    params.set('field', props.startField)
   }
   return params.toString()
 }

@@ -9,7 +9,6 @@ import {
   SEED_RANK_POINTS_MAX,
   SEED_RANK_POINTS_MIN,
 } from '../../../../constants/party'
-import { WORLDMAP_ENTRY_FROM_FIELD } from '../../../../constants/worldmapTransitions'
 import { getGameData } from '../../../../gameData'
 import LerpValue from '../../../../LerpValue'
 import useGlobalStore from '../../../../store'
@@ -24,11 +23,11 @@ import {
   vectorToFloatingPoint,
 } from '../../../../utils'
 import { startVibration } from '../../../../vibration'
-import useWorldmapStore from '../../../worldmap/worldmapStore'
 import { createBackgroundDraw, startBackgroundAnimation } from '../../backgroundAnimation'
 import { preloadField } from '../../fieldPreloader'
 import { movieController, useMovieStore } from '../../movieController'
 import { nextScriptFrame, waitForScriptFrames } from '../../scriptClock'
+import { jumpToWorldmap } from '../../worldmapJump'
 import { SHADE_FORM_SLOTS } from '../constants'
 import { Opcode, OpcodeObj, Script } from '../types'
 import { createAnimationController } from './AnimationController/AnimationController'
@@ -2617,21 +2616,6 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const rideDestinationEntrance = STACK.pop() as number
     const vehicleId = STACK.pop() as number
     const spawnPointId = STACK.pop() as number
-    if (useGlobalStore.getState().isMapFadeEnabled) {
-      triggerFadeout()
-      await awaitFadesync()
-    }
-    useWorldmapStore.setState({
-      entryMode: WORLDMAP_ENTRY_FROM_FIELD,
-      rideDestinationEntrance,
-      spawnPointId,
-      vehicleId,
-    })
-    useGlobalStore.setState({
-      characterPosition: undefined,
-      module: 'worldmap',
-      pendingCharacterPosition: undefined,
-      pendingFieldId: undefined,
-    })
+    await jumpToWorldmap({ rideDestinationEntrance, spawnPointId, vehicleId })
   },
 }
