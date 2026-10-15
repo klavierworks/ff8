@@ -20,6 +20,7 @@ const SHADE_NEUTRAL = 128
 const SCROLL_RATIO_FULL = 256
 const _cameraPosition = new Vector3()
 const NO_SCROLL = { x: 0, y: 0 }
+const NO_SCREEN_OFFSET = { x: 0, y: 0 }
 
 const Layer = ({ layer, layerScrolls, revealProgress, texture }: LayerProps) => {
   const meshRef = useRef<Mesh>(null)
@@ -42,8 +43,14 @@ const Layer = ({ layer, layerScrolls, revealProgress, texture }: LayerProps) => 
       return
     }
 
-    const { backgroundAnimations, backgroundLayerVisibility, layerScrollAdjustments, layerTints } =
-      useGlobalStore.getState()
+    const {
+      activeCameraId,
+      backgroundAnimations,
+      backgroundLayerVisibility,
+      fieldData,
+      layerScrollAdjustments,
+      layerTints,
+    } = useGlobalStore.getState()
 
     const animation = backgroundAnimations[parameter]
     const currentParameterState = animation !== undefined ? getBackgroundAnimationState(animation) : 0
@@ -90,9 +97,13 @@ const Layer = ({ layer, layerScrolls, revealProgress, texture }: LayerProps) => 
     const cameraLength = initialPosition.distanceTo(initialTargetPosition)
     const fovHalfTan = Math.tan((camera.fov * Math.PI) / 360)
 
+    const screenOffset = fieldData?.cameras[activeCameraId]?.screen_offset ?? NO_SCREEN_OFFSET
+    // The engine applies the camera's screen offset to every layer and the 3D scene, then cancels it for layer 0.
+    const layerScreenOffset = renderID === 0 ? screenOffset : NO_SCREEN_OFFSET
+
     const view = camera.view
-    const centerX = view && view.enabled ? view.offsetX : 0
-    const centerY = view && view.enabled ? view.offsetY : 0
+    const centerX = (view && view.enabled ? view.offsetX : 0) + screenOffset.x
+    const centerY = (view && view.enabled ? view.offsetY : 0) + screenOffset.y
 
     const controlledScroll = layerScrollAdjustments[renderID]
     const xRatio = controlledScroll?.xRatio ?? SCROLL_RATIO_FULL
@@ -102,8 +113,8 @@ const Layer = ({ layer, layerScrolls, revealProgress, texture }: LayerProps) => 
     const parallaxY = centerY * (1 - yRatio / SCROLL_RATIO_FULL)
 
     const layerScroll = layerScrolls.current[renderID]?.current ?? NO_SCROLL
-    const offsetX = (controlledScroll?.xOffset ?? 0) + parallaxX - layerScroll.x
-    const offsetY = (controlledScroll?.yOffset ?? 0) + parallaxY - layerScroll.y
+    const offsetX = (controlledScroll?.xOffset ?? 0) + parallaxX - layerScroll.x - layerScreenOffset.x
+    const offsetY = (controlledScroll?.yOffset ?? 0) + parallaxY - layerScroll.y - layerScreenOffset.y
 
     const previous = lastWrite.current
     if (

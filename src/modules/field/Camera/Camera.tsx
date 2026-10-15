@@ -128,8 +128,9 @@ const Camera = ({ data }: CameraProps) => {
       finalPanY = scrollY
     }
 
-    const viewOffsetX = finalPanX - shake.x.get()
-    const viewOffsetY = finalPanY - shake.y.get()
+    const { screen_offset: screenOffset } = cameras[activeCameraId]
+    const viewOffsetX = finalPanX - shake.x.get() - screenOffset.x
+    const viewOffsetY = finalPanY - shake.y.get() - screenOffset.y
 
     if (viewOffsetX === 0 && viewOffsetY === 0) {
       camera.clearViewOffset()

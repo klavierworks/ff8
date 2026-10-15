@@ -58,6 +58,7 @@ const readCameraFrame = (view: DataView, index: number): MovieCameraFrame => {
       ),
       camera_zoom: view.getUint16(offset + MOVIE_CAMERA_ZOOM_OFFSET, true),
       index,
+      screen_offset: { x: 0, y: 0 },
     },
     flags: view.getUint8(offset + MOVIE_CAMERA_FLAGS_OFFSET),
   }
