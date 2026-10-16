@@ -40,7 +40,7 @@ const WalkMesh = ({ walkmesh }: WalkMeshProps) => {
 
   const handleClick = useCallback(
     (e: ThreeEvent<MouseEvent>) => {
-      if (!isDebugMode) {
+      if (!isDebugMode || e.delta > 2) {
         return
       }
       useGlobalStore.setState({

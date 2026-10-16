@@ -1,17 +1,16 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
+import { PerspectiveCamera, Vector3 } from 'three'
 import { clamp } from 'three/src/math/MathUtils.js'
 
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../constants/constants'
-import { CONTROLS_MAP } from '../../../constants/controls'
-import LerpValue from '../../../LerpValue'
 import useGlobalStore from '../../../store'
 import { FieldData } from '../Field'
 import { movieController } from '../movieController'
 import useScrollTransition from '../useScrollTransition'
-import { applyFieldCamera, getBoundaries, getCameraDirections, getCameraRangeIndex } from './cameraUtils'
+import { applyFieldCamera, getBoundaries, getCameraRangeIndex } from './cameraUtils'
 import Focus from './Focus/Focus'
+import useDebugCamera from './useDebugCamera'
 import useScreenShake from './useScreenShake'
 
 type CameraProps = {
@@ -21,13 +20,6 @@ type CameraProps = {
 const _focusWorldPosition = new Vector3()
 const _entityDelta = new Vector3()
 const _lookAtDelta = new Vector3()
-const _lookingAtQuaternion = new Quaternion()
-const _slerpedQuaternion = new Quaternion()
-const _scenePosition = new Vector3()
-const _debugPosition = new Vector3()
-const _scaledForward = new Vector3()
-const _scaledRight = new Vector3()
-const _scaledUp = new Vector3()
 
 const Camera = ({ data }: CameraProps) => {
   const { cameraRanges, cameras, limits } = data
@@ -144,62 +136,8 @@ const Camera = ({ data }: CameraProps) => {
     moveableCamera.updateProjectionMatrix()
   })
 
-  const [isDebugModeActive, setIsDebugModeActive] = useState(false)
-  const [pullback] = useState(new LerpValue(0))
+  useDebugCamera(camera, moveableCamera)
 
-  useEffect(() => {
-    if (isDebugModeActive) {
-      useGlobalStore.setState({ isDebugMode: true })
-    }
-    pullback.start(isDebugModeActive ? 1 : 0, 300).then(() => {
-      if (!isDebugModeActive) {
-        useGlobalStore.setState({ isDebugMode: false })
-      }
-    })
-  }, [isDebugModeActive, pullback])
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === CONTROLS_MAP.debug) {
-        setIsDebugModeActive((state) => !state)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [])
-
-  useFrame(({ scene }) => {
-    if (!moveableCamera) {
-      return
-    }
-
-    const focus = scene.getObjectByName('focus')
-    if (!focus) {
-      return
-    }
-
-    moveableCamera.lookAt(focus.position)
-    const lookingAtQuaternion = _lookingAtQuaternion.copy(moveableCamera.quaternion)
-    moveableCamera.quaternion.copy(
-      _slerpedQuaternion.copy(camera.quaternion).slerp(lookingAtQuaternion, pullback.get()),
-    )
-
-    const { forwardVector, rightVector, upVector } = getCameraDirections(camera)
-
-    const scenePosition = _scenePosition.copy(camera.position)
-    const debugPosition = _debugPosition.copy(camera.position)
-    debugPosition.sub(_scaledForward.copy(forwardVector).multiplyScalar(0.1))
-    debugPosition.sub(_scaledRight.copy(rightVector).multiplyScalar(0))
-    debugPosition.add(_scaledUp.copy(upVector).multiplyScalar(0.1))
-
-    moveableCamera.position.copy(scenePosition.lerp(debugPosition, pullback.get()))
-
-    moveableCamera.fov = camera.fov
-    moveableCamera.updateProjectionMatrix()
-  })
   return <Focus />
 }
 

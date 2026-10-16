@@ -1,5 +1,5 @@
 import { Camera, PerspectiveCamera, Quaternion, Vector3 } from 'three'
-import { radToDeg } from 'three/src/math/MathUtils.js'
+import { clamp, radToDeg } from 'three/src/math/MathUtils.js'
 
 import { FIELD_CAMERA_FAR, FIELD_CAMERA_NEAR } from '../../../constants/camera'
 import { SCREEN_HEIGHT } from '../../../constants/constants'
@@ -94,4 +94,50 @@ export const applyFieldCamera = (
   }
 
   return lookAtTarget
+}
+
+export type DebugOrbit = {
+  pitch: number
+  yaw: number
+}
+
+export const INITIAL_DEBUG_ORBIT: DebugOrbit = { pitch: 0, yaw: 0 }
+
+export const applyDragToOrbit = ({ pitch, yaw }: DebugOrbit, movementX: number, movementY: number): DebugOrbit => ({
+  pitch: clamp(pitch + movementY * 0.005, -Math.PI * 0.45, Math.PI * 0.45),
+  yaw: yaw - movementX * 0.005,
+})
+
+export const calculatePulledBackPosition = (camera: Camera, target: Vector3) => {
+  const { forwardVector, upVector } = getCameraDirections(camera)
+
+  return target.copy(camera.position).addScaledVector(forwardVector, -0.1).addScaledVector(upVector, 0.1)
+}
+
+const _orbitOffset = new Vector3()
+const _orbitUp = new Vector3()
+const _orbitRight = new Vector3()
+const _orbitQuaternion = new Quaternion()
+
+const clampPitchToPoles = (offset: Vector3, up: Vector3, pitch: number) => {
+  const polarAngle = offset.angleTo(up)
+  const clampedPolarAngle = clamp(polarAngle - pitch, 0.05, Math.PI - 0.05)
+  return polarAngle - clampedPolarAngle
+}
+
+export const orbitAroundFocus = (
+  position: Vector3,
+  focus: Vector3,
+  up: Vector3,
+  { pitch, yaw }: DebugOrbit,
+  target: Vector3,
+) => {
+  const offset = _orbitOffset.copy(position).sub(focus)
+  const normalizedUp = _orbitUp.copy(up).normalize()
+  const right = _orbitRight.crossVectors(offset, normalizedUp).normalize()
+
+  offset.applyQuaternion(_orbitQuaternion.setFromAxisAngle(right, clampPitchToPoles(offset, normalizedUp, pitch)))
+  offset.applyQuaternion(_orbitQuaternion.setFromAxisAngle(normalizedUp, yaw))
+
+  return target.copy(focus).add(offset)
 }
