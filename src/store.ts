@@ -77,7 +77,6 @@ type GlobalState = {
   isDebugMode: boolean
   isEntranceHeld: boolean
   isFieldDrawSuppressed: boolean
-  isFieldReady: boolean
   isLagunaDream: boolean
   isLoadedAsLibrary: boolean
   isLoading: boolean
@@ -222,7 +221,6 @@ const INITIAL_STATE: GlobalState = {
   isDebugMode: false,
   isEntranceHeld: false,
   isFieldDrawSuppressed: false,
-  isFieldReady: false,
   isLagunaDream: false,
 
   isLoadedAsLibrary: false,

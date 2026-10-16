@@ -64,7 +64,7 @@ const Entrypoint = ({
     ),
   )
 
-  const isPaused = useHostBridge({ hasIntroTransition, isActive, onExited, onReady })
+  const { hasEntered, isPaused } = useHostBridge({ hasIntroTransition, isActive, onExited, onReady })
   const isHeldOut = !isActive && !hasIntroTransition
 
   const isTabActive = useIsTabActive()
@@ -76,7 +76,7 @@ const Entrypoint = ({
 
   const module = useGlobalStore((state) => state.module)
 
-  useUrlSync(shouldSyncUrl)
+  useUrlSync(shouldSyncUrl && hasEntered)
 
   useEffect(() => {
     if (!fieldId || module === 'menu') {
@@ -86,6 +86,10 @@ const Entrypoint = ({
   }, [fieldId, module])
 
   const [worldScene, setWorldScene] = useState<Scene>()
+
+  if (!hasEntered) {
+    return null
+  }
 
   return (
     <>

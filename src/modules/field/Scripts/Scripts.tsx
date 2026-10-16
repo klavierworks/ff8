@@ -41,13 +41,6 @@ const Scripts = ({ doors, models, scripts, sounds }: ScriptsProps) => {
   const isEntranceHeld = useGlobalStore((state) => state.isEntranceHeld)
   const hasSetUpOtherScripts = scriptsMounted === otherScripts.length
 
-  useEffect(() => {
-    if (!hasSetUpOtherScripts) {
-      return
-    }
-    useGlobalStore.setState({ isFieldReady: true })
-  }, [hasSetUpOtherScripts])
-
   const [runningScripts, setRunningScripts] = useState<number>(0)
   const onStarted = useCallback(() => {
     setRunningScripts((prev) => prev + 1)

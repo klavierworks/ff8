@@ -305,7 +305,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     animationController.setIdleAnimations(standingAnimationId, walkingAnimationId, runningAnimationId)
   },
   BATTLE: async ({ STACK }) => {
-    STACK.pop() as number // const isEscapePermitted = 
+    STACK.pop() as number // const isEscapePermitted =
     const encounterId = STACK.pop() as number
 
     await battleTransitionController.play(encounterId)

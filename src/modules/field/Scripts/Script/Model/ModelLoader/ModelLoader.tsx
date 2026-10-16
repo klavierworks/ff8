@@ -12,7 +12,6 @@ import { advanceProgress, rewindProgress } from '../../../../../../timing'
 import useFieldRevealStore, { ProgressUniform } from '../../../../fieldRevealStore'
 import { createProgressUniform } from '../../../../fieldRevealUtils'
 import LoadSignal from '../../../../LoadSignal/LoadSignal'
-import useFieldLoadTracking from '../../../../useFieldLoadTracking'
 import useRevealAmount from '../../../../useRevealAmount'
 import {
   BoundsFit,
@@ -61,11 +60,9 @@ const ModelLoader = ({ bounds, children, isRevealed }: ModelLoaderProps) => {
   const initialBoxSize = useMemo(() => getBoxSize(bounds), [bounds])
   const initialBoxCenter = useMemo(() => getBoxCenter(bounds), [bounds])
 
-  const handleTrackedLoad = useFieldLoadTracking()
   const handleLoad = useCallback(() => {
-    handleTrackedLoad()
     setLoadCount((count) => count + 1)
-  }, [handleTrackedLoad])
+  }, [])
 
   useEffect(() => {
     if (loadCount === 0 || !loaderRef.current || !modelRef.current) {

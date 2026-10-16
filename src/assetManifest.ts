@@ -32,6 +32,15 @@ export const getAssetUrl = (path: string) => {
   return `${assetBaseUrl}${path}?v=${hash}`
 }
 
+export const warmCache = async (url: string) => {
+  try {
+    const response = await fetch(url, { priority: 'low' })
+    await response.arrayBuffer()
+  } catch (error) {
+    console.warn(`Failed to prefetch ${url}`, error)
+  }
+}
+
 export const fetchAssetJson = async <T>(path: string): Promise<T> => {
   const response = await fetch(getAssetUrl(path))
   if (!response.ok) {

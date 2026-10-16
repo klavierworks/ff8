@@ -1,35 +1,22 @@
-import type { WorldmapEffects } from '@data/types/worldmap/WorldmapEffects'
-
 import { useTexture } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import { DoubleSide, NearestFilter, NoBlending, PerspectiveCamera, Texture } from 'three'
 
-import { getAssetUrl } from '../../../assetManifest'
 import { PSX_BLEND_HALF, PSX_BLEND_MODES, PSX_HALF_OPACITY } from '../../../constants/blending'
-import { getGameData } from '../../../gameData'
 import useGlobalStore from '../../../store'
 import { getScriptFrame } from '../../field/scriptClock'
 import useWorldmapStore from '../worldmapStore'
 import { createEffectGroups, disposeEffectGroups, EffectGroup, TextureSize, writeEffectGroups } from './effectGeometry'
 import { createPlayerMotion } from './effectInputs'
 import { createEffectPool } from './effectPool'
+import { EFFECT_DEFINITIONS, SPRITE_FILES, SPRITE_URLS } from './effectSprites'
 import { EffectTickState, runEffectTick } from './effectTick'
 
-const effectsData = getGameData().effects
-
-const EFFECT_DEFINITIONS = effectsData as WorldmapEffects
 const MAX_FRAMES_PER_TICK = 4
 const ALPHA_TEST = 0.1
 const EFFECTS_RENDER_ORDER = 10
 const BYTE_RANGE = 256
-
-const SPRITE_PATH_PREFIX = 'worldmap/'
-
-const SPRITE_FILES = [
-  ...new Set(EFFECT_DEFINITIONS.flatMap((definition) => (definition.sprite ? [definition.sprite.file] : []))),
-]
-const SPRITE_URLS = SPRITE_FILES.map((file) => getAssetUrl(`${SPRITE_PATH_PREFIX}${file}`))
 
 const getRandomByte = () => Math.floor(Math.random() * BYTE_RANGE)
 

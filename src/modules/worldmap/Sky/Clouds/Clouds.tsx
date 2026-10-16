@@ -3,12 +3,9 @@ import { useFrame } from '@react-three/fiber'
 import { RefObject, useMemo, useRef } from 'react'
 import { AdditiveBlending, Color, NearestFilter, ShaderMaterial, Texture, Vector2 } from 'three'
 
-import { getAssetUrl } from '../../../../assetManifest'
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../../../constants/constants'
 import useWorldmapStore from '../../worldmapStore'
-import { calculateCloudStartX, SCREEN_QUAD_VERTEX_SHADER } from '../skyUtils'
-
-const CLOUD_TEXTURE_URL = getAssetUrl('worldmap/textures/sky_cloud.png')
+import { calculateCloudStartX, CLOUD_TEXTURE_URL, SCREEN_QUAD_VERTEX_SHADER } from '../skyUtils'
 
 type CloudsProps = {
   horizon: Color

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { musicController } from './audio/activeMusicController'
-import useFieldLoadStore from './modules/field/fieldLoadStore'
 import useFieldRevealStore, {
   acknowledgeFieldExit,
   beginFieldExit,
@@ -9,6 +8,7 @@ import useFieldRevealStore, {
   requestFieldIntro,
 } from './modules/field/fieldRevealStore'
 import { setIsSfxSuspended } from './modules/field/Scripts/Script/SFXController/webAudio'
+import { preloadStartPoint } from './preloadStartPoint'
 import useGlobalStore from './store'
 
 type HostBridgeOptions = {
@@ -18,19 +18,23 @@ type HostBridgeOptions = {
   onReady?: () => void
 }
 
-const useReadyReport = (onReady: (() => void) | undefined) => {
-  const isFieldReady = useGlobalStore((state) => state.isFieldReady)
-  const hasPendingLoads = useFieldLoadStore((state) => state.pendingLoadCount > 0)
-  const isReady = isFieldReady && !hasPendingLoads
+const useReadyReport = (onReady: (() => void) | undefined, isPreloadNeeded: boolean) => {
   const hasReportedReadyRef = useRef(false)
 
   useEffect(() => {
-    if (!isReady || hasReportedReadyRef.current) {
-      return
+    let isCurrent = true
+    const preload = isPreloadNeeded ? preloadStartPoint() : Promise.resolve()
+    preload.then(() => {
+      if (!isCurrent || hasReportedReadyRef.current) {
+        return
+      }
+      hasReportedReadyRef.current = true
+      onReady?.()
+    })
+    return () => {
+      isCurrent = false
     }
-    hasReportedReadyRef.current = true
-    onReady?.()
-  }, [isReady, onReady])
+  }, [isPreloadNeeded, onReady])
 }
 
 const useAudioSuspension = (isPaused: boolean) => {
@@ -40,10 +44,11 @@ const useAudioSuspension = (isPaused: boolean) => {
   }, [isPaused])
 }
 
-// Entering plays the intro. Leaving after an entry plays it in reverse, then freezes the game and
-// reports back; before the first entry the game keeps running so the start field loads behind the host.
+// Before the first entry the game is not mounted; only the start point's files are fetched. Entering
+// mounts it and plays the intro. Leaving plays the intro in reverse, then freezes the game and reports back.
 const useHostBridge = ({ hasIntroTransition, isActive, onExited, onReady }: HostBridgeOptions) => {
   const [hasEntered, setHasEntered] = useState(isActive)
+  const [isPreloadNeeded] = useState(!isActive)
   const [isExiting, setIsExiting] = useState(false)
   const wasActiveRef = useRef(isActive)
   const hasExited = useFieldRevealStore((state) => state.hasExited)
@@ -82,11 +87,11 @@ const useHostBridge = ({ hasIntroTransition, isActive, onExited, onReady }: Host
     onExited?.()
   }, [hasExited, onExited])
 
-  useReadyReport(onReady)
+  useReadyReport(onReady, isPreloadNeeded)
 
   const isPaused = hasEntered && !isActive && !isExiting
   useAudioSuspension(isPaused)
-  return isPaused
+  return { hasEntered, isPaused }
 }
 
 export default useHostBridge

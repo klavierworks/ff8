@@ -1,4 +1,4 @@
-import { getAssetUrl, hasAsset, listAssets } from '../../assetManifest'
+import { getAssetUrl, hasAsset, listAssets, warmCache } from '../../assetManifest'
 import { getGameData } from '../../gameData'
 
 type FieldModels = Record<string, Record<string, { base: string }>>
@@ -21,15 +21,6 @@ const getFieldAssetPaths = (fieldId: string) => {
     return []
   }
   return [...mapFilePaths, ...getBaseModelPaths(fieldId)]
-}
-
-const warmCache = async (url: string) => {
-  try {
-    const response = await fetch(url, { priority: 'low' })
-    await response.arrayBuffer()
-  } catch (error) {
-    console.warn(`Failed to prefetch ${url}`, error)
-  }
 }
 
 export const preloadField = async (fieldId: string | undefined) => {

@@ -2,6 +2,7 @@ import type { WorldmapSections } from '@data/types/worldmap/WorldmapSections'
 
 import { Camera, Color, MathUtils, Vector3 } from 'three'
 
+import { getAssetUrl } from '../../../assetManifest'
 import { SCREEN_HEIGHT } from '../../../constants/constants'
 import {
   WORLDMAP_HORIZON_CURVATURE_MULTIPLIER,
@@ -10,6 +11,8 @@ import {
 import { WORLDMAP_SCALE } from '../constants'
 import { radiansToPsx } from '../Player/playerAngles'
 import useWorldmapStore, { WorldmapCameraState } from '../worldmapStore'
+
+export const CLOUD_TEXTURE_URL = getAssetUrl('worldmap/textures/sky_cloud.png')
 
 export type SkyColors = {
   horizon: Color
