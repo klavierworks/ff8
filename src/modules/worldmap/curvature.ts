@@ -1,6 +1,7 @@
 import { Camera, MathUtils, Vector3, WebGLProgramParametersWithUniforms } from 'three'
 
 import {
+  WORLDMAP_CAMERA_FAR_PSX,
   WORLDMAP_CURVATURE_DEPTH_DIVISOR,
   WORLDMAP_CURVATURE_DROP_DIVISOR,
   WORLDMAP_CURVATURE_FIXED_POINT_ONE,
@@ -74,6 +75,12 @@ const calculateCurvedWorldY = (point: Vector3, eye: Vector3, forward: Vector3, c
   )
   const drop = Math.floor(bend / WORLDMAP_CURVATURE_DROP_DIVISOR)
   return -(scaledPsxY + drop * drop) * WORLDMAP_SCALE
+}
+
+export const calculateMaxCurvatureDropPsx = () => {
+  const maxDepth = Math.min(WORLDMAP_CAMERA_FAR_PSX, WORLDMAP_CURVATURE_MAX_DEPTH)
+  const maxBend = Math.floor(maxDepth / WORLDMAP_CURVATURE_DEPTH_DIVISOR) - WORLDMAP_CURVATURE_START_DEFAULT
+  return Math.floor(maxBend / WORLDMAP_CURVATURE_DROP_DIVISOR) ** 2
 }
 
 export const calculateCurvedEntityY = (groundedPosition: Vector3) =>

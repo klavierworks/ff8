@@ -1,4 +1,4 @@
-import { Euler, Mesh, Object3D, PerspectiveCamera, Raycaster, Vector3 } from 'three'
+import { Euler, Object3D, PerspectiveCamera, Raycaster, Vector3 } from 'three'
 
 import { SCREEN_HEIGHT } from '../../../constants/constants'
 import { WORLDMAP_PAD_BITS } from '../../../constants/controls'
@@ -8,7 +8,7 @@ import {
   WORLDMAP_OCCLUSION_TARGET_HEIGHT_PSX,
 } from '../../../constants/worldmapCamera'
 import { calculateFOV } from '../../field/Camera/cameraUtils'
-import { WALKMESH_USER_DATA_KEY, WORLDMAP_SCALE } from '../constants'
+import { WALKMESH_LAYER, WORLDMAP_SCALE } from '../constants'
 import { psxToRadians, radiansToPsx, wrapPsxAngle } from '../Player/playerAngles'
 import { getRenderedFocusAltitude, PsxPoint } from './cameraFocus'
 import { CameraRig } from './cameraRig'
@@ -21,6 +21,7 @@ const _offset = new Vector3()
 const _target = new Vector3()
 const _direction = new Vector3()
 const _raycaster = new Raycaster()
+_raycaster.layers.set(WALKMESH_LAYER)
 
 export const convertCameraYawToRadians = (yaw: number) => psxToRadians(-yaw)
 
@@ -62,8 +63,6 @@ export const updateCameraProjection = (camera: PerspectiveCamera, zoom: number) 
   camera.updateProjectionMatrix()
 }
 
-const isWalkmeshHit = (object: Object3D) => object instanceof Mesh && object.userData[WALKMESH_USER_DATA_KEY] === true
-
 export const isTerrainOccludingPlayer = (scene: Object3D, camera: PerspectiveCamera, playerPosition: Vector3) => {
   _target.copy(playerPosition)
   _target.y += WORLDMAP_OCCLUSION_TARGET_HEIGHT_PSX * WORLDMAP_SCALE
@@ -74,5 +73,5 @@ export const isTerrainOccludingPlayer = (scene: Object3D, camera: PerspectiveCam
   }
   _raycaster.set(camera.position, _direction.normalize())
   _raycaster.far = distance
-  return _raycaster.intersectObjects(scene.children, true).some((hit) => isWalkmeshHit(hit.object))
+  return _raycaster.intersectObjects(scene.children, true).length > 0
 }

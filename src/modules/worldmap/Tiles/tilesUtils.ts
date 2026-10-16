@@ -1,13 +1,22 @@
-import { Material, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector3 } from 'three'
+import {
+  Box3,
+  BufferGeometry,
+  Material,
+  MathUtils,
+  Mesh,
+  MeshBasicMaterial,
+  MeshLambertMaterial,
+  MeshStandardMaterial,
+  Object3D,
+  Source,
+  Sphere,
+  Texture,
+  Vector3,
+} from 'three'
 
 import { getAssetUrl } from '../../../assetManifest'
-import {
-  SEGMENT_SIZE_THREE,
-  SEGMENT_WORLD_SIZE,
-  WALKMESH_USER_DATA_KEY,
-  WORLD_GRID_COLS,
-  WORLD_GRID_ROWS,
-} from '../constants'
+import { SEGMENT_SIZE_THREE, SEGMENT_WORLD_SIZE, WALKMESH_LAYER, WORLD_GRID_COLS, WORLD_GRID_ROWS } from '../constants'
+import { calculateMaxCurvatureDropPsx } from '../curvature'
 import { applyTerrainShaders } from '../terrainShaders'
 import { VARIANT_STAGING_ROW } from './tileState'
 
@@ -103,25 +112,81 @@ export const getMeshMaterials = (mesh: Mesh): Material[] =>
   Array.isArray(mesh.material) ? mesh.material : [mesh.material]
 
 export const getTextureMap = (material: Material) =>
-  material instanceof MeshStandardMaterial || material instanceof MeshBasicMaterial ? material.map : null
+  material instanceof MeshStandardMaterial ||
+  material instanceof MeshBasicMaterial ||
+  material instanceof MeshLambertMaterial
+    ? material.map
+    : null
 
-const configureTileMaterial = (material: Material) => {
-  applyTerrainShaders(material)
-  if (!getTextureMap(material)) {
+const sharedAtlasSources = new Map<string, Source>()
+
+const releaseImage = (image: unknown) => {
+  if (typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap) {
+    image.close()
+  }
+}
+
+// Every tile file decodes its own copy of each atlas, and the renderer uploads one GPU texture per Source.
+const shareAtlasSource = (texture: null | Texture) => {
+  if (!texture) {
     return
   }
-  material.alphaTest = 0.5
-  material.transparent = false
-  material.needsUpdate = true
+  const shared = sharedAtlasSources.get(texture.name)
+  if (!shared) {
+    sharedAtlasSources.set(texture.name, texture.source)
+    return
+  }
+  if (shared === texture.source) {
+    return
+  }
+  releaseImage(texture.source.data)
+  texture.source = shared
+}
+
+const createTileMaterial = (material: MeshStandardMaterial) => {
+  shareAtlasSource(material.map)
+  const tileMaterial = new MeshLambertMaterial({
+    alphaTest: material.map ? 0.5 : 0,
+    color: material.color,
+    map: material.map,
+    name: material.name,
+    side: material.side,
+  })
+  applyTerrainShaders(tileMaterial)
+  return tileMaterial
+}
+
+const convertTileMaterial = (material: Material) =>
+  material instanceof MeshStandardMaterial ? createTileMaterial(material) : material
+
+const readGeometryBounds = (geometry: BufferGeometry) => {
+  geometry.computeBoundingBox()
+  return geometry.boundingBox ?? new Box3()
+}
+
+const calculateCurvedTileBounds = (geometry: BufferGeometry) => {
+  const { max, min } = readGeometryBounds(geometry)
+  return new Box3(
+    new Vector3(min.x, Math.min(min.y, 0) - calculateMaxCurvatureDropPsx(), min.z),
+    new Vector3(max.x, Math.max(max.y, 0), max.z),
+  )
+}
+
+const setCurvedTileBounds = (geometry: BufferGeometry) => {
+  const bounds = calculateCurvedTileBounds(geometry)
+  geometry.boundingBox = bounds
+  geometry.boundingSphere = bounds.getBoundingSphere(new Sphere())
 }
 
 const configureTileMesh = (object: Object3D) => {
   if (!(object instanceof Mesh)) {
     return
   }
-  object.userData[WALKMESH_USER_DATA_KEY] = true
-  object.frustumCulled = false
-  getMeshMaterials(object).forEach(configureTileMaterial)
+  object.layers.enable(WALKMESH_LAYER)
+  object.material = Array.isArray(object.material)
+    ? object.material.map(convertTileMaterial)
+    : convertTileMaterial(object.material)
+  setCurvedTileBounds(object.geometry)
 }
 
 export const prepareTileScene = (scene: Object3D) => {

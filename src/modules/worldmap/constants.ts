@@ -23,7 +23,7 @@ export const PSX_ANGLE_TO_RAD = (2 * Math.PI) / PSX_ANGLE_UNITS
 
 export const SEGMENT_SIZE_THREE = SEGMENT_WORLD_SIZE * WORLDMAP_SCALE
 
-export const WALKMESH_USER_DATA_KEY = 'isWalkmesh'
+export const WALKMESH_LAYER = 1
 
 export const TERRAIN_RAY_ORIGIN_Y = 10
 export const TERRAIN_RAY_FAR = 20

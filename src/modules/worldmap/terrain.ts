@@ -16,7 +16,7 @@ import {
   ON_FOOT_HEIGHT_TOLERANCE_PSX,
   TERRAIN_RAY_FAR,
   TERRAIN_RAY_ORIGIN_Y,
-  WALKMESH_USER_DATA_KEY,
+  WALKMESH_LAYER,
   WORLDMAP_SCALE,
 } from './constants'
 import { findFlagsAttribute } from './meshFlags'
@@ -47,6 +47,7 @@ const _origin = new Vector3()
 const _down = new Vector3(0, -1, 0)
 const _vertex = new Vector3()
 const _raycaster = new Raycaster(undefined, undefined, 0, TERRAIN_RAY_FAR)
+_raycaster.layers.set(WALKMESH_LAYER)
 
 export const psxHeightToWorldY = (psxY: number) => -psxY * WORLDMAP_SCALE
 export const worldYToPsxHeight = (worldY: number) => -worldY / WORLDMAP_SCALE
@@ -76,7 +77,7 @@ const intersectWalkmesh = <T>(
 ) => {
   _raycaster.set(_origin.set(x, TERRAIN_RAY_ORIGIN_Y, z), _down)
   return _raycaster.intersectObjects(root.children, true).flatMap((hit) => {
-    if (hit.object.userData[WALKMESH_USER_DATA_KEY] !== true || !hit.face) {
+    if (!hit.face) {
       return []
     }
     const mesh = hit.object as Mesh
