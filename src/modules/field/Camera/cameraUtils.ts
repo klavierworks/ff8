@@ -3,8 +3,11 @@ import { clamp, radToDeg } from 'three/src/math/MathUtils.js'
 
 import { FIELD_CAMERA_FAR, FIELD_CAMERA_NEAR } from '../../../constants/camera'
 import { SCREEN_HEIGHT } from '../../../constants/constants'
+import { cosineEaseInOut } from '../../../LerpValue'
 import { vectorToFloatingPoint } from '../../../utils'
 import { FieldData } from '../Field'
+import { FieldRevealStage } from '../fieldRevealStore'
+import { getStageAmount } from '../fieldRevealUtils'
 
 const FF8_PERSPECTIVE_DIVISOR = 256
 
@@ -96,17 +99,27 @@ export const applyFieldCamera = (
   return lookAtTarget
 }
 
-export type DebugOrbit = {
+export type CameraOrbit = {
   pitch: number
   yaw: number
 }
 
-export const INITIAL_DEBUG_ORBIT: DebugOrbit = { pitch: 0, yaw: 0 }
+export const INITIAL_DEBUG_ORBIT: CameraOrbit = { pitch: 0, yaw: 0 }
 
-export const applyDragToOrbit = ({ pitch, yaw }: DebugOrbit, movementX: number, movementY: number): DebugOrbit => ({
+export const applyDragToOrbit = ({ pitch, yaw }: CameraOrbit, movementX: number, movementY: number): CameraOrbit => ({
   pitch: clamp(pitch + movementY * 0.005, -Math.PI * 0.45, Math.PI * 0.45),
   yaw: yaw - movementX * 0.005,
 })
+
+export const getIntroCameraAmount = (stage: FieldRevealStage, progress: number) =>
+  1 - cosineEaseInOut(getStageAmount(stage, progress, 'camera'))
+
+export const selectCameraOffset = (debugAmount: number, debugOrbit: CameraOrbit, introAmount: number) => {
+  if (debugAmount > 0) {
+    return { amount: Math.max(debugAmount, introAmount), orbit: debugOrbit }
+  }
+  return { amount: introAmount, orbit: { pitch: 0, yaw: 0.25 } }
+}
 
 export const calculatePulledBackPosition = (camera: Camera, target: Vector3) => {
   const { forwardVector, upVector } = getCameraDirections(camera)
@@ -129,7 +142,7 @@ export const orbitAroundFocus = (
   position: Vector3,
   focus: Vector3,
   up: Vector3,
-  { pitch, yaw }: DebugOrbit,
+  { pitch, yaw }: CameraOrbit,
   target: Vector3,
 ) => {
   const offset = _orbitOffset.copy(position).sub(focus)

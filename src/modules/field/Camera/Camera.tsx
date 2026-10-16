@@ -10,7 +10,7 @@ import { movieController } from '../movieController'
 import useScrollTransition from '../useScrollTransition'
 import { applyFieldCamera, getBoundaries, getCameraRangeIndex } from './cameraUtils'
 import Focus from './Focus/Focus'
-import useDebugCamera from './useDebugCamera'
+import useOffsetCamera from './useOffsetCamera'
 import useScreenShake from './useScreenShake'
 
 type CameraProps = {
@@ -136,7 +136,7 @@ const Camera = ({ data }: CameraProps) => {
     moveableCamera.updateProjectionMatrix()
   })
 
-  useDebugCamera(camera, moveableCamera)
+  useOffsetCamera(camera, moveableCamera)
 
   return <Focus />
 }

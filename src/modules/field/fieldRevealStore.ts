@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export type FieldRevealDirection = 'forward' | 'reverse'
 
-export type FieldRevealStage = 'background' | 'blocks' | 'hidden' | 'models' | 'revealed' | 'walkmesh'
+export type FieldRevealStage = 'background' | 'blocks' | 'camera' | 'hidden' | 'models' | 'revealed' | 'walkmesh'
 
 export type ProgressUniform = { value: number }
 

@@ -1,6 +1,6 @@
 import { FieldRevealDirection, FieldRevealStage, ProgressUniform } from './fieldRevealStore'
 
-const STAGE_ORDER: FieldRevealStage[] = ['hidden', 'blocks', 'walkmesh', 'background', 'models', 'revealed']
+const STAGE_ORDER: FieldRevealStage[] = ['hidden', 'blocks', 'walkmesh', 'background', 'models', 'camera', 'revealed']
 
 const getStageIndex = (stage: FieldRevealStage) => STAGE_ORDER.indexOf(stage)
 
@@ -28,6 +28,6 @@ export const getPreviousStage = (stage: FieldRevealStage) => STAGE_ORDER[Math.ma
 // Models start reversing as soon as their own stage begins rewinding, mirroring how they finish
 // their reveal within that stage on the way in.
 export const isModelRevealed = (stage: FieldRevealStage, direction: FieldRevealDirection) =>
-  isStageReached(stage, direction === 'reverse' ? 'revealed' : 'models')
+  isStageReached(stage, direction === 'reverse' ? 'camera' : 'models')
 
 export const getToggledStage = (stage: FieldRevealStage): FieldRevealStage => (stage === 'hidden' ? 'blocks' : 'hidden')

@@ -5,12 +5,15 @@ import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
 import { CONTROLS_MAP } from '../../../constants/controls'
 import LerpValue from '../../../LerpValue'
 import useGlobalStore from '../../../store'
+import useFieldRevealStore from '../fieldRevealStore'
 import {
   applyDragToOrbit,
   calculatePulledBackPosition,
-  DebugOrbit,
+  CameraOrbit,
+  getIntroCameraAmount,
   INITIAL_DEBUG_ORBIT,
   orbitAroundFocus,
+  selectCameraOffset,
 } from './cameraUtils'
 
 const _pulledBackPosition = new Vector3()
@@ -37,7 +40,7 @@ const useDebugToggle = () => {
 }
 
 const useOrbitDrag = (isEnabled: boolean) => {
-  const orbitRef = useRef<DebugOrbit>(INITIAL_DEBUG_ORBIT)
+  const orbitRef = useRef<CameraOrbit>(INITIAL_DEBUG_ORBIT)
 
   useEffect(() => {
     if (!isEnabled) {
@@ -60,7 +63,7 @@ const useOrbitDrag = (isEnabled: boolean) => {
   return orbitRef
 }
 
-const useDebugCamera = (camera: PerspectiveCamera, moveableCamera: PerspectiveCamera) => {
+const useDebugOffset = () => {
   const isDebugModeActive = useDebugToggle()
   const orbitRef = useOrbitDrag(isDebugModeActive)
   const [pullback] = useState(() => new LerpValue(0))
@@ -78,26 +81,32 @@ const useDebugCamera = (camera: PerspectiveCamera, moveableCamera: PerspectiveCa
     })
   }, [isDebugModeActive, orbitRef, pullback])
 
+  return { orbitRef, pullback }
+}
+
+const useOffsetCamera = (camera: PerspectiveCamera, moveableCamera: PerspectiveCamera) => {
+  const { orbitRef, pullback } = useDebugOffset()
+
   useFrame(({ scene }) => {
     const focus = scene.getObjectByName('focus')
     if (!focus) {
       return
     }
 
-    const pulledBackPosition = calculatePulledBackPosition(camera, _pulledBackPosition)
-    const orbitPosition = orbitAroundFocus(
-      pulledBackPosition,
-      focus.position,
-      moveableCamera.up,
+    const { stage, stageProgress } = useFieldRevealStore.getState()
+    const { amount, orbit } = selectCameraOffset(
+      pullback.get(),
       orbitRef.current,
-      _orbitPosition,
+      getIntroCameraAmount(stage, stageProgress.value),
     )
+
+    const pulledBackPosition = calculatePulledBackPosition(camera, _pulledBackPosition)
+    const orbitPosition = orbitAroundFocus(pulledBackPosition, focus.position, moveableCamera.up, orbit, _orbitPosition)
 
     moveableCamera.position.copy(orbitPosition)
     moveableCamera.lookAt(focus.position)
     _lookingAtQuaternion.copy(moveableCamera.quaternion)
 
-    const amount = pullback.get()
     moveableCamera.quaternion.slerpQuaternions(camera.quaternion, _lookingAtQuaternion, amount)
     moveableCamera.position.lerpVectors(camera.position, orbitPosition, amount)
 
@@ -106,4 +115,4 @@ const useDebugCamera = (camera: PerspectiveCamera, moveableCamera: PerspectiveCa
   })
 }
 
-export default useDebugCamera
+export default useOffsetCamera
