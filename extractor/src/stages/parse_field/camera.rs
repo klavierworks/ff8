@@ -27,9 +27,9 @@ pub struct Camera {
 }
 
 pub fn parse_camera(ca_bytes: &[u8]) -> Result<Vec<Camera>> {
-    if ca_bytes.len() != CAMERA_USED && !ca_bytes.len().is_multiple_of(CAMERA_SIZE) {
+    if ca_bytes.len() < CAMERA_USED {
         bail!(
-            "ca size error: {} is not 38 nor a multiple of 40",
+            "ca size error: {} is shorter than one camera",
             ca_bytes.len()
         );
     }

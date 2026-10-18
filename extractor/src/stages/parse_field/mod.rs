@@ -102,11 +102,18 @@ fn process_field(fs_path: &Path, out_root: &Path) -> Result<()> {
         &walkmesh::parse_access(id)?,
     )?;
 
-    let msd = archive.file("msd").context("missing .msd")?;
-    map.insert("text".into(), serde_json::to_value(text::parse_text(msd)?)?);
+    let text = archive
+        .file("msd")
+        .map(text::parse_text)
+        .transpose()?
+        .unwrap_or_default();
+    map.insert("text".into(), serde_json::to_value(text)?);
 
-    let jsm = archive.file("jsm").context("missing .jsm")?;
-    let scripts = scripts::parse_scripts(jsm, archive.file("sym"))?;
+    let scripts = archive
+        .file("jsm")
+        .map(|jsm| scripts::parse_scripts(jsm, archive.file("sym")))
+        .transpose()?
+        .unwrap_or_default();
     map.insert("scripts".into(), serde_json::to_value(scripts)?);
 
     let inf_data = inf::parse_inf(name, inf, archive.file("pvp"), archive.file("sfx"))?;
