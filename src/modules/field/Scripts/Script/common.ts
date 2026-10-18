@@ -140,8 +140,6 @@ const constructScrollTransition = (
   return transition
 }
 
-const CAMERA_SCROLL_SLOT = 0
-
 export const setCameraScroll = (
   x: number,
   y: number,
@@ -158,7 +156,7 @@ export const setCameraScroll = (
 export const getScrollTransition = (layerIndex: number) => {
   const { cameraScrollOffset, layerScrollOffsets } = useGlobalStore.getState()
 
-  if (layerIndex === CAMERA_SCROLL_SLOT) {
+  if (layerIndex === 0) {
     return cameraScrollOffset
   }
   return layerScrollOffsets[layerIndex]
@@ -174,7 +172,7 @@ export const setLayerScroll = (
 ) => {
   // Slot 0 of the -2/-3 scroll opcodes is the camera pan, not a parallax layer, so
   // DSCROLL2(0, x, y) is the same request as DSCROLL(x, y) and moves the whole scene.
-  if (layerIndex === CAMERA_SCROLL_SLOT) {
+  if (layerIndex === 0) {
     setCameraScroll(x, y, duration, positioning, ease)
     return
   }

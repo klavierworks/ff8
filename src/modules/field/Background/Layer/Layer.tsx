@@ -105,7 +105,7 @@ const Layer = ({ layer, layerScrolls, revealProgress, texture }: LayerProps) => 
     const centerX = (view && view.enabled ? view.offsetX : 0) + screenOffset.x
     const centerY = (view && view.enabled ? view.offsetY : 0) + screenOffset.y
 
-    const controlledScroll = layerScrollAdjustments[renderID]
+    const controlledScroll = renderID === 0 ? undefined : layerScrollAdjustments[renderID]
     const xRatio = controlledScroll?.xRatio ?? SCROLL_RATIO_FULL
     const yRatio = controlledScroll?.yRatio ?? SCROLL_RATIO_FULL
 
