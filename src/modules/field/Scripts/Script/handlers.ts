@@ -1166,16 +1166,16 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     }
   },
 
-  JUMP: ({ currentOpcode, movementController, STACK }) => {
+  JUMP: async ({ currentOpcode, movementController, STACK }) => {
     const duration = STACK.pop() as number
     const y = STACK.pop() as number
     const x = STACK.pop() as number
 
     const target = vectorToFloatingPoint({ x, y, z: 0 })
 
-    movementController.jumpToPosition(target, duration, currentOpcode.param)
+    await movementController.jumpToPosition(target, duration, currentOpcode.param)
   },
-  JUMP3: ({ currentOpcode, movementController, STACK }) => {
+  JUMP3: async ({ currentOpcode, movementController, STACK }) => {
     const duration = STACK.pop() as number
     const z = STACK.pop() as number
     const y = STACK.pop() as number
@@ -1183,7 +1183,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
 
     const target = vectorToFloatingPoint({ x, y, z })
 
-    movementController.jumpToPosition(target, duration, currentOpcode.param)
+    await movementController.jumpToPosition(target, duration, currentOpcode.param)
   },
   JUNCTION: ({ STACK }) => {
     const isEnteringDream = ((STACK.pop() as number) & 1) === 1
@@ -1709,7 +1709,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   PHSPOWER: ({ STACK }) => {
     STACK.pop() as number
   },
-  PJUMPA: ({ movementController, scene, STACK }) => {
+  PJUMPA: async ({ movementController, scene, STACK }) => {
     const duration = STACK.pop() as number
     const partyMemberId = STACK.pop() as number
     const player = getPartyMemberModelComponent(scene, partyMemberId)
@@ -1720,7 +1720,7 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
 
     const targetPoint = player.getWorldPosition(new Vector3())
 
-    movementController.jumpToPosition(targetPoint, duration)
+    await movementController.jumpToPosition(targetPoint, duration)
   },
   // Pause the script while this character does a slow, walking-style turn to
   // look at one of the active party members.

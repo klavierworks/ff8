@@ -375,6 +375,8 @@ const createMovementController = (id: number, walkmeshController: WalkmeshMoveme
         walkmeshTriangle: walkmeshTriangle ?? state.position.walkmeshTriangle,
       },
     }))
+
+    return signal.promise
   }
 
   const moveToOffset = async (x: number, y: number, z: number, duration: number) => {
