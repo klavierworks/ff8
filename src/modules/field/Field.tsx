@@ -20,7 +20,7 @@ import Movie from './Movie/Movie'
 import Particles from './Particles/Particles'
 import { ParticleData } from './Particles/particleSimulation'
 import { awaitFadesync, triggerFadeout } from './Scripts/Script/common'
-import { MEMORY } from './Scripts/Script/handlers'
+import { clearFieldTemporaryVariables, MEMORY } from './Scripts/Script/handlers'
 import { useFragmentedGLTFLoader } from './Scripts/Script/Model/useFragmentedGLTFLoader'
 import { preloadMapSoundBank } from './Scripts/Script/SFXController/webAudio'
 import Scripts from './Scripts/Scripts'
@@ -135,6 +135,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
       if (lastFieldId) {
         MEMORY[84] = Object.values(MAP_NAMES).indexOf(lastFieldId)
       }
+      clearFieldTemporaryVariables()
 
       const data = await getFieldData(pendingFieldId)
       data.models.forEach((model) => useFragmentedGLTFLoader.preload(model, pendingFieldId))

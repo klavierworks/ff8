@@ -119,10 +119,6 @@ export const drawGradientBackground = (
   height: number,
   mode: number,
 ): void => {
-  if (mode === 2) {
-    return
-  }
-
   const gradient = context.createLinearGradient(0, 0, width, 0)
   const alpha = mode === 0 ? 1 : 0.5
   gradient.addColorStop(0, `rgb(66,66,58,${alpha})`)

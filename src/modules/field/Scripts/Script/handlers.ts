@@ -142,6 +142,12 @@ export const restoreMemory = (savedMemory: typeof MEMORY) => {
   }
 }
 
+export const clearFieldTemporaryVariables = () => {
+  for (let address = 1024; address < 1280; address++) {
+    MEMORY[address] = 0
+  }
+}
+
 export const MESSAGE_VARS: Record<number, string> = {}
 
 export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
@@ -1465,7 +1471,21 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     STACK.pop() as number
   },
   MENUNORMAL: dummiedCommand,
-  MENUPHS: dummiedCommand,
+  MENUPHS: async () => {
+    await openMessage(
+      'phs',
+      ['Party switch not implemented.'],
+      {
+        channel: 0,
+        height: undefined,
+        width: undefined,
+        x: 20,
+        y: 20,
+      },
+      true,
+      undefined,
+    )
+  },
   MENUSAVE: dummiedCommand,
 
   MENUSHOP: async ({ STACK }) => {

@@ -261,8 +261,10 @@ const MessageBox = ({ isCloseableFocus, isSavePoint, message, worldScene }: Mess
       textCanvas.height = SCREEN_HEIGHT * 2
       ctx.imageSmoothingEnabled = false
 
-      drawGradientBackground(ctx, xPos, yPos, width, height, messageStyle.mode)
-      drawBorders(ctx, xPos, yPos, width, height)
+      if (messageStyle.mode !== 2) {
+        drawGradientBackground(ctx, xPos, yPos, width, height, messageStyle.mode)
+        drawBorders(ctx, xPos, yPos, width, height)
+      }
 
       return updateScale(scale, delta, OPEN_SPEED)
     },
