@@ -201,16 +201,19 @@ const createScriptController = ({
   }
 
   // Drains opcodes for the active queue item until it blocks (an async opcode
-  // such as MOVE/WAIT awaits), is preempted, or a run of synchronous opcodes
-  // hits the per-tick budget. Mirrors the engine's per-entity loop:
-  // up to 16 opcodes per tick, only yielding on an in-progress opcode. So the
-  // tick a MOVE finishes, the following MSPEED + next MOVE run in the same tick
-  // and multi-segment movement stays continuous instead of stuttering between
-  // segments (which is what one-opcode-per-frame produced).
+  // such as MOVE/WAIT awaits), is preempted, or spends the per-tick budget.
+  // Mirrors the engine's per-entity loop: up to 16 opcodes per tick, only
+  // yielding on an in-progress opcode. So the tick a MOVE finishes, the
+  // following MSPEED + next MOVE run in the same tick and multi-segment
+  // movement stays continuous instead of stuttering between segments.
+  // The budget belongs to the script frame, not to the run of synchronous
+  // opcodes: an opcode that finishes a wait counts toward its tick's 16, and an
+  // async handler that settles without a frame passing counts like any other.
   const runOpcodes = async (uniqueId: string) => {
     setQueueItemFields(uniqueId, { isAwaiting: true })
 
-    let synchronousOpcodes = 0
+    let budgetFrame = getScriptFrame()
+    let opcodesThisTick = 0
     for (;;) {
       // Ensure script exits if we change field
       if (useGlobalStore.getState().fieldId !== ownerFieldId) {
@@ -242,7 +245,6 @@ const createScriptController = ({
       }
 
       let nextIndex: number | void
-      let isBlocking = false
       try {
         const result = handlers[activeOpcode.name]({
           animationController,
@@ -261,7 +263,6 @@ const createScriptController = ({
           STACK,
           TEMP_STACK: item.tempStack,
         })
-        isBlocking = result instanceof Promise
         nextIndex = result instanceof Promise ? await result : result
       } catch (error) {
         console.error(`Error running opcode ${activeOpcode.name}:`, error)
@@ -279,11 +280,12 @@ const createScriptController = ({
       }
       setQueueItemFields(uniqueId, { activeOpcodeIndex: resolved })
 
-      // Blocking opcodes already yielded a frame by awaiting, so reset the
-      // budget; only an unbroken run of synchronous opcodes yields the tick.
-      if (isBlocking) {
-        synchronousOpcodes = 0
-      } else if (++synchronousOpcodes >= MAX_OPCODES_PER_TICK) {
+      const frame = getScriptFrame()
+      if (frame !== budgetFrame) {
+        budgetFrame = frame
+        opcodesThisTick = 0
+      }
+      if (++opcodesThisTick >= MAX_OPCODES_PER_TICK) {
         setQueueItemFields(uniqueId, { isAwaiting: false })
         return
       }

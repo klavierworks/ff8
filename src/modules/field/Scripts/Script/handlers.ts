@@ -83,6 +83,13 @@ import {
 const dummiedCommand = () => undefined
 const unusedCommand = () => undefined
 
+// The engine yields on the tick a kept animation starts and again on the tick it
+// sees the end, so the following opcode never runs before the second tick after.
+const waitForKeptAnimation = async (animation: Promise<void> | undefined) => {
+  await Promise.all([animation, nextScriptFrame()])
+  await nextScriptFrame()
+}
+
 const DRAW_POINT_MESSAGE_PLACEMENT: MessagePlacement = {
   channel: 0,
   height: 40,
@@ -273,9 +280,11 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
   ANIMEKEEP: async ({ animationController, currentOpcode }) => {
     const animationId = currentOpcode.param
 
-    await animationController.playAnimation(animationId, {
-      shouldHoldLastFrame: true,
-    })
+    await waitForKeptAnimation(
+      animationController.playAnimation(animationId, {
+        shouldHoldLastFrame: true,
+      }),
+    )
   },
   ANIMESPEED: ({ animationController, STACK }) => {
     animationController.setAnimationSpeed(STACK.pop() as number)
@@ -500,11 +509,13 @@ export const OPCODE_HANDLERS: Record<Opcode, HandlerFuncWithPromise> = {
     const firstFrame = STACK.pop() as number
     const lastFrame = STACK.pop() as number
 
-    await animationController.playAnimation(animationId, {
-      endFrame: lastFrame,
-      shouldHoldLastFrame: true,
-      startFrame: firstFrame,
-    })
+    await waitForKeptAnimation(
+      animationController.playAnimation(animationId, {
+        endFrame: lastFrame,
+        shouldHoldLastFrame: true,
+        startFrame: firstFrame,
+      }),
+    )
   },
   // SCRIPT_CARDGAME pops 7 bytes (see ida.md "Triple Triad"); only the board palette (2nd pop) and
   // opponent strength (3rd pop) are used — the rest are spawn odds and deck/opponent ids. Slot 0
