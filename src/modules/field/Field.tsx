@@ -1,7 +1,7 @@
 import type { FieldData as RawFieldData } from '@data/types/field/FieldData'
 
 import { useThree } from '@react-three/fiber'
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Group } from 'three'
 
 import { CAMERA_SHAKE_OFF } from '../../constants/camera'
@@ -16,6 +16,7 @@ import FieldReveal from './FieldReveal/FieldReveal'
 import { getFieldData, getRequestedSpawn } from './fieldUtils'
 import Gateways from './Gateways/Gateways'
 import LoadingController from './LoadingController'
+import LoadSignal from './LoadSignal/LoadSignal'
 import Movie from './Movie/Movie'
 import { movieController } from './movieController'
 import Particles from './Particles/Particles'
@@ -26,7 +27,6 @@ import { useFragmentedGLTFLoader } from './Scripts/Script/Model/useFragmentedGLT
 import { preloadMapSoundBank } from './Scripts/Script/SFXController/webAudio'
 import Scripts from './Scripts/Scripts'
 import { Script } from './Scripts/types'
-import { loadFieldSprite } from './useFieldSprite'
 import WalkMesh from './WalkMesh/WalkMesh'
 
 const { areaNames } = getGameData()
@@ -86,6 +86,11 @@ const Field = ({ data }: FieldProps) => {
   const entitiesRef = useRef<Group>(null)
   const particlesRef = useRef<Group>(null)
 
+  const [hasBackgroundLoaded, setHasBackgroundLoaded] = useState(false)
+  const handleBackgroundLoad = useCallback(() => {
+    setHasBackgroundLoaded(true)
+  }, [])
+
   return (
     <Suspense fallback={<LoadingController />}>
       <group>
@@ -95,11 +100,14 @@ const Field = ({ data }: FieldProps) => {
           <>
             <Camera data={data} />
             <group ref={entitiesRef}>
-              <Scripts doors={data.doors} models={data.models} scripts={data.scripts} sounds={data.sounds} />
+              {hasBackgroundLoaded && (
+                <Scripts doors={data.doors} models={data.models} scripts={data.scripts} sounds={data.sounds} />
+              )}
             </group>
             <group ref={backgroundRef}>
               <Suspense fallback={null}>
                 <Background data={data} />
+                <LoadSignal onLoad={handleBackgroundLoad} />
               </Suspense>
             </group>
             <group ref={particlesRef}>{data.particles && <Particles data={data.particles} fieldId={data.id} />}</group>
@@ -151,7 +159,6 @@ const FieldLoader = (props: FieldLoaderProps) => {
       const data = await getFieldData(pendingFieldId)
       data.models.forEach((model) => useFragmentedGLTFLoader.preload(model, pendingFieldId))
       preloadMapSoundBank(data.sounds)
-      await loadFieldSprite(data.backgroundDetails.sprite)
       setData(data)
 
       if (!isLoadingSavedGame) {

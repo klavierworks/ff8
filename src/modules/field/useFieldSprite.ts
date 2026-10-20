@@ -12,8 +12,6 @@ const SPRITE_PATH_BY_NAME: Record<string, string> = Object.fromEntries(
     .map((path) => [path.split('/').pop() as string, path]),
 )
 
-export const hasFieldSprite = (filename: string) => SPRITE_PATH_BY_NAME[filename] !== undefined
-
 const useFieldSprite = (filename: string) => {
   const spriteTexture = useLoader(TextureLoader, getAssetUrl(SPRITE_PATH_BY_NAME[filename]))
 
