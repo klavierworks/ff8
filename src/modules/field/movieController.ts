@@ -11,6 +11,7 @@ import {
   MovieRecord,
   parseMovieCameraBlock,
 } from './movieUtils'
+import { waitForScriptFrames } from './scriptClock'
 
 type LoadedMovie = {
   cameraFrames: MovieCameraFrame[] | undefined
@@ -21,11 +22,14 @@ type LoadedMovie = {
 
 type MovieSession = {
   frame: number
+  heldMovie: LoadedMovie | undefined
   isActive: boolean
   isFieldMovieMode: boolean
   playingMovie: LoadedMovie | undefined
   presentedFrameIndex: number
 }
+
+const HELD_FRAME_SCRIPT_FRAMES = 2
 
 const loadVideo = (url: string) =>
   new Promise<HTMLVideoElement>((resolve, reject) => {
@@ -106,6 +110,7 @@ const loadMovie = async (disc: number, movieId: number): Promise<LoadedMovie | u
 const createMovieController = () => {
   const store = create<MovieSession>(() => ({
     frame: 0,
+    heldMovie: undefined,
     isActive: false,
     isFieldMovieMode: false,
     playingMovie: undefined,
@@ -115,8 +120,37 @@ const createMovieController = () => {
 
   let pendingMovie: Promise<LoadedMovie | undefined> | undefined
 
+  const releaseHeldMovie = () => {
+    const { heldMovie } = getState()
+    if (!heldMovie) {
+      return
+    }
+    releaseVideo(heldMovie.video)
+    setState({ heldMovie: undefined })
+  }
+
+  // A map jump requested while the frame is held leaves the release to the field
+  // transition, so the field the movie replaced never shows under the fade-out.
+  const releaseHeldMovieUnlessMapJumpPending = async (movie: LoadedMovie) => {
+    await waitForScriptFrames(HELD_FRAME_SCRIPT_FRAMES)
+    if (getState().heldMovie !== movie || useGlobalStore.getState().pendingFieldId) {
+      return
+    }
+    releaseHeldMovie()
+  }
+
+  const holdLastFrame = (movie: LoadedMovie) => {
+    movie.video.pause()
+    setState({ heldMovie: movie, isActive: false, isFieldMovieMode: false, playingMovie: undefined })
+    releaseHeldMovieUnlessMapJumpPending(movie)
+  }
+
   const finishMovie = (movie: LoadedMovie | undefined) => {
     if (getState().playingMovie !== movie) {
+      return
+    }
+    if (movie && getState().frame > 0) {
+      holdLastFrame(movie)
       return
     }
     if (movie) {
@@ -155,6 +189,7 @@ const createMovieController = () => {
     if (playingMovie) {
       releaseVideo(playingMovie.video)
     }
+    releaseHeldMovie()
     if (pendingMovie) {
       releasePendingMovie(pendingMovie)
     }
@@ -195,13 +230,20 @@ const createMovieController = () => {
     return playingMovie?.cameraFrames?.[presentedFrameIndex]
   }
 
+  const getHasPresentedFrame = () => {
+    const { frame, playingMovie } = getState()
+    return playingMovie !== undefined && frame > 0
+  }
+
+  const getIsHoldingLastFrame = () => getState().heldMovie !== undefined
+
   const getIsReplacingField = () => {
     const { isActive, isFieldMovieMode } = getState()
-    return isActive && isFieldMovieMode
+    return getIsHoldingLastFrame() || (isActive && isFieldMovieMode && getHasPresentedFrame())
   }
 
   const getIsHidingFieldModels = () =>
-    getState().playingMovie !== undefined && getIsHidingModels(getCurrentCameraFrame())
+    getIsHoldingLastFrame() || (getHasPresentedFrame() && getIsHidingModels(getCurrentCameraFrame()))
 
   const getIsFieldDrawSuppressedDuringMovie = () =>
     getState().playingMovie !== undefined && useGlobalStore.getState().isFieldDrawSuppressed
@@ -211,9 +253,11 @@ const createMovieController = () => {
   return {
     getIsFieldDrawSuppressedDuringMovie,
     getIsHidingFieldModels,
+    getIsHoldingLastFrame,
     getIsReplacingField,
     getMovieCamera,
     prepareMovie,
+    releaseHeldMovie,
     startMovie,
     store,
   }

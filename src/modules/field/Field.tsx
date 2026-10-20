@@ -17,6 +17,7 @@ import { getFieldData, getRequestedSpawn } from './fieldUtils'
 import Gateways from './Gateways/Gateways'
 import LoadingController from './LoadingController'
 import Movie from './Movie/Movie'
+import { movieController } from './movieController'
 import Particles from './Particles/Particles'
 import { ParticleData } from './Particles/particleSimulation'
 import { awaitFadesync, triggerFadeout } from './Scripts/Script/common'
@@ -25,6 +26,7 @@ import { useFragmentedGLTFLoader } from './Scripts/Script/Model/useFragmentedGLT
 import { preloadMapSoundBank } from './Scripts/Script/SFXController/webAudio'
 import Scripts from './Scripts/Scripts'
 import { Script } from './Scripts/types'
+import { loadFieldSprite } from './useFieldSprite'
 import WalkMesh from './WalkMesh/WalkMesh'
 
 const { areaNames } = getGameData()
@@ -52,6 +54,15 @@ export type { RawFieldData }
 
 type FieldProps = {
   data: FieldData
+}
+
+const fadeOutLeavingField = async () => {
+  if (movieController.getIsHoldingLastFrame()) {
+    useGlobalStore.getState().fadeSpring.set(0)
+    return
+  }
+  triggerFadeout()
+  await awaitFadesync()
 }
 
 const Field = ({ data }: FieldProps) => {
@@ -124,10 +135,10 @@ const FieldLoader = (props: FieldLoaderProps) => {
       const lastFieldId = useGlobalStore.getState().fieldId
       const isSwitchingBetweenMaps = lastFieldId && pendingFieldId && pendingFieldId !== lastFieldId
       if (isMapFadeEnabled && isSwitchingBetweenMaps) {
-        triggerFadeout()
-        await awaitFadesync()
+        await fadeOutLeavingField()
         MEMORY[87] = 1
       }
+      movieController.releaseHeldMovie()
 
       setData(null)
       gl.clear()
@@ -140,6 +151,7 @@ const FieldLoader = (props: FieldLoaderProps) => {
       const data = await getFieldData(pendingFieldId)
       data.models.forEach((model) => useFragmentedGLTFLoader.preload(model, pendingFieldId))
       preloadMapSoundBank(data.sounds)
+      await loadFieldSprite(data.backgroundDetails.sprite)
       setData(data)
 
       if (!isLoadingSavedGame) {

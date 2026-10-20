@@ -19,11 +19,11 @@ const setGroupVisibility = (groupRef: RefObject<Group | null>, isVisible: boolea
 }
 
 const Movie = ({ backgroundRef, entitiesRef, particlesRef }: MovieProps) => {
-  const playingMovie = useMovieStore((state) => state.playingMovie)
+  const displayedMovie = useMovieStore((state) => state.playingMovie ?? state.heldMovie)
 
   const material = useMemo(
-    () => (playingMovie ? createMovieMaterial(createMovieTexture(playingMovie.video)) : undefined),
-    [playingMovie],
+    () => (displayedMovie ? createMovieMaterial(createMovieTexture(displayedMovie.video)) : undefined),
+    [displayedMovie],
   )
 
   useEffect(() => {
